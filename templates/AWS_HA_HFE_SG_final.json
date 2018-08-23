@@ -1,0 +1,3181 @@
+{
+    "AWSTemplateFormatVersion": "2010-09-09",
+    "Description": "AWS CloudFormation Template to setup and deploy vSBC HA instances to test vSBC. This template creates required vpc, subnet and other routing elements required IAM role to performce IP movement betweenn two vSBC instances.",
+    "Parameters": {
+        "AMIID": {
+            "Description": "AMI ID of SBC : ami-xxxxxxxx",
+            "Type": "AWS::EC2::Image::Id",
+            "MaxLength": "21",
+            "Default": "ami-0a49b638bad956f96",
+            "AllowedPattern": "ami-[a-z0-9]*",
+            "ConstraintDescription": "Must be a valid AMI ID"
+        },
+        "HfnAMIID": {
+            "Description": "AMI ID of HFE Node, select latest AWS Linux AMI ID : ami-xxxxxxxx",
+            "Type": "AWS::EC2::Image::Id",
+            "MaxLength": "21",
+            "Default": "ami-b70554c8",
+            "AllowedPattern": "ami-[a-z0-9]*",
+            "ConstraintDescription": "Must be a valid HFE Instance AMI ID"
+        },
+        "HfnScriptS3Location": {
+            "Description": "Location of HFE script in S3, see installation guide for more details",
+            "Type": "String",
+            "MinLength": "1",
+            "Default": "s3://haforwarding/HFN.sh",
+            "ConstraintDescription": "Must be a valid S3 location"
+        },
+        "KeyName": {
+            "Description": "Name of an existing EC2 KeyPair to enable SSH access to the SBC and HFE instance ",
+            "Type": "AWS::EC2::KeyPair::KeyName",
+            "ConstraintDescription": "must be the name of an existing EC2 KeyPair."
+        },
+        "vpcCIDR": {
+            "Description": "VPC CIDR block for new VPC that will be used to create SBC and PKTART test tool.",
+            "Type": "String",
+            "Default": "10.74.0.0/16",
+            "AllowedPattern": "(\\d{1,3})\\.(\\d{1,3})\\.(\\d{1,3})\\.(\\d{1,3})/(\\d{1,2})",
+            "ConstraintDescription": "Must be a valid IP CIDR range of the form x.x.x.x/x."
+        },
+        "mgtSubnetCIDR": {
+            "Description": "Enter a CIDR for pirvate subnet for SBC, this new subnet will be served by HFE instance.",
+            "Type": "String",
+            "MinLength": "1",
+            "Default": "10.74.10.0/24",
+            "AllowedPattern": "(\\d{1,3})\\.(\\d{1,3})\\.(\\d{1,3})\\.(\\d{1,3})/(\\d{1,2})",
+            "ConstraintDescription": "Must be a valid IP CIDR range of the form x.x.x.x/x and subnet of VPC."
+        },
+        "haSubnetCIDR": {
+            "Description": "Enter a CIDR for pirvate subnet for SBC, this new subnet will be served by HFE instance.",
+            "Type": "String",
+            "MinLength": "1",
+            "Default": "10.74.20.0/24",
+            "AllowedPattern": "(\\d{1,3})\\.(\\d{1,3})\\.(\\d{1,3})\\.(\\d{1,3})/(\\d{1,2})",
+            "ConstraintDescription": "Must be a valid IP CIDR range of the form x.x.x.x/x and subnet of VPC."
+        },
+        "pkt1SubnetCIDR": {
+            "Description": "Enter a CIDR for pirvate subnet for SBC, this new subnet will be served by HFE instance.",
+            "Type": "String",
+            "MinLength": "1",
+            "Default": "10.74.40.0/24",
+            "AllowedPattern": "(\\d{1,3})\\.(\\d{1,3})\\.(\\d{1,3})\\.(\\d{1,3})/(\\d{1,2})",
+            "ConstraintDescription": "Must be a valid IP CIDR range of the form x.x.x.x/x and subnet of VPC."
+        },
+        "HfnPublicPktSubnetCIDR": {
+            "Description": "Enter a CIDR for pirvate subnet for SBC, this new subnet will be served by HFE instance.",
+            "Type": "String",
+            "MinLength": "1",
+            "Default": "10.74.50.0/24",
+            "AllowedPattern": "(\\d{1,3})\\.(\\d{1,3})\\.(\\d{1,3})\\.(\\d{1,3})/(\\d{1,2})",
+            "ConstraintDescription": "Must be a valid IP CIDR range of the form x.x.x.x/x and subnet of VPC."
+        },
+        "HfnTowardsSBCSubnetCIDR": {
+            "Description": "Enter a CIDR for pirvate subnet for SBC, this new subnet will be served by HFE instance.",
+            "Type": "String",
+            "MinLength": "1",
+            "Default": "10.74.60.0/24",
+            "AllowedPattern": "(\\d{1,3})\\.(\\d{1,3})\\.(\\d{1,3})\\.(\\d{1,3})/(\\d{1,2})",
+            "ConstraintDescription": "Must be a valid IP CIDR range of the form x.x.x.x/x and subnet of VPC."
+        },
+        "NumberOfAlternateIPOnPkt1": {
+            "Description": "Enter Number of IPs required on PKT1 port",
+            "Type": "Number",
+            "Default": "1",
+            "MaxValue": "14",
+            "MinValue": "1"
+        },
+        "EipAssociationForHfnMgt": {
+            "Description": "Do you want EIP on Management Interface of HFE? Select Yes if you want to manage HFE instance using EIP.",
+            "Type": "String",
+            "Default": "Yes",
+            "AllowedValues": [
+                "Yes",
+                "No"
+            ]
+        },
+        "remoteSSHMachinePublicIP": {
+            "Description": "Do you want to connect Management Interface of HFE using EIP? Enter IP(public IP) of machine that will connect(SSH) to HFE using public IP",
+            "Type": "String",
+            "Default": ""
+        },
+        "availabilityZoneForSBC": {
+            "Description": "Enter Availability Zone for SBC, New subnets for SBC will be created here.",
+            "Type": "AWS::EC2::AvailabilityZone::Name"
+        },
+        "InstanceType": {
+            "Description": "EC2 instance type",
+            "Type": "String",
+            "Default": "m5.xlarge",
+            "AllowedValues": [
+                "m4.xlarge",
+                "m5.xlarge",
+                "c3.2xlarge",
+                "c3.4xlarge",
+                "c3.8xlarge",
+                "c4.2xlarge",
+                "c4.4xlarge",
+                "c4.8xlarge",
+                "c5.2xlarge",
+                "c5.4xlarge",
+                "c5.8xlarge"
+            ],
+            "ConstraintDescription": "Must be a valid EC2 instance type."
+        },
+        "SBCPersonality": {
+            "Description": "SBC Personality type, with HFE we support only isbc",
+            "Type": "String",
+            "Default": "isbc",
+            "AllowedValues": [
+                "isbc"
+            ],
+            "ConstraintDescription": "Must be a valid SBC Personality type."
+        },
+        "ActiveInstanceName": {
+            "Description": "CE name of the active instance",
+            "Type": "String",
+            "Default": "vsbc1",
+            "MaxLength": "63",
+            "AllowedPattern": "^[A-Za-z]{1}[-A-Za-z0-9.]*[A-Za-z0-9]{1}$",
+            "ConstraintDescription": "Enter valid ceName(instance name).  Regex: ^[A-Za-z]{1}[-A-Za-z0-9.]*[A-Za-z0-9]{1}$"
+        },
+        "StandbyInstanceName": {
+            "Description": "CE name of the standby instance",
+            "Type": "String",
+            "Default": "vsbc2",
+            "MaxLength": "63",
+            "AllowedPattern": "^[A-Za-z]{1}[-A-Za-z0-9.]*[A-Za-z0-9]{1}$",
+            "ConstraintDescription": "Enter valid ceName(instance name).  Regex: ^[A-Za-z]{1}[-A-Za-z0-9.]*[A-Za-z0-9]{1}$"
+        },
+        "SystemName": {
+            "Description": "System Name",
+            "Type": "String",
+            "Default": "vsbcSystem",
+            "MaxLength": "26",
+            "AllowedPattern": "^[A-Za-z]{1}[-A-Za-z0-9]*[A-Za-z0-9]{1}$",
+            "ConstraintDescription": "Enter valid system name.  Regex: ^[A-Za-z]{1}[-A-Za-z0-9]*[A-Za-z0-9]{1}$ "
+        },
+        "sshAccessCIDR": {
+            "Description": "IP CIDR from where you could SSH into SBC and PKTART instances",
+            "Type": "String",
+            "MinLength": "9",
+            "MaxLength": "18",
+            "Default": "0.0.0.0/0",
+            "AllowedPattern": "(\\d{1,3})\\.(\\d{1,3})\\.(\\d{1,3})\\.(\\d{1,3})/(\\d{1,2})",
+            "ConstraintDescription": "must be a valid CIDR range of the form x.x.x.x/x."
+        },
+        "Tenancy": {
+            "Description": "Tenancy attribute for SBC instances",
+            "Type": "String",
+            "Default": "default",
+            "AllowedValues": [
+                "default",
+                "dedicated"
+            ]
+        },
+        "PlacementId": {
+            "Description": "PlacementGroup to launch SBC instances(Optional)",
+            "Type": "String",
+            "Default": ""
+        },
+        "VolumeType": {
+            "Description": "Select Type of Volume for SBC",
+            "Type": "String",
+            "Default": "io1",
+            "AllowedValues": [
+                "gp2",
+                "io1"
+            ]
+        },
+        "vpcEndPointBasedEc2APIAccess": {
+            "Description": "Do you want to create VPC End-point to access API server? if you select no then SBC will reach API server using EIP on mgt0 ports",
+            "Type": "String",
+            "Default": "yes",
+            "AllowedValues": [
+                "yes",
+                "no"
+            ]
+        },
+        "IOPS": {
+            "Description": "Enter IOPS reservation for io1 type EBS volume [<= 1950], for gp2 EBS volumes this value is ignored by template.",
+            "Type": "Number",
+            "Default": "600",
+            "MaxValue": "1950"
+        },
+        "VolumeSize": {
+            "Description": "Enter size of disk in GiB. Minimum disk required is 65 GiB",
+            "Type": "Number",
+            "Default": "65",
+            "MinValue": "65",
+            "MaxValue": "1000"
+        }
+    },
+    "Conditions": {
+        "EipOnPkt0": {
+            "Fn::Equals": [
+                "true",
+                "true"
+            ]
+        },
+        "MatchingCeNames": {
+            "Fn::Equals": [
+                {
+                    "Ref": "ActiveInstanceName"
+                },
+                {
+                    "Ref": "StandbyInstanceName"
+                }
+            ]
+        },
+        "MatchingActiveCeAndSystemName": {
+            "Fn::Equals": [
+                {
+                    "Ref": "SystemName"
+                },
+                {
+                    "Ref": "ActiveInstanceName"
+                }
+            ]
+        },
+        "MatchingStandbyCeAndSystemName": {
+            "Fn::Equals": [
+                {
+                    "Ref": "SystemName"
+                },
+                {
+                    "Ref": "StandbyInstanceName"
+                }
+            ]
+        },
+        "NameMismatchError": {
+            "Fn::Or": [
+                {
+                    "Condition": "MatchingCeNames"
+                },
+                {
+                    "Condition": "MatchingActiveCeAndSystemName"
+                },
+                {
+                    "Condition": "MatchingStandbyCeAndSystemName"
+                }
+            ]
+        },
+        "NameValidationPassed": {
+            "Fn::Not": [
+                {
+                    "Condition": "NameMismatchError"
+                }
+            ]
+        },
+        "VolumeTypeIO1": {
+            "Fn::Equals": [
+                {
+                    "Ref": "VolumeType"
+                },
+                "io1"
+            ]
+        },
+        "vpcEndPointBasedEc2Access": {
+            "Fn::Equals": [
+                {
+                    "Ref": "vpcEndPointBasedEc2APIAccess"
+                },
+                "yes"
+            ]
+        },
+        "EipForHfnMgt": {
+            "Fn::Equals": [
+                {
+                    "Ref": "EipAssociationForHfnMgt"
+                },
+                "Yes"
+            ]
+        },
+        "noVPCEndPointForMgt": {
+            "Fn::Equals": [
+                {
+                    "Ref": "vpcEndPointBasedEc2APIAccess"
+                },
+                "no"
+            ]
+        }
+    },
+    "Resources": {
+        "sweIAMRole": {
+            "Type": "AWS::IAM::Role",
+            "Properties": {
+                "AssumeRolePolicyDocument": {
+                    "Version": "2012-10-17",
+                    "Statement": [
+                        {
+                            "Effect": "Allow",
+                            "Principal": {
+                                "Service": [
+                                    "ec2.amazonaws.com"
+                                ]
+                            },
+                             "Action": [
+                                  "sts:AssumeRole"
+                            ]
+                        }
+                    ]
+                },
+                "Path": "/",
+                "Policies": [
+                    {
+                        "PolicyName": "root",
+                        "PolicyDocument": {
+                            "Version": "2012-10-17",
+                            "Statement": [
+                                {
+                                    "Effect": "Allow",
+                                    "Action": [
+                                        "ec2:AllocateAddress",
+                                        "ec2:AssignPrivateIpAddresses",
+                                        "ec2:AssociateAddress",
+                                        "ec2:AttachNetworkInterface",
+                                        "ec2:DisassociateAddress",
+                                        "ec2:DescribeInstances",
+                                        "ec2:DescribeAddresses",
+                                        "ec2:DescribeNetworkInterfaces",
+                                        "ec2:DescribeInstanceAttribute",
+                                        "ec2:DescribeRegions",
+                                        "s3:Get*",
+                                        "s3:List*",
+                                        "ec2:ModifyInstanceAttribute",
+                                        "ec2:DescribeSubnets"
+                                    ],
+                                    "Resource": "*"
+                                }
+                            ]
+                        }
+                    }
+                ]
+            },
+            "Metadata": {
+                "AWS::CloudFormation::Designer": {
+                    "id": "9e06684e-8dc2-4a28-abce-032d28c96f15"
+                }
+            }
+        },
+        "SBCEndPoint" : {
+            "Type" : "AWS::EC2::VPCEndpoint",
+            "Condition": "vpcEndPointBasedEc2Access",
+            "Properties" : {
+                "VpcEndpointType": "Interface",
+                "PrivateDnsEnabled" : "True",
+                "SubnetIds" : [ {"Ref": "mgtSubnet"} ],
+                "SecurityGroupIds" : [ {"Ref": "securityGrpMgtSbc"} ],
+                "ServiceName" : { "Fn::Join": [ "", [ "com.amazonaws.", { "Ref": "AWS::Region" }, ".ec2" ] ] },
+                "VpcId" : {"Ref" : "vpc"}
+            }
+
+        },
+
+        "sweIAMProfileName": {
+            "Type": "AWS::IAM::InstanceProfile",
+            "Properties": {
+                "Path": "/",
+                "Roles": [
+                    {
+                        "Ref": "sweIAMRole"
+                    }
+                ],
+                "InstanceProfileName": "sweIAMProfile"
+            },
+            "Metadata": {
+                "AWS::CloudFormation::Designer": {
+                    "id": "513abf27-ab1b-4f87-85ed-dfdc313a4ef7"
+                }
+            }
+        },
+        "sweHFNIAMProfileName": {
+            "Type": "AWS::IAM::InstanceProfile",
+            "Properties": {
+                "Path": "/",
+                "Roles": [
+                    {
+                        "Ref": "sweIAMRole"
+                    }
+                ],
+                "InstanceProfileName": "sweHFNIAMProfile"
+            },
+            "Metadata": {
+                "AWS::CloudFormation::Designer": {
+                    "id": "34ea8f05-a010-4451-bba1-0a76dc41df9e"
+                }
+            }
+        },
+        "mgtXfaceA": {
+            "Type": "AWS::EC2::NetworkInterface",
+            "Condition": "NameValidationPassed",
+            "Properties": {
+                "SubnetId": {
+                    "Ref": "mgtSubnet"
+                },
+                "Description": {
+                    "Fn::Join": [
+                        "-",
+                        [
+                            {
+                                "Ref": "SystemName"
+                            },
+                            "mgt0A_Ribbon"
+                        ]
+                    ]
+                },
+                "GroupSet": [
+                    {
+                        "Ref": "securityGrpMgtSbc"
+                    }
+                ],
+                "SecondaryPrivateIpAddressCount": 1,
+                "SourceDestCheck": "true",
+                "Tags": [
+                    {
+                        "Key": "Name",
+                        "Value": {
+                            "Fn::Join": [
+                                "-",
+                                [
+                                    {
+                                        "Ref": "SystemName"
+                                    },
+                                    "mgt0A_Ribbon"
+                                ]
+                            ]
+                        }
+                    }
+                ]
+            },
+            "Metadata": {
+                "AWS::CloudFormation::Designer": {
+                    "id": "707aa6db-298f-4ad3-9852-dff6a57b6117"
+                }
+            }
+        },
+        "haXfaceA": {
+            "Type": "AWS::EC2::NetworkInterface",
+            "Condition": "NameValidationPassed",
+            "Properties": {
+                "SubnetId": {
+                    "Ref": "haSubnet"
+                },
+                "Description": {
+                    "Fn::Join": [
+                        "-",
+                        [
+                            {
+                                "Ref": "SystemName"
+                            },
+                            "ha0A_Ribbon"
+                        ]
+                    ]
+                },
+                "GroupSet": [
+                    {
+                        "Ref": "securityGrpHa"
+                    }
+                ],
+                "SourceDestCheck": "true",
+                "Tags": [
+                    {
+                        "Key": "Name",
+                        "Value": {
+                            "Fn::Join": [
+                                "-",
+                                [
+                                    {
+                                        "Ref": "SystemName"
+                                    },
+                                    "ha0A_Ribbon"
+                                ]
+                            ]
+                        }
+                    }
+                ]
+            },
+            "Metadata": {
+                "AWS::CloudFormation::Designer": {
+                    "id": "51a951cd-ae03-4bff-a603-14f732be91d1"
+                }
+            }
+        },
+        "pktXface0A": {
+            "Type": "AWS::EC2::NetworkInterface",
+            "Condition": "NameValidationPassed",
+            "Properties": {
+                "SubnetId": {
+                    "Ref": "SubnetIdHfnPrivate"
+                },
+                "Description": {
+                    "Fn::Join": [
+                        "-",
+                        [
+                            {
+                                "Ref": "SystemName"
+                            },
+                            "pkt0A_Ribbon"
+                        ]
+                    ]
+                },
+                "GroupSet": [
+                    {
+                        "Ref": "securityGrpPktTrusted"
+                    }
+                ],
+                "SecondaryPrivateIpAddressCount": 1,
+                "SourceDestCheck": "false",
+                "Tags": [
+                    {
+                        "Key": "Name",
+                        "Value": {
+                            "Fn::Join": [
+                                "-",
+                                [
+                                    {
+                                        "Ref": "SystemName"
+                                    },
+                                    "pkt0A_Ribbon"
+                                ]
+                            ]
+                        }
+                    }
+                ]
+            },
+            "Metadata": {
+                "AWS::CloudFormation::Designer": {
+                    "id": "83463436-053b-441a-b7a3-203b0b4d6555"
+                }
+            }
+        },
+        "pktXface1A": {
+            "Type": "AWS::EC2::NetworkInterface",
+            "Condition": "NameValidationPassed",
+            "Properties": {
+                "SubnetId": {
+                    "Ref": "pkt1Subnet"
+                },
+                "Description": {
+                    "Fn::Join": [
+                        "-",
+                        [
+                            {
+                                "Ref": "SystemName"
+                            },
+                            "pkt1A_Ribbon"
+                        ]
+                    ]
+                },
+                "GroupSet": [
+                    {
+                        "Ref": "securityGrpPktTrusted"
+                    }
+                ],
+                "SecondaryPrivateIpAddressCount": 1,
+                "Tags": [
+                    {
+                        "Key": "Name",
+                        "Value": {
+                            "Fn::Join": [
+                                "-",
+                                [
+                                    {
+                                        "Ref": "SystemName"
+                                    },
+                                    "pkt1A_Ribbon"
+                                ]
+                            ]
+                        }
+                    }
+                ]
+            },
+            "Metadata": {
+                "AWS::CloudFormation::Designer": {
+                    "id": "30b47652-4e3b-4e80-9241-e372d45af309"
+                }
+            }
+        },
+        "mgtXfaceB": {
+            "Type": "AWS::EC2::NetworkInterface",
+            "Condition": "NameValidationPassed",
+            "Properties": {
+                "SubnetId": {
+                    "Ref": "mgtSubnet"
+                },
+                "Description": {
+                    "Fn::Join": [
+                        "-",
+                        [
+                            {
+                                "Ref": "SystemName"
+                            },
+                            "mgt0B_Ribbon"
+                        ]
+                    ]
+                },
+                "GroupSet": [
+                    {
+                        "Ref": "securityGrpMgtSbc"
+                    }
+                ],
+                "SourceDestCheck": "true",
+                "Tags": [
+                    {
+                        "Key": "Name",
+                        "Value": {
+                            "Fn::Join": [
+                                "-",
+                                [
+                                    {
+                                        "Ref": "SystemName"
+                                    },
+                                    "mgt0B_Ribbon"
+                                ]
+                            ]
+                        }
+                    }
+                ]
+            },
+            "Metadata": {
+                "AWS::CloudFormation::Designer": {
+                    "id": "00b911a7-2e7d-4201-9de0-db41c4ccbc0f"
+                }
+            }
+        },
+        "haXfaceB": {
+            "Type": "AWS::EC2::NetworkInterface",
+            "Condition": "NameValidationPassed",
+            "Properties": {
+                "SubnetId": {
+                    "Ref": "haSubnet"
+                },
+                "Description": {
+                    "Fn::Join": [
+                        "-",
+                        [
+                            {
+                                "Ref": "SystemName"
+                            },
+                            "ha0B_Ribbon"
+                        ]
+                    ]
+                },
+                "GroupSet": [
+                    {
+                        "Ref": "securityGrpHa"
+                    }
+                ],
+                "SourceDestCheck": "true",
+                "Tags": [
+                    {
+                        "Key": "Name",
+                        "Value": {
+                            "Fn::Join": [
+                                "-",
+                                [
+                                    {
+                                        "Ref": "SystemName"
+                                    },
+                                    "ha0B_Ribbon"
+                                ]
+                            ]
+                        }
+                    }
+                ]
+            },
+            "Metadata": {
+                "AWS::CloudFormation::Designer": {
+                    "id": "36268cbd-38bd-48ec-a98a-d2b8d92cab21"
+                }
+            }
+        },
+        "pktXface0B": {
+            "Type": "AWS::EC2::NetworkInterface",
+            "Condition": "NameValidationPassed",
+            "Properties": {
+                "SubnetId": {
+                    "Ref": "SubnetIdHfnPrivate"
+                },
+                "Description": {
+                    "Fn::Join": [
+                        "-",
+                        [
+                            {
+                                "Ref": "SystemName"
+                            },
+                            "pkt0B_Ribbon"
+                        ]
+                    ]
+                },
+                "GroupSet": [
+                    {
+                        "Ref": "securityGrpPktTrusted"
+                    }
+                ],
+                "SourceDestCheck": "false",
+                "Tags": [
+                    {
+                        "Key": "Name",
+                        "Value": {
+                            "Fn::Join": [
+                                "-",
+                                [
+                                    {
+                                        "Ref": "SystemName"
+                                    },
+                                    "pkt0B_Ribbon"
+                                ]
+                            ]
+                        }
+                    }
+                ]
+            },
+            "Metadata": {
+                "AWS::CloudFormation::Designer": {
+                    "id": "69dd4dbe-e79a-4dd6-a2c7-a8057eac1a37"
+                }
+            }
+        },
+        "pktXface1B": {
+            "Type": "AWS::EC2::NetworkInterface",
+            "Condition": "NameValidationPassed",
+            "Properties": {
+                "SubnetId": {
+                    "Ref": "pkt1Subnet"
+                },
+                "Description": {
+                    "Fn::Join": [
+                        "-",
+                        [
+                            {
+                                "Ref": "SystemName"
+                            },
+                            "pkt1B_Ribbon"
+                        ]
+                    ]
+                },
+                "GroupSet": [
+                    {
+                        "Ref": "securityGrpPktTrusted"
+                    }
+                ],
+                "Tags": [
+                    {
+                        "Key": "Name",
+                        "Value": {
+                            "Fn::Join": [
+                                "-",
+                                [
+                                    {
+                                        "Ref": "SystemName"
+                                    },
+                                    "pkt1B_Ribbon"
+                                ]
+                            ]
+                        }
+                    }
+                ]
+            },
+            "Metadata": {
+                "AWS::CloudFormation::Designer": {
+                    "id": "7cf86ffa-02d6-4532-a19d-e74d02805435"
+                }
+            }
+        },
+        "vpc": {
+            "Type": "AWS::EC2::VPC",
+            "Properties": {
+                "CidrBlock": {
+                    "Ref": "vpcCIDR"
+                },
+                "InstanceTenancy": "default",
+                "EnableDnsSupport": "true",
+                "EnableDnsHostnames": "true",
+                "Tags": [
+                    {
+                        "Key": "Name",
+                        "Value": {
+                            "Fn::Join": [
+                                "-",
+                                [
+                                    {
+                                        "Ref": "SystemName"
+                                    },
+                                    "VPC_Ribbon"
+                                ]
+                            ]
+                        }
+                    }
+                ]
+            },
+            "Metadata": {
+                "AWS::CloudFormation::Designer": {
+                    "id": "7b71f416-4973-476d-bedb-b332394c7da9"
+                }
+            }
+        },
+        "internetGw": {
+            "Type": "AWS::EC2::InternetGateway",
+            "Properties": {
+                "Tags": [
+                    {
+                        "Key": "Name",
+                        "Value": {
+                            "Fn::Join": [
+                                "-",
+                                [
+                                    {
+                                        "Ref": "SystemName"
+                                    },
+                                    "IGW_Ribbon"
+                                ]
+                            ]
+                        }
+                    }
+                ]
+            },
+            "Metadata": {
+                "AWS::CloudFormation::Designer": {
+                    "id": "229e8cd7-1798-42ce-8ce6-b0a0a450eea3"
+                }
+            }
+        },
+        "vpcInternetGwAssociation": {
+            "Type": "AWS::EC2::VPCGatewayAttachment",
+            "Properties": {
+                "InternetGatewayId": {
+                    "Ref": "internetGw"
+                },
+                "VpcId": {
+                    "Ref": "vpc"
+                }
+            },
+            "Metadata": {
+                "AWS::CloudFormation::Designer": {
+                    "id": "bf4c840c-e410-459b-921c-0db5161ab36c"
+                }
+            }
+        },
+        "privateRouteTable": {
+            "Type": "AWS::EC2::RouteTable",
+            "Properties": {
+                "VpcId": {
+                    "Ref": "vpc"
+                },
+                "Tags": [
+                    {
+                        "Key": "Name",
+                        "Value": {
+                            "Fn::Join": [
+                                "-",
+                                [
+                                    {
+                                        "Ref": "SystemName"
+                                    },
+                                    "PrivateRouteTable_Ribbon"
+                                ]
+                            ]
+                        }
+                    }
+                ]
+            },
+            "Metadata": {
+                "AWS::CloudFormation::Designer": {
+                    "id": "4afd89d8-2cb1-47b0-be81-1ceccb0ab5ec"
+                }
+            }
+        },
+        "privateRoute": {
+            "Type": "AWS::EC2::Route",
+            "Properties": {
+                "RouteTableId": {
+                    "Ref": "privateRouteTable"
+                },
+                "DestinationCidrBlock": "0.0.0.0/0",
+                "GatewayId": {
+                    "Ref": "internetGw"
+                }
+            },
+            "Metadata": {
+                "AWS::CloudFormation::Designer": {
+                    "id": "90ec2540-d898-4e67-a372-91ff0651b6f5"
+                }
+            }
+        },
+
+        "HFNPrivateRouteTable": {
+            "Type": "AWS::EC2::RouteTable",
+            "Properties": {
+                "VpcId": {
+                    "Ref": "vpc"
+                },
+                "Tags": [
+                    {
+                        "Key": "Name",
+                        "Value": {
+                            "Fn::Join": [
+                                "-",
+                                [
+                                    {
+                                        "Ref": "SystemName"
+                                    },
+                                    "HFNPrivateRouteTable"
+                                ]
+                            ]
+                        }
+                    }
+                ]
+            }
+        },
+        "HFNPrivateRoute": {
+            "Type": "AWS::EC2::Route",
+            "DependsOn": "HfnPrivate",
+            "Properties": {
+                "RouteTableId": {
+                    "Ref": "HFNPrivateRouteTable"
+                },
+                "DestinationCidrBlock": "0.0.0.0/0",
+                "NetworkInterfaceId": {
+                    "Ref": "HfnPrivate"
+                }
+            }
+        },
+        "HFNPrivateRouteAssociation": {
+            "Type": "AWS::EC2::SubnetRouteTableAssociation",
+            "Properties": {
+                "RouteTableId": {
+                    "Ref": "HFNPrivateRouteTable"
+                },
+                "SubnetId": {
+                    "Ref": "SubnetIdHfnPrivate"
+                }
+            }
+        },
+
+
+        "mgtSubnetGwAssociation": {
+            "Type": "AWS::EC2::SubnetRouteTableAssociation",
+            "Properties": {
+                "RouteTableId": {
+                    "Ref": "privateRouteTable"
+                },
+                "SubnetId": {
+                    "Ref": "mgtSubnet"
+                }
+            },
+            "Metadata": {
+                "AWS::CloudFormation::Designer": {
+                    "id": "cc96f861-6568-4d28-a28f-dc992218f776"
+                }
+            }
+        },
+        "HFNPublicSubnetGwAssociation": {
+            "Type": "AWS::EC2::SubnetRouteTableAssociation",
+            "Properties": {
+                "RouteTableId": {
+                    "Ref": "privateRouteTable"
+                },
+                "SubnetId": {
+                    "Ref": "SubnetIdHfnPublic"
+                }
+            },
+            "Metadata": {
+                "AWS::CloudFormation::Designer": {
+                    "id": "6d21e83b-ffe7-4d07-a8d1-7e64a97cdeb4"
+                }
+            }
+        },
+        "mgtSubnet": {
+            "Type": "AWS::EC2::Subnet",
+            "Properties": {
+                "VpcId": {
+                    "Ref": "vpc"
+                },
+                "CidrBlock": {
+                    "Ref": "mgtSubnetCIDR"
+                },
+                "AvailabilityZone": {
+                    "Ref": "availabilityZoneForSBC"
+                },
+                "Tags": [
+                    {
+                        "Key": "Name",
+                        "Value": {
+                            "Fn::Join": [
+                                "-",
+                                [
+                                    {
+                                        "Ref": "SystemName"
+                                    },
+                                    "mgt_Ribbon"
+                                ]
+                            ]
+                        }
+                    }
+                ]
+            },
+            "Metadata": {
+                "AWS::CloudFormation::Designer": {
+                    "id": "00805611-6a39-4c0c-940d-dd2322aaec8b"
+                }
+            }
+        },
+        "haSubnet": {
+            "Type": "AWS::EC2::Subnet",
+            "Properties": {
+                "VpcId": {
+                    "Ref": "vpc"
+                },
+                "CidrBlock": {
+                    "Ref": "haSubnetCIDR"
+                },
+                "AvailabilityZone": {
+                    "Ref": "availabilityZoneForSBC"
+                },
+                "Tags": [
+                    {
+                        "Key": "Name",
+                        "Value": {
+                            "Fn::Join": [
+                                "-",
+                                [
+                                    {
+                                        "Ref": "SystemName"
+                                    },
+                                    "ha_Ribbon"
+                                ]
+                            ]
+                        }
+                    }
+                ]
+            },
+            "Metadata": {
+                "AWS::CloudFormation::Designer": {
+                    "id": "f92c50bc-9290-4c7d-8e37-6b0bab95b230"
+                }
+            }
+        },
+        "pkt1Subnet": {
+            "Type": "AWS::EC2::Subnet",
+            "Properties": {
+                "VpcId": {
+                    "Ref": "vpc"
+                },
+                "CidrBlock": {
+                    "Ref": "pkt1SubnetCIDR"
+                },
+                "AvailabilityZone": {
+                    "Ref": "availabilityZoneForSBC"
+                },
+                "Tags": [
+                    {
+                        "Key": "Name",
+                        "Value": {
+                            "Fn::Join": [
+                                "-",
+                                [
+                                    {
+                                        "Ref": "SystemName"
+                                    },
+                                    "pkt1_Ribbon"
+                                ]
+                            ]
+                        }
+                    }
+                ]
+            },
+            "Metadata": {
+                "AWS::CloudFormation::Designer": {
+                    "id": "d835a872-3e6c-457a-b919-8bd3050a07ee"
+                }
+            }
+        },
+        "securityGrpMgtSbc": {
+            "Type": "AWS::EC2::SecurityGroup",
+            "Properties": {
+                "GroupDescription": "Security group for Mgt SBC",
+                "VpcId": {
+                    "Ref": "vpc"
+                },
+                "SecurityGroupIngress": [
+                    {
+                        "IpProtocol": "-1",
+                        "FromPort": "-1",
+                        "ToPort": "-1",
+                        "CidrIp": "0.0.0.0/0"
+                    },
+                    {
+                        "IpProtocol": "-1",
+                        "FromPort": "-1",
+                        "ToPort": "-1",
+                        "CidrIp": {
+                            "Ref": "sshAccessCIDR"
+                        }
+                    }
+                ],
+                "Tags": [
+                    {
+                        "Key": "Name",
+                        "Value": {
+                            "Fn::Join": [
+                                "-",
+                                [
+                                    {
+                                        "Ref": "SystemName"
+                                    },
+                                    "SecurityGroup1_Ribbon"
+                                ]
+                            ]
+                        }
+                    }
+                ]
+            },
+            "Metadata": {
+                "AWS::CloudFormation::Designer": {
+                    "id": "6ab84ccd-ec23-4e5b-b55a-a321f4275cfb"
+                }
+            }
+        },
+        "mgt0EIPActive": {
+            "Type": "AWS::EC2::EIP",
+            "Condition": "noVPCEndPointForMgt",
+            "Properties": {
+                "Domain": "vpc"
+            },
+            "Metadata": {
+                "AWS::CloudFormation::Designer": {
+                    "id": "513f2db5-2c59-4102-99aa-5ffd5bfe2508"
+                }
+            }
+        },
+        "mgt0EIPActiveAssocaition": {
+            "Type": "AWS::EC2::EIPAssociation",
+            "Condition": "noVPCEndPointForMgt",
+            "Properties": {
+                "AllocationId": {
+                    "Fn::GetAtt": [
+                        "mgt0EIPActive",
+                        "AllocationId"
+                    ]
+                },
+                "NetworkInterfaceId": {
+                    "Ref": "mgtXfaceA"
+                },
+                "PrivateIpAddress": {
+                    "Fn::GetAtt": [
+                        "mgtXfaceA",
+                        "PrimaryPrivateIpAddress"
+                    ]
+                }
+            },
+            "Metadata": {
+                "AWS::CloudFormation::Designer": {
+                    "id": "c2eac22a-dac3-43e8-a269-655a747809a3"
+                }
+            }
+        },
+        "mgt0EIPStandby": {
+            "Type": "AWS::EC2::EIP",
+            "Condition": "noVPCEndPointForMgt",
+            "Properties": {
+                "Domain": "vpc"
+            },
+            "Metadata": {
+                "AWS::CloudFormation::Designer": {
+                    "id": "072d5305-c1c0-4a9c-afda-2433e6e46df7"
+                }
+            }
+        },
+        "mgt0EIPStandbyAssociation": {
+            "Type": "AWS::EC2::EIPAssociation",
+            "Condition": "noVPCEndPointForMgt",
+            "Properties": {
+                "AllocationId": {
+                    "Fn::GetAtt": [
+                        "mgt0EIPStandby",
+                        "AllocationId"
+                    ]
+                },
+                "NetworkInterfaceId": {
+                    "Ref": "mgtXfaceB"
+                },
+                "PrivateIpAddress": {
+                    "Fn::GetAtt": [
+                        "mgtXfaceB",
+                        "PrimaryPrivateIpAddress"
+                    ]
+                }
+            },
+            "Metadata": {
+                "AWS::CloudFormation::Designer": {
+                    "id": "4e8273a2-eda6-4000-bce9-66101cd18776"
+                }
+            }
+        },
+        "HfnMgtEIPAssociation": {
+            "Type": "AWS::EC2::EIPAssociation",
+            "Condition": "EipForHfnMgt",
+            "Properties": {
+                "AllocationId": {
+                    "Fn::GetAtt": [
+                        "HfnMgtEIP",
+                        "AllocationId"
+                    ]
+                },
+                "NetworkInterfaceId": {
+                    "Ref": "HfnMgt"
+                }
+            },
+            "Metadata": {
+                "AWS::CloudFormation::Designer": {
+                    "id": "7fdb903d-a9c1-410b-b61b-f48b455b9b31"
+                }
+            }
+        },
+        "mgt0EIPLogical": {
+            "Type": "AWS::EC2::EIP",
+            "Condition": "noVPCEndPointForMgt",
+            "Properties": {
+                "Domain": "vpc"
+            },
+            "Metadata": {
+                "AWS::CloudFormation::Designer": {
+                    "id": "7017e578-ebf0-497d-998e-e46e5515d284"
+                }
+            }
+        },
+        "mgt0EIPLogicalAssocaition": {
+            "Type": "AWS::EC2::EIPAssociation",
+            "Condition": "noVPCEndPointForMgt",
+            "Properties": {
+                "AllocationId": {
+                    "Fn::GetAtt": [
+                        "mgt0EIPLogical",
+                        "AllocationId"
+                    ]
+                },
+                "NetworkInterfaceId": {
+                    "Ref": "mgtXfaceA"
+                },
+                "PrivateIpAddress": {
+                    "Fn::Select": [
+                        "0",
+                        {
+                            "Fn::GetAtt": [
+                                "mgtXfaceA",
+                                "SecondaryPrivateIpAddresses"
+                            ]
+                        }
+                    ]
+                }
+            },
+            "Metadata": {
+                "AWS::CloudFormation::Designer": {
+                    "id": "8fdffd5a-b411-458e-9f0c-4504c85d2dcd"
+                }
+            }
+        },
+        "Ec2InstanceA": {
+            "Type": "AWS::EC2::Instance",
+            "Condition": "NameValidationPassed",
+            "Properties": {
+                "ImageId": {
+                    "Ref": "AMIID"
+                },
+                "IamInstanceProfile": {
+                    "Ref": "sweIAMProfileName"
+                },
+                "BlockDeviceMappings": [
+                    {
+                        "DeviceName": "/dev/sda1",
+                        "Ebs": {
+                            "VolumeType": {
+                                "Ref": "VolumeType"
+                            },
+                            "VolumeSize": {
+                                "Ref": "VolumeSize"
+                            },
+                            "Iops": {
+                                "Fn::If": [
+                                    "VolumeTypeIO1",
+                                    {
+                                        "Ref": "IOPS"
+                                    },
+                                    {
+                                        "Ref": "AWS::NoValue"
+                                    }
+                                ]
+                            },
+                            "DeleteOnTermination": "true"
+                        }
+                    }
+                ],
+                "InstanceType": {
+                    "Ref": "InstanceType"
+                },
+                "Tenancy": {
+                    "Ref": "Tenancy"
+                },
+                "PlacementGroupName": {
+                    "Ref": "PlacementId"
+                },
+                "EbsOptimized": "True",
+                "KeyName": {
+                    "Ref": "KeyName"
+                },
+                "NetworkInterfaces": [
+                    {
+                        "NetworkInterfaceId": {
+                            "Ref": "mgtXfaceA"
+                        },
+                        "DeviceIndex": "0"
+                    },
+                    {
+                        "NetworkInterfaceId": {
+                            "Ref": "haXfaceA"
+                        },
+                        "DeviceIndex": "1"
+                    },
+                    {
+                        "NetworkInterfaceId": {
+                            "Ref": "pktXface0A"
+                        },
+                        "DeviceIndex": "2"
+                    },
+                    {
+                        "NetworkInterfaceId": {
+                            "Ref": "pktXface1A"
+                        },
+                        "DeviceIndex": "3"
+                    }
+                ],
+                "Tags": [
+                    {
+                        "Key": "Name",
+                        "Value": {
+                            "Fn::Join": [
+                                "-",
+                                [
+                                    {
+                                        "Ref": "AWS::StackName"
+                                    },
+                                    "1"
+                                ]
+                            ]
+                        }
+                    }
+                ],
+                "UserData": {
+                    "Fn::Base64": {
+                        "Fn::Join": [
+                            "",
+                            [
+                                "{ \"",
+                                "CERole",
+                                "\" : \"",
+                                "ACTIVE",
+                                "\"",
+                                ", \"ReverseNatPkt0\"       : \"",
+                                "True",
+                                "\"",
+                                ", \"ReverseNatPkt1\"       : \"",
+                                "False",
+                                "\"",
+                                ", \"IAM_ROLE\"             : \"",
+                                {
+                                    "Ref": "sweIAMRole"
+                                },
+                                "\"",
+                                ", \"ALT_Mgt0_00\"          : \"LOGICAL_MGMT_IP\"",
+                                ", \"ALT_Pkt0_00\"          : \"VIP1\"",
+                                ", \"ALT_Pkt1_00\"          : \"VIP2\"",
+                                ", \"ClusterIp\"            : \"",
+                                {
+                                    "Fn::GetAtt": [
+                                        "haXfaceB",
+                                        "PrimaryPrivateIpAddress"
+                                    ]
+                                },
+                                "\"",
+
+                                ", \"HFN\"                  : \"",
+                                {
+                                    "Fn::Select": [
+                                        "0",
+                                        {
+                                            "Fn::GetAtt": [
+                                                "HfnPublic",
+                                                "SecondaryPrivateIpAddresses"
+                                            ]
+                                        }
+                                    ]
+                                },
+                                "\"",
+
+
+                                ", \"SbcPersonalityType\"   : \"",
+                                {
+                                    "Ref": "SBCPersonality"
+                                },
+                                "\"",
+                                ", \"SbcMgmtMode\"          : \"centralized\"",
+                                ", \"TemplateName\"         : \"AWS_HA_template.json\"",
+                                ", \"TemplateVersion\"      : \"V07.00.00A011\"",
+                                ", \"CEName\"               : \"",
+                                {
+                                    "Ref": "ActiveInstanceName"
+                                },
+                                "\"",
+                                ", \"PeerCEName\"           : \"",
+                                {
+                                    "Ref": "StandbyInstanceName"
+                                },
+                                "\"",
+                                ", \"PeerCEHa0IPv4Address\" : \"",
+                                {
+                                    "Fn::GetAtt": [
+                                        "haXfaceB",
+                                        "PrimaryPrivateIpAddress"
+                                    ]
+                                },
+                                "\"",
+                                ", \"SystemName\"           : \"",
+                                {
+                                    "Ref": "SystemName"
+                                },
+                                "\"",
+                                ", \"ActiveRoleMgtId\"      : \"",
+                                {
+                                    "Ref": "mgtXfaceA"
+                                },
+                                "\"",
+                                ", \"NodeName\"             : \"",
+                                {
+                                    "Ref": "AWS::StackName"
+                                },
+                                "\" }"
+                            ]
+                        ]
+                    }
+                }
+            },
+            "Metadata": {
+                "AWS::CloudFormation::Designer": {
+                    "id": "ccbc183f-09eb-4dc7-a4d9-0cc3a2ede5e8"
+                }
+            }
+        },
+        "Ec2InstanceB": {
+            "Type": "AWS::EC2::Instance",
+            "Condition": "NameValidationPassed",
+            "Properties": {
+                "ImageId": {
+                    "Ref": "AMIID"
+                },
+                "BlockDeviceMappings": [
+                    {
+                        "DeviceName": "/dev/sda1",
+                        "Ebs": {
+                            "VolumeType": {
+                                "Ref": "VolumeType"
+                            },
+                            "VolumeSize": {
+                                "Ref": "VolumeSize"
+                            },
+                            "Iops": {
+                                "Fn::If": [
+                                    "VolumeTypeIO1",
+                                    {
+                                        "Ref": "IOPS"
+                                    },
+                                    {
+                                        "Ref": "AWS::NoValue"
+                                    }
+                                ]
+                            },
+                            "DeleteOnTermination": "true"
+                        }
+                    }
+                ],
+                "IamInstanceProfile": {
+                    "Ref": "sweIAMProfileName"
+                },
+                "InstanceType": {
+                    "Ref": "InstanceType"
+                },
+                "Tenancy": {
+                    "Ref": "Tenancy"
+                },
+                "PlacementGroupName": {
+                    "Ref": "PlacementId"
+                },
+                "EbsOptimized": "True",
+                "KeyName": {
+                    "Ref": "KeyName"
+                },
+                "NetworkInterfaces": [
+                    {
+                        "NetworkInterfaceId": {
+                            "Ref": "mgtXfaceB"
+                        },
+                        "DeviceIndex": "0"
+                    },
+                    {
+                        "NetworkInterfaceId": {
+                            "Ref": "haXfaceB"
+                        },
+                        "DeviceIndex": "1"
+                    },
+                    {
+                        "NetworkInterfaceId": {
+                            "Ref": "pktXface0B"
+                        },
+                        "DeviceIndex": "2"
+                    },
+                    {
+                        "NetworkInterfaceId": {
+                            "Ref": "pktXface1B"
+                        },
+                        "DeviceIndex": "3"
+                    }
+                ],
+                "Tags": [
+                    {
+                        "Key": "Name",
+                        "Value": {
+                            "Fn::Join": [
+                                "-",
+                                [
+                                    {
+                                        "Ref": "AWS::StackName"
+                                    },
+                                    "2"
+                                ]
+                            ]
+                        }
+                    }
+                ],
+                "UserData": {
+                    "Fn::Base64": {
+                        "Fn::Join": [
+                            "",
+                            [
+                                "{ \"",
+                                "CERole",
+                                "\" : \"",
+                                "STANDBY",
+                                "\"",
+                                ", \"ReverseNatPkt0\"       : \"",
+                                "True",
+                                "\"",
+                                ", \"ReverseNatPkt1\"       : \"",
+                                "False",
+                                "\"",
+                                ", \"IAM_ROLE\"             : \"",
+                                {
+                                    "Ref": "sweIAMRole"
+                                },
+                                "\"",
+                                ", \"ALT_Mgt0_00\"          : \"LOGICAL_MGMT_IP\"",
+                                ", \"ALT_Pkt0_00\"          : \"VIP1\"",
+                                ", \"ALT_Pkt1_00\"          : \"VIP2\"",
+                                ", \"ClusterIp\"            : \"",
+                                {
+                                    "Fn::GetAtt": [
+                                        "haXfaceA",
+                                        "PrimaryPrivateIpAddress"
+                                    ]
+                                },
+                                "\"",
+
+                                ", \"HFN\"                  : \"",
+                                {
+                                    "Fn::Select": [
+                                        "0",
+                                        {
+                                            "Fn::GetAtt": [
+                                                "HfnPublic",
+                                                "SecondaryPrivateIpAddresses"
+                                            ]
+                                        }
+                                    ]
+                                },
+                                "\"",
+
+                                ", \"SbcPersonalityType\"   : \"",
+                                {
+                                    "Ref": "SBCPersonality"
+                                },
+                                "\"",
+                                ", \"SbcMgmtMode\"          : \"centralized\"",
+                                ", \"TemplateName\"         : \"AWS_HA_template.json\"",
+                                ", \"TemplateVersion\"      : \"V07.00.00A011\"",
+                                ", \"CEName\"               : \"",
+                                {
+                                    "Ref": "StandbyInstanceName"
+                                },
+                                "\"",
+                                ", \"PeerCEName\"           : \"",
+                                {
+                                    "Ref": "ActiveInstanceName"
+                                },
+                                "\"",
+                                ", \"PeerCEHa0IPv4Address\" : \"",
+                                {
+                                    "Fn::GetAtt": [
+                                        "haXfaceA",
+                                        "PrimaryPrivateIpAddress"
+                                    ]
+                                },
+                                "\"",
+                                ", \"SystemName\"           : \"",
+                                {
+                                    "Ref": "SystemName"
+                                },
+                                "\"",
+                                ", \"ActiveRoleMgtId\"      : \"",
+                                {
+                                    "Ref": "mgtXfaceA"
+                                },
+                                "\"",
+                                ", \"NodeName\"             : \"",
+                                {
+                                    "Ref": "AWS::StackName"
+                                },
+                                "\" }"
+                            ]
+                        ]
+                    }
+                }
+            },
+            "Metadata": {
+                "AWS::CloudFormation::Designer": {
+                    "id": "f70e440b-58bc-4b5e-973b-be57ea5e6f0a"
+                }
+            }
+        },
+        "SubnetIdHfnPublic": {
+            "Type": "AWS::EC2::Subnet",
+            "Properties": {
+                "VpcId": {
+                    "Ref": "vpc"
+                },
+                "CidrBlock": {
+                    "Ref": "HfnPublicPktSubnetCIDR"
+                },
+                "AvailabilityZone": {
+                    "Ref": "availabilityZoneForSBC"
+                },
+                "Tags": [
+                    {
+                        "Key": "Name",
+                        "Value": {
+                            "Fn::Join": [
+                                "-",
+                                [
+                                    {
+                                        "Ref": "SystemName"
+                                    },
+                                    "hfnpublic_Ribbon"
+                                ]
+                            ]
+                        }
+                    }
+                ]
+            },
+            "Metadata": {
+                "AWS::CloudFormation::Designer": {
+                    "id": "f06b1bad-206e-4dd9-9e53-cc535d3028b1"
+                }
+            }
+        },
+        "SubnetIdHfnPrivate": {
+            "Type": "AWS::EC2::Subnet",
+            "Properties": {
+                "VpcId": {
+                    "Ref": "vpc"
+                },
+                "CidrBlock": {
+                    "Ref": "HfnTowardsSBCSubnetCIDR"
+                },
+                "AvailabilityZone": {
+                    "Ref": "availabilityZoneForSBC"
+                },
+                "Tags": [
+                    {
+                        "Key": "Name",
+                        "Value": {
+                            "Fn::Join": [
+                                "-",
+                                [
+                                    {
+                                        "Ref": "SystemName"
+                                    },
+                                    "hfnprivate_Ribbon"
+                                ]
+                            ]
+                        }
+                    }
+                ]
+            },
+            "Metadata": {
+                "AWS::CloudFormation::Designer": {
+                    "id": "05ac7f13-5f07-47a7-a640-9401a865caae"
+                }
+            }
+        },
+        "HfnMgt": {
+            "Type": "AWS::EC2::NetworkInterface",
+            "Condition": "NameValidationPassed",
+            "Properties": {
+                "SubnetId": {
+                    "Ref": "mgtSubnet"
+                },
+                "Description": {
+                    "Fn::Join": [
+                        "-",
+                        [
+                            {
+                                "Ref": "SystemName"
+                            },
+                            "HfnMgt"
+                        ]
+                    ]
+                },
+                "GroupSet": [
+                    {
+                        "Ref": "securityGrpMgtHfn"
+                    }
+                ],
+                "SourceDestCheck": "true",
+                "Tags": [
+                    {
+                        "Key": "Name",
+                        "Value": {
+                            "Fn::Join": [
+                                "-",
+                                [
+                                    {
+                                        "Ref": "SystemName"
+                                    },
+                                    "HfnMgt"
+                                ]
+                            ]
+                        }
+                    }
+                ]
+            },
+            "Metadata": {
+                "AWS::CloudFormation::Designer": {
+                    "id": "14eaaa3c-0e32-4db8-804e-e663fabe4f10"
+                }
+            }
+        },
+
+        "HfnPublic": {
+            "Type": "AWS::EC2::NetworkInterface",
+            "Condition": "NameValidationPassed",
+            "Properties": {
+                "SubnetId": {
+                    "Ref": "SubnetIdHfnPublic"
+                },
+                "Description": {
+                    "Fn::Join": [
+                        "-",
+                        [
+                            {
+                                "Ref": "SystemName"
+                            },
+                            "Hfn_Public"
+                        ]
+                    ]
+                },
+                "GroupSet": [
+                    {
+                        "Ref": "securityGrpPktUntrusted"
+                    }
+                ],
+                "SecondaryPrivateIpAddressCount": "1",
+                "SourceDestCheck": "true",
+                "Tags": [
+                    {
+                        "Key": "Name",
+                        "Value": {
+                            "Fn::Join": [
+                                "-",
+                                [
+                                    {
+                                        "Ref": "SystemName"
+                                    },
+                                    "Hfn_Public"
+                                ]
+                            ]
+                        }
+                    }
+                ]
+            },
+            "Metadata": {
+                "AWS::CloudFormation::Designer": {
+                    "id": "a0acde6f-56fb-45ed-9c4c-3a03a8b2d2c8"
+                }
+            }
+        },
+
+        "hfnPublicEIP01": {
+            "Type": "AWS::EC2::EIP",
+            "Properties": {
+                "Domain": "vpc"
+            }
+        },
+
+        "hfnPublicEIPAssociation01": {
+            "Type": "AWS::EC2::EIPAssociation",
+            "Properties": {
+                "AllocationId": {
+                    "Fn::GetAtt": [
+                        "hfnPublicEIP01",
+                        "AllocationId"
+                    ]
+                },
+                "NetworkInterfaceId": {
+                    "Ref": "HfnPublic"
+                },
+                "PrivateIpAddress": {
+                    "Fn::Select": [
+                        "0",
+                        {
+                            "Fn::GetAtt": [
+                                "HfnPublic",
+                                "SecondaryPrivateIpAddresses"
+                            ]
+                        }
+                    ]
+                }
+            }
+        },
+
+        "HfnPrivate": {
+            "Type": "AWS::EC2::NetworkInterface",
+            "Condition": "NameValidationPassed",
+            "Properties": {
+                "SubnetId": {
+                    "Ref": "SubnetIdHfnPrivate"
+                },
+                "Description": {
+                    "Fn::Join": [
+                        "-",
+                        [
+                            {
+                                "Ref": "SystemName"
+                            },
+                            "Hfn_towards_SBC"
+                        ]
+                    ]
+                },
+                "GroupSet": [
+                    {
+                        "Ref": "securityGrpPktTrusted"
+                    }
+                ],
+                "SourceDestCheck": "false",
+                "Tags": [
+                    {
+                        "Key": "Name",
+                        "Value": {
+                            "Fn::Join": [
+                                "-",
+                                [
+                                    {
+                                        "Ref": "SystemName"
+                                    },
+                                    "Hfn_towards_SBC"
+                                ]
+                            ]
+                        }
+                    }
+                ]
+            },
+            "Metadata": {
+                "AWS::CloudFormation::Designer": {
+                    "id": "b255c65c-db21-40a1-8d81-4718b2fc68ba"
+                }
+            }
+        },
+        "HfnMgtEIP": {
+            "Type": "AWS::EC2::EIP",
+            "Condition": "EipForHfnMgt",
+            "Properties": {
+                "Domain": "vpc"
+            },
+            "Metadata": {
+                "AWS::CloudFormation::Designer": {
+                    "id": "4ce391cc-e5c8-4384-8bf7-333d0ee3e637"
+                }
+            }
+        },
+        "HfnPktEIP": {
+            "Type": "AWS::EC2::EIP",
+            "Condition": "NameValidationPassed",
+            "Properties": {
+                "Domain": "vpc"
+            },
+            "Metadata": {
+                "AWS::CloudFormation::Designer": {
+                    "id": "20c19626-8684-4fab-bcea-e0a6a1d5a95d"
+                }
+            }
+        },
+        "HfnPktEIPAssociation": {
+            "Type": "AWS::EC2::EIPAssociation",
+            "Condition": "NameValidationPassed",
+            "Properties": {
+                "AllocationId": {
+                    "Fn::GetAtt": [
+                        "HfnPktEIP",
+                        "AllocationId"
+                    ]
+                },
+                "NetworkInterfaceId": {
+                    "Ref": "HfnPublic"
+                }
+            },
+            "Metadata": {
+                "AWS::CloudFormation::Designer": {
+                    "id": "833d7e86-818b-4307-88c7-9fa053b2e126"
+                }
+            }
+        },
+        "Ec2InstanceHfn": {
+            "Type": "AWS::EC2::Instance",
+            "Condition": "NameValidationPassed",
+            "Properties": {
+                "ImageId": {
+                    "Ref": "HfnAMIID"
+                },
+                "BlockDeviceMappings": [
+                    {
+                        "DeviceName": "/dev/xvda",
+                        "Ebs": {
+                            "VolumeType": "gp2",
+                            "VolumeSize": "20",
+                            "DeleteOnTermination": "false"
+                        }
+                    }
+                ],
+                "IamInstanceProfile": {
+                    "Ref": "sweHFNIAMProfileName"
+                },
+                "InstanceType": {
+                    "Ref": "InstanceType"
+                },
+                "Tenancy": {
+                    "Ref": "Tenancy"
+                },
+                "PlacementGroupName": {
+                    "Ref": "PlacementId"
+                },
+                "EbsOptimized": "True",
+                "KeyName": {
+                    "Ref": "KeyName"
+                },
+                "NetworkInterfaces": [
+                    {
+                        "NetworkInterfaceId": {
+                            "Ref": "HfnPublic"
+                        },
+                        "DeviceIndex": "0"
+                    },
+                    {
+                        "NetworkInterfaceId": {
+                            "Ref": "HfnMgt"
+                        },
+                        "DeviceIndex": "1"
+                    },
+                    {
+                        "NetworkInterfaceId": {
+                            "Ref": "HfnPrivate"
+                        },
+                        "DeviceIndex": "2"
+                    }
+                ],
+                "Tags": [
+                    {
+                        "Key": "Name",
+                        "Value": {
+                            "Fn::Join": [
+                                "-",
+                                [
+                                    {
+                                        "Ref": "AWS::StackName"
+                                    },
+                                    "HFN"
+                                ]
+                            ]
+                        }
+                    }
+                ],
+                "UserData": {
+                    "Fn::Base64": {
+                        "Fn::Join": [
+                            "",
+                            [
+                                "Content-Type: multipart/mixed; boundary=\"//\"",
+                                "\nMIME-Version: 1.0",
+                                "\n--//",
+                                "\nContent-Type: text/cloud-config; charset=\"us-ascii\"",
+                                "\nMIME-Version: 1.0",
+                                "\nContent-Transfer-Encoding: 7bit",
+                                "\nContent-Disposition: attachment; filename=\"cloud-config.txt\"",
+                                "\n#cloud-config",
+                                "\ncloud_final_modules:",
+                                "\n- [scripts-user, always]",
+                                "\n--//",
+                                "\nContent-Type: text/x-shellscript; charset=\"us-ascii\"",
+                                "\nMIME-Version: 1.0",
+                                "\nContent-Transfer-Encoding: 7bit",
+                                "\nContent-Disposition: attachment; filename=\"userdata.txt\"",
+                                "\n#!/bin/bash",
+                                "\nHFN_DIR=\"/home/ec2-user/HFN/\"",
+                                "\nHFN_FILE=\"$HFN_DIR/HFN.sh\"",
+                                "\nLOG_FILE=\"$HFN_DIR/cloud-init-nat.log\"",
+                                "\nNAT_VAR=\"$HFN_DIR/natVars.input\"",
+                                "\ntimestamp()",
+                                "\n{",
+                                "\ndate +\"%Y-%m-%d %T\"",
+                                "\n}",
+                                "\nif [ ! -d $HFN_DIR ]; then",
+                                "\nmkdir -p $HFN_DIR/;",
+                                "\nfi;",
+                                "\n/bin/echo $(timestamp) \" =========================    cloud-init configuration for HFN    ==========================================\" >> $LOG_FILE",
+                                "\naws s3 cp ",
+                                {
+                                    "Ref": "HfnScriptS3Location"
+                                },
+                                " $HFN_FILE",
+                                "\nif [ $? -ne 0 ]; then",
+                                "\n/bin/echo $(timestamp) \"Error:Could not copy HFN script from S3 bucket.\" >> $LOG_FILE",
+                                "\nelse",
+                                "\n/bin/echo $(timestamp) \"Copied HFN script from S3 bucket.\" >> $LOG_FILE",
+                                "\nfi;",
+                                "\n/bin/echo >  $NAT_VAR",
+                                "\n/bin/echo \"SBC_SECONDARY_IP=\\\"",
+                                {
+                                    "Fn::Select": [
+                                        "0",
+                                        {
+                                            "Fn::GetAtt": [
+                                                "pktXface0A",
+                                                "SecondaryPrivateIpAddresses"
+                                            ]
+                                        }
+                                    ]
+                                },
+                                "\\\"\" >> $NAT_VAR",
+                                "\n/bin/echo \"REMOTE_SSH_MACHINE_IP=\\\"",
+                                {
+                                    "Fn::If": [
+                                        "EipForHfnMgt",
+                                        {
+                                            "Ref": "remoteSSHMachinePublicIP"
+                                        },
+                                        ""
+                                    ]
+                                },
+                                "\\\"\">> $NAT_VAR",
+                                "\n/bin/echo $(timestamp) \"Copied natVars.input\" >> $LOG_FILE",
+                                "\nsudo chmod 744 $HFN_FILE",
+                                "\nsudo /bin/bash $HFN_FILE setup",
+                                "\n/bin/echo \"Configured using HFN script - $HFN_FILE\" >> $LOG_FILE",
+                                "\n/bin/echo $(timestamp) \" =========================   Done    ==========================================\" >> $LOG_FILE",
+                                "\n--//"
+                            ]
+                        ]
+                    }
+                }
+            },
+            "Metadata": {
+                "AWS::CloudFormation::Designer": {
+                    "id": "61634ee6-9748-401e-ba4b-244e5605bd31"
+                }
+            }
+        },
+        "securityGrpHa": {
+            "Type": "AWS::EC2::SecurityGroup",
+            "Properties": {
+                "GroupDescription": "Security group for Ha",
+                "VpcId": {
+                    "Ref": "vpc"
+                },
+                "SecurityGroupIngress": [
+                    {
+                        "IpProtocol": "-1",
+                        "FromPort": "-1",
+                        "ToPort": "-1",
+                        "CidrIp": "0.0.0.0/0"
+                    },
+                    {
+                        "IpProtocol": "-1",
+                        "FromPort": "-1",
+                        "ToPort": "-1",
+                        "CidrIp": {
+                            "Ref": "sshAccessCIDR"
+                        }
+                    }
+                ],
+                "Tags": [
+                    {
+                        "Key": "Name",
+                        "Value": {
+                            "Fn::Join": [
+                                "-",
+                                [
+                                    {
+                                        "Ref": "SystemName"
+                                    },
+                                    "SecurityGroup2_Ribbon"
+                                ]
+                            ]
+                        }
+                    }
+                ]
+            },
+            "Metadata": {
+                "AWS::CloudFormation::Designer": {
+                    "id": "d8d608b3-82b1-4705-ae70-87dfcf0deeaf"
+                }
+            }
+        },
+        "securityGrpPktTrusted": {
+            "Type": "AWS::EC2::SecurityGroup",
+            "Properties": {
+                "GroupDescription": "Security group for SBC Pkt Trusted",
+                "VpcId": {
+                    "Ref": "vpc"
+                },
+                "SecurityGroupIngress": [
+                    {
+                        "IpProtocol": "-1",
+                        "FromPort": "-1",
+                        "ToPort": "-1",
+                        "CidrIp": "0.0.0.0/0"
+                    },
+                    {
+                        "IpProtocol": "-1",
+                        "FromPort": "-1",
+                        "ToPort": "-1",
+                        "CidrIp": {
+                            "Ref": "sshAccessCIDR"
+                        }
+                    }
+                ],
+                "Tags": [
+                    {
+                        "Key": "Name",
+                        "Value": {
+                            "Fn::Join": [
+                                "-",
+                                [
+                                    {
+                                        "Ref": "SystemName"
+                                    },
+                                    "SecurityGroup3_Ribbon"
+                                ]
+                            ]
+                        }
+                    }
+                ]
+            },
+            "Metadata": {
+                "AWS::CloudFormation::Designer": {
+                    "id": "f30d88be-4005-419c-8475-a803ec2e1cca"
+                }
+            }
+        },
+        "securityGrpMgtHfn": {
+            "Type": "AWS::EC2::SecurityGroup",
+            "Properties": {
+                "GroupDescription": "Security group for HFN mgt",
+                "VpcId": {
+                    "Ref": "vpc"
+                },
+                "SecurityGroupIngress": [
+                    {
+                        "IpProtocol": "-1",
+                        "FromPort": "-1",
+                        "ToPort": "-1",
+                        "CidrIp": "0.0.0.0/0"
+                    },
+                    {
+                        "IpProtocol": "-1",
+                        "FromPort": "-1",
+                        "ToPort": "-1",
+                        "CidrIp": {
+                            "Ref": "sshAccessCIDR"
+                        }
+                    }
+                ],
+                "Tags": [
+                    {
+                        "Key": "Name",
+                        "Value": {
+                            "Fn::Join": [
+                                "-",
+                                [
+                                    {
+                                        "Ref": "SystemName"
+                                    },
+                                    "SecurityGroup4_Ribbon"
+                                ]
+                            ]
+                        }
+                    }
+                ]
+            },
+            "Metadata": {
+                "AWS::CloudFormation::Designer": {
+                    "id": "3a621b0c-8d54-4369-bf51-ad2a3cd75059"
+                }
+            }
+        },
+        "securityGrpPktUntrusted": {
+            "Type": "AWS::EC2::SecurityGroup",
+            "Properties": {
+                "GroupDescription": "Security group for SBC Pkt Untrusted",
+                "VpcId": {
+                    "Ref": "vpc"
+                },
+                "SecurityGroupIngress": [
+                    {
+                        "IpProtocol": "-1",
+                        "FromPort": "-1",
+                        "ToPort": "-1",
+                        "CidrIp": "0.0.0.0/0"
+                    },
+                    {
+                        "IpProtocol": "-1",
+                        "FromPort": "-1",
+                        "ToPort": "-1",
+                        "CidrIp": {
+                            "Ref": "sshAccessCIDR"
+                        }
+                    }
+                ],
+                "Tags": [
+                    {
+                        "Key": "Name",
+                        "Value": {
+                            "Fn::Join": [
+                                "-",
+                                [
+                                    {
+                                        "Ref": "SystemName"
+                                    },
+                                    "SecurityGroup5_Ribbon"
+                                ]
+                            ]
+                        }
+                    }
+                ]
+            },
+            "Metadata": {
+                "AWS::CloudFormation::Designer": {
+                    "id": "f269b323-c76e-42e4-aa7b-9d7966433226"
+                }
+            }
+        }
+    },
+    "Outputs": {
+        "InstanceIdActive": {
+            "Condition": "NameValidationPassed",
+            "Value": {
+                "Ref": "Ec2InstanceA"
+            }
+        },
+        "DefaultCliAdminPassword": {
+            "Description": "It is eth0 interface-id of instance which has assigned active role in the template. This is used as default CLI admin password ",
+            "Value": {
+                "Ref": "mgtXfaceA"
+            }
+        },
+        "Mgt0InterfaceIDActive": {
+            "Condition": "NameValidationPassed",
+            "Value": {
+                "Ref": "mgtXfaceA"
+            }
+        },
+        "HA0InterfaceIDActive": {
+            "Condition": "NameValidationPassed",
+            "Value": {
+                "Ref": "haXfaceA"
+            }
+        },
+        "Pkt0InterfaceIDActive": {
+            "Condition": "NameValidationPassed",
+            "Value": {
+                "Ref": "pktXface0A"
+            }
+        },
+        "Pkt1InterfaceIDActive": {
+            "Condition": "NameValidationPassed",
+            "Value": {
+                "Ref": "pktXface1A"
+            }
+        },
+        "InstanceIdStandby": {
+            "Condition": "NameValidationPassed",
+            "Value": {
+                "Ref": "Ec2InstanceB"
+            }
+        },
+        "Mgt0InterfaceIDStandby": {
+            "Condition": "NameValidationPassed",
+            "Value": {
+                "Ref": "mgtXfaceB"
+            }
+        },
+        "HA0InterfaceIDStandby": {
+            "Condition": "NameValidationPassed",
+            "Value": {
+                "Ref": "haXfaceB"
+            }
+        },
+        "Pkt0InterfaceIDStandby": {
+            "Condition": "NameValidationPassed",
+            "Value": {
+                "Ref": "pktXface0B"
+            }
+        },
+        "Pkt1InterfaceIDStandby": {
+            "Condition": "NameValidationPassed",
+            "Value": {
+                "Ref": "pktXface1B"
+            }
+        },
+        "NameValidationError": {
+            "Condition": "NameMismatchError",
+            "Value": "Name Validation Failed"
+        },
+        "ceNamesMatching": {
+            "Condition": "MatchingCeNames",
+            "Value": "CE Names of Active and Standby are same. ERROR. Not creating any resources."
+        },
+        "ActiveCeAndSystemNameMatching": {
+            "Condition": "MatchingActiveCeAndSystemName",
+            "Value": "CE Name of Active and System Name are same. ERROR. Not creating any resources."
+        },
+        "StandbyCeAndSystemNameMatching": {
+            "Condition": "MatchingStandbyCeAndSystemName",
+            "Value": "CE Name of Standby and System Name are same. ERROR. Not creating any resources."
+        }
+    },
+    "Metadata": {
+        "AWS::CloudFormation::Interface": {
+            "ParameterGroups": [
+                {
+                    "Label": {
+                        "default": "Common and PKTART data"
+                    },
+                    "Parameters": [
+                        "KeyName"
+                    ]
+                },
+                {
+                    "Label": {
+                        "default": "SBC Configuration"
+                    },
+                    "Parameters": [
+                        "InstanceType",
+                        "AMIID"
+                    ]
+                },
+                {
+                    "Label": {
+                        "default": "Network Configuration"
+                    },
+                    "Parameters": [
+                        "vpcCIDR",
+                        "mgtSubnetCIDR",
+                        "haSubnetCIDR",
+                        "pkt1SubnetCIDR",
+                        "availabilityZoneForSBC"
+                    ]
+                },
+                {
+                    "Label": {
+                        "default": "Optional: SBC configuration. For default configuration no need to change these values."
+                    },
+                    "Parameters": [
+                        "SBCPersonality",
+                        "ActiveInstanceName",
+                        "StandbyInstanceName",
+                        "SystemName",
+                        "Tenancy",
+                        "PlacementId",
+                        "VolumeType",
+                        "IOPS",
+                        "VolumeSize"
+                    ]
+                }
+            ]
+        },
+        "AWS::CloudFormation::Designer": {
+            "7017e578-ebf0-497d-998e-e46e5515d284": {
+                "size": {
+                    "width": 60,
+                    "height": 60
+                },
+                "position": {
+                    "x": 450,
+                    "y": 90
+                },
+                "z": 1,
+                "embeds": []
+            },
+            "072d5305-c1c0-4a9c-afda-2433e6e46df7": {
+                "size": {
+                    "width": 60,
+                    "height": 60
+                },
+                "position": {
+                    "x": 570,
+                    "y": 210
+                },
+                "z": 1,
+                "embeds": []
+            },
+            "513f2db5-2c59-4102-99aa-5ffd5bfe2508": {
+                "size": {
+                    "width": 60,
+                    "height": 60
+                },
+                "position": {
+                    "x": 450,
+                    "y": 330
+                },
+                "z": 1,
+                "embeds": []
+            },
+            "7cf86ffa-02d6-4532-a19d-e74d02805435": {
+                "size": {
+                    "width": 60,
+                    "height": 60
+                },
+                "position": {
+                    "x": 480,
+                    "y": 570
+                },
+                "z": 1,
+                "embeds": [],
+                "isassociatedwith": [
+                    "6ab84ccd-ec23-4e5b-b55a-a321f4275cfb",
+                    "f30d88be-4005-419c-8475-a803ec2e1cca"
+                ],
+                "iscontainedinside": [
+                    "d835a872-3e6c-457a-b919-8bd3050a07ee"
+                ]
+            },
+            "69dd4dbe-e79a-4dd6-a2c7-a8057eac1a37": {
+                "size": {
+                    "width": 60,
+                    "height": 60
+                },
+                "position": {
+                    "x": 90,
+                    "y": 150
+                },
+                "z": 1,
+                "embeds": [],
+                "isassociatedwith": [
+                    "6e59ae5f-bbe3-449b-b133-fea19279bfdd",
+                    "6ab84ccd-ec23-4e5b-b55a-a321f4275cfb",
+                    "f30d88be-4005-419c-8475-a803ec2e1cca"
+                ],
+                "iscontainedinside": [
+                    "898c2c01-4023-4f19-b920-e0a27ae76685",
+                    "3c787d6b-e31a-4b68-b536-dc1a053e5fce",
+                    "05ac7f13-5f07-47a7-a640-9401a865caae"
+                ]
+            },
+            "36268cbd-38bd-48ec-a98a-d2b8d92cab21": {
+                "size": {
+                    "width": 60,
+                    "height": 60
+                },
+                "position": {
+                    "x": 600,
+                    "y": 450
+                },
+                "z": 1,
+                "embeds": [],
+                "isassociatedwith": [
+                    "6ab84ccd-ec23-4e5b-b55a-a321f4275cfb",
+                    "d8d608b3-82b1-4705-ae70-87dfcf0deeaf"
+                ],
+                "iscontainedinside": [
+                    "f92c50bc-9290-4c7d-8e37-6b0bab95b230"
+                ]
+            },
+            "00b911a7-2e7d-4201-9de0-db41c4ccbc0f": {
+                "size": {
+                    "width": 60,
+                    "height": 60
+                },
+                "position": {
+                    "x": 600,
+                    "y": 570
+                },
+                "z": 1,
+                "embeds": [],
+                "isassociatedwith": [
+                    "6ab84ccd-ec23-4e5b-b55a-a321f4275cfb"
+                ],
+                "iscontainedinside": [
+                    "00805611-6a39-4c0c-940d-dd2322aaec8b"
+                ]
+            },
+            "4e8273a2-eda6-4000-bce9-66101cd18776": {
+                "source": {
+                    "id": "072d5305-c1c0-4a9c-afda-2433e6e46df7"
+                },
+                "target": {
+                    "id": "00b911a7-2e7d-4201-9de0-db41c4ccbc0f"
+                },
+                "z": 1
+            },
+            "30b47652-4e3b-4e80-9241-e372d45af309": {
+                "size": {
+                    "width": 60,
+                    "height": 60
+                },
+                "position": {
+                    "x": 690,
+                    "y": 90
+                },
+                "z": 1,
+                "embeds": [],
+                "isassociatedwith": [
+                    "6ab84ccd-ec23-4e5b-b55a-a321f4275cfb",
+                    "f30d88be-4005-419c-8475-a803ec2e1cca"
+                ],
+                "iscontainedinside": [
+                    "d835a872-3e6c-457a-b919-8bd3050a07ee"
+                ]
+            },
+            "83463436-053b-441a-b7a3-203b0b4d6555": {
+                "size": {
+                    "width": 60,
+                    "height": 60
+                },
+                "position": {
+                    "x": 210,
+                    "y": 150
+                },
+                "z": 1,
+                "embeds": [],
+                "isassociatedwith": [
+                    "6e59ae5f-bbe3-449b-b133-fea19279bfdd",
+                    "6ab84ccd-ec23-4e5b-b55a-a321f4275cfb",
+                    "f30d88be-4005-419c-8475-a803ec2e1cca"
+                ],
+                "iscontainedinside": [
+                    "898c2c01-4023-4f19-b920-e0a27ae76685",
+                    "3c787d6b-e31a-4b68-b536-dc1a053e5fce",
+                    "05ac7f13-5f07-47a7-a640-9401a865caae"
+                ]
+            },
+            "51a951cd-ae03-4bff-a603-14f732be91d1": {
+                "size": {
+                    "width": 60,
+                    "height": 60
+                },
+                "position": {
+                    "x": 690,
+                    "y": 330
+                },
+                "z": 1,
+                "embeds": [],
+                "isassociatedwith": [
+                    "6ab84ccd-ec23-4e5b-b55a-a321f4275cfb",
+                    "d8d608b3-82b1-4705-ae70-87dfcf0deeaf"
+                ],
+                "iscontainedinside": [
+                    "f92c50bc-9290-4c7d-8e37-6b0bab95b230"
+                ]
+            },
+            "707aa6db-298f-4ad3-9852-dff6a57b6117": {
+                "size": {
+                    "width": 60,
+                    "height": 60
+                },
+                "position": {
+                    "x": 720,
+                    "y": 450
+                },
+                "z": 1,
+                "embeds": [],
+                "isassociatedwith": [
+                    "6ab84ccd-ec23-4e5b-b55a-a321f4275cfb"
+                ],
+                "iscontainedinside": [
+                    "00805611-6a39-4c0c-940d-dd2322aaec8b"
+                ]
+            },
+            "f70e440b-58bc-4b5e-973b-be57ea5e6f0a": {
+                "size": {
+                    "width": 60,
+                    "height": 60
+                },
+                "position": {
+                    "x": 720,
+                    "y": 570
+                },
+                "z": 1,
+                "embeds": [],
+                "isassociatedwith": [
+                    "00b911a7-2e7d-4201-9de0-db41c4ccbc0f",
+                    "36268cbd-38bd-48ec-a98a-d2b8d92cab21",
+                    "69dd4dbe-e79a-4dd6-a2c7-a8057eac1a37",
+                    "7cf86ffa-02d6-4532-a19d-e74d02805435"
+                ]
+            },
+            "ccbc183f-09eb-4dc7-a4d9-0cc3a2ede5e8": {
+                "size": {
+                    "width": 60,
+                    "height": 60
+                },
+                "position": {
+                    "x": 60,
+                    "y": 650
+                },
+                "z": 1,
+                "embeds": [],
+                "isassociatedwith": [
+                    "707aa6db-298f-4ad3-9852-dff6a57b6117",
+                    "51a951cd-ae03-4bff-a603-14f732be91d1",
+                    "83463436-053b-441a-b7a3-203b0b4d6555",
+                    "30b47652-4e3b-4e80-9241-e372d45af309"
+                ]
+            },
+            "8fdffd5a-b411-458e-9f0c-4504c85d2dcd": {
+                "source": {
+                    "id": "7017e578-ebf0-497d-998e-e46e5515d284"
+                },
+                "target": {
+                    "id": "707aa6db-298f-4ad3-9852-dff6a57b6117"
+                },
+                "z": 1
+            },
+            "c2eac22a-dac3-43e8-a269-655a747809a3": {
+                "source": {
+                    "id": "513f2db5-2c59-4102-99aa-5ffd5bfe2508"
+                },
+                "target": {
+                    "id": "707aa6db-298f-4ad3-9852-dff6a57b6117"
+                },
+                "z": 1
+            },
+            "6ab84ccd-ec23-4e5b-b55a-a321f4275cfb": {
+                "size": {
+                    "width": 60,
+                    "height": 60
+                },
+                "position": {
+                    "x": 1550,
+                    "y": 110
+                },
+                "z": 1,
+                "embeds": [],
+                "iscontainedinside": [
+                    "7b71f416-4973-476d-bedb-b332394c7da9"
+                ]
+            },
+            "7b71f416-4973-476d-bedb-b332394c7da9": {
+                "size": {
+                    "width": 2130,
+                    "height": 1080
+                },
+                "position": {
+                    "x": 760,
+                    "y": 480
+                },
+                "z": 1,
+                "embeds": [
+                    "f92c50bc-9290-4c7d-8e37-6b0bab95b230",
+                    "00805611-6a39-4c0c-940d-dd2322aaec8b",
+                    "4afd89d8-2cb1-47b0-be81-1ceccb0ab5ec"
+                ]
+            },
+            "d835a872-3e6c-457a-b919-8bd3050a07ee": {
+                "size": {
+                    "width": 150,
+                    "height": 150
+                },
+                "position": {
+                    "x": 1200,
+                    "y": 120
+                },
+                "z": 1,
+                "embeds": [],
+                "iscontainedinside": [
+                    "7b71f416-4973-476d-bedb-b332394c7da9"
+                ]
+            },
+            "f92c50bc-9290-4c7d-8e37-6b0bab95b230": {
+                "size": {
+                    "width": 150,
+                    "height": 150
+                },
+                "position": {
+                    "x": 940,
+                    "y": 870
+                },
+                "z": 2,
+                "parent": "7b71f416-4973-476d-bedb-b332394c7da9",
+                "embeds": [],
+                "iscontainedinside": [
+                    "7b71f416-4973-476d-bedb-b332394c7da9",
+                    "7b71f416-4973-476d-bedb-b332394c7da9",
+                    "7b71f416-4973-476d-bedb-b332394c7da9",
+                    "7b71f416-4973-476d-bedb-b332394c7da9",
+                    "7b71f416-4973-476d-bedb-b332394c7da9",
+                    "7b71f416-4973-476d-bedb-b332394c7da9",
+                    "7b71f416-4973-476d-bedb-b332394c7da9",
+                    "7b71f416-4973-476d-bedb-b332394c7da9",
+                    "7b71f416-4973-476d-bedb-b332394c7da9",
+                    "7b71f416-4973-476d-bedb-b332394c7da9",
+                    "7b71f416-4973-476d-bedb-b332394c7da9",
+                    "7b71f416-4973-476d-bedb-b332394c7da9",
+                    "7b71f416-4973-476d-bedb-b332394c7da9",
+                    "7b71f416-4973-476d-bedb-b332394c7da9",
+                    "7b71f416-4973-476d-bedb-b332394c7da9",
+                    "7b71f416-4973-476d-bedb-b332394c7da9",
+                    "7b71f416-4973-476d-bedb-b332394c7da9",
+                    "7b71f416-4973-476d-bedb-b332394c7da9",
+                    "7b71f416-4973-476d-bedb-b332394c7da9",
+                    "7b71f416-4973-476d-bedb-b332394c7da9",
+                    "7b71f416-4973-476d-bedb-b332394c7da9",
+                    "7b71f416-4973-476d-bedb-b332394c7da9",
+                    "7b71f416-4973-476d-bedb-b332394c7da9",
+                    "7b71f416-4973-476d-bedb-b332394c7da9",
+                    "7b71f416-4973-476d-bedb-b332394c7da9",
+                    "7b71f416-4973-476d-bedb-b332394c7da9",
+                    "7b71f416-4973-476d-bedb-b332394c7da9",
+                    "7b71f416-4973-476d-bedb-b332394c7da9",
+                    "7b71f416-4973-476d-bedb-b332394c7da9",
+                    "7b71f416-4973-476d-bedb-b332394c7da9",
+                    "7b71f416-4973-476d-bedb-b332394c7da9",
+                    "7b71f416-4973-476d-bedb-b332394c7da9",
+                    "7b71f416-4973-476d-bedb-b332394c7da9",
+                    "7b71f416-4973-476d-bedb-b332394c7da9",
+                    "7b71f416-4973-476d-bedb-b332394c7da9",
+                    "7b71f416-4973-476d-bedb-b332394c7da9"
+                ]
+            },
+            "229e8cd7-1798-42ce-8ce6-b0a0a450eea3": {
+                "size": {
+                    "width": 60,
+                    "height": 60
+                },
+                "position": {
+                    "x": 180,
+                    "y": 240
+                },
+                "z": 1,
+                "embeds": []
+            },
+            "4afd89d8-2cb1-47b0-be81-1ceccb0ab5ec": {
+                "size": {
+                    "width": 240,
+                    "height": 240
+                },
+                "position": {
+                    "x": 2200,
+                    "y": 540
+                },
+                "z": 2,
+                "parent": "7b71f416-4973-476d-bedb-b332394c7da9",
+                "embeds": [
+                    "90ec2540-d898-4e67-a372-91ff0651b6f5"
+                ],
+                "iscontainedinside": [
+                    "7b71f416-4973-476d-bedb-b332394c7da9",
+                    "7b71f416-4973-476d-bedb-b332394c7da9",
+                    "7b71f416-4973-476d-bedb-b332394c7da9",
+                    "7b71f416-4973-476d-bedb-b332394c7da9",
+                    "7b71f416-4973-476d-bedb-b332394c7da9",
+                    "7b71f416-4973-476d-bedb-b332394c7da9",
+                    "7b71f416-4973-476d-bedb-b332394c7da9",
+                    "7b71f416-4973-476d-bedb-b332394c7da9",
+                    "7b71f416-4973-476d-bedb-b332394c7da9",
+                    "7b71f416-4973-476d-bedb-b332394c7da9",
+                    "7b71f416-4973-476d-bedb-b332394c7da9",
+                    "7b71f416-4973-476d-bedb-b332394c7da9",
+                    "7b71f416-4973-476d-bedb-b332394c7da9",
+                    "7b71f416-4973-476d-bedb-b332394c7da9",
+                    "7b71f416-4973-476d-bedb-b332394c7da9",
+                    "7b71f416-4973-476d-bedb-b332394c7da9",
+                    "7b71f416-4973-476d-bedb-b332394c7da9",
+                    "7b71f416-4973-476d-bedb-b332394c7da9",
+                    "7b71f416-4973-476d-bedb-b332394c7da9",
+                    "7b71f416-4973-476d-bedb-b332394c7da9",
+                    "7b71f416-4973-476d-bedb-b332394c7da9",
+                    "7b71f416-4973-476d-bedb-b332394c7da9",
+                    "7b71f416-4973-476d-bedb-b332394c7da9",
+                    "7b71f416-4973-476d-bedb-b332394c7da9",
+                    "7b71f416-4973-476d-bedb-b332394c7da9",
+                    "7b71f416-4973-476d-bedb-b332394c7da9",
+                    "7b71f416-4973-476d-bedb-b332394c7da9",
+                    "7b71f416-4973-476d-bedb-b332394c7da9",
+                    "7b71f416-4973-476d-bedb-b332394c7da9",
+                    "7b71f416-4973-476d-bedb-b332394c7da9",
+                    "7b71f416-4973-476d-bedb-b332394c7da9",
+                    "7b71f416-4973-476d-bedb-b332394c7da9",
+                    "7b71f416-4973-476d-bedb-b332394c7da9",
+                    "7b71f416-4973-476d-bedb-b332394c7da9",
+                    "7b71f416-4973-476d-bedb-b332394c7da9"
+                ]
+            },
+            "6d21e83b-ffe7-4d07-a8d1-7e64a97cdeb4": {
+                "source": {
+                    "id": "4afd89d8-2cb1-47b0-be81-1ceccb0ab5ec"
+                },
+                "target": {
+                    "id": "f06b1bad-206e-4dd9-9e53-cc535d3028b1"
+                },
+                "z": 3
+            },
+            "cc96f861-6568-4d28-a28f-dc992218f776": {
+                "source": {
+                    "id": "4afd89d8-2cb1-47b0-be81-1ceccb0ab5ec"
+                },
+                "target": {
+                    "id": "00805611-6a39-4c0c-940d-dd2322aaec8b"
+                },
+                "z": 2
+            },
+            "90ec2540-d898-4e67-a372-91ff0651b6f5": {
+                "size": {
+                    "width": 60,
+                    "height": 60
+                },
+                "position": {
+                    "x": 2230,
+                    "y": 600
+                },
+                "z": 3,
+                "parent": "4afd89d8-2cb1-47b0-be81-1ceccb0ab5ec",
+                "embeds": [],
+                "isassociatedwith": [
+                    "229e8cd7-1798-42ce-8ce6-b0a0a450eea3"
+                ],
+                "iscontainedinside": [
+                    "4afd89d8-2cb1-47b0-be81-1ceccb0ab5ec",
+                    "4afd89d8-2cb1-47b0-be81-1ceccb0ab5ec",
+                    "4afd89d8-2cb1-47b0-be81-1ceccb0ab5ec",
+                    "4afd89d8-2cb1-47b0-be81-1ceccb0ab5ec",
+                    "4afd89d8-2cb1-47b0-be81-1ceccb0ab5ec",
+                    "4afd89d8-2cb1-47b0-be81-1ceccb0ab5ec",
+                    "4afd89d8-2cb1-47b0-be81-1ceccb0ab5ec",
+                    "4afd89d8-2cb1-47b0-be81-1ceccb0ab5ec",
+                    "4afd89d8-2cb1-47b0-be81-1ceccb0ab5ec",
+                    "4afd89d8-2cb1-47b0-be81-1ceccb0ab5ec",
+                    "4afd89d8-2cb1-47b0-be81-1ceccb0ab5ec",
+                    "4afd89d8-2cb1-47b0-be81-1ceccb0ab5ec",
+                    "4afd89d8-2cb1-47b0-be81-1ceccb0ab5ec",
+                    "4afd89d8-2cb1-47b0-be81-1ceccb0ab5ec",
+                    "4afd89d8-2cb1-47b0-be81-1ceccb0ab5ec",
+                    "4afd89d8-2cb1-47b0-be81-1ceccb0ab5ec",
+                    "4afd89d8-2cb1-47b0-be81-1ceccb0ab5ec",
+                    "4afd89d8-2cb1-47b0-be81-1ceccb0ab5ec",
+                    "4afd89d8-2cb1-47b0-be81-1ceccb0ab5ec",
+                    "4afd89d8-2cb1-47b0-be81-1ceccb0ab5ec",
+                    "4afd89d8-2cb1-47b0-be81-1ceccb0ab5ec",
+                    "4afd89d8-2cb1-47b0-be81-1ceccb0ab5ec",
+                    "4afd89d8-2cb1-47b0-be81-1ceccb0ab5ec",
+                    "4afd89d8-2cb1-47b0-be81-1ceccb0ab5ec",
+                    "4afd89d8-2cb1-47b0-be81-1ceccb0ab5ec",
+                    "4afd89d8-2cb1-47b0-be81-1ceccb0ab5ec",
+                    "4afd89d8-2cb1-47b0-be81-1ceccb0ab5ec",
+                    "4afd89d8-2cb1-47b0-be81-1ceccb0ab5ec",
+                    "4afd89d8-2cb1-47b0-be81-1ceccb0ab5ec",
+                    "4afd89d8-2cb1-47b0-be81-1ceccb0ab5ec",
+                    "4afd89d8-2cb1-47b0-be81-1ceccb0ab5ec",
+                    "4afd89d8-2cb1-47b0-be81-1ceccb0ab5ec",
+                    "4afd89d8-2cb1-47b0-be81-1ceccb0ab5ec",
+                    "4afd89d8-2cb1-47b0-be81-1ceccb0ab5ec",
+                    "4afd89d8-2cb1-47b0-be81-1ceccb0ab5ec"
+                ]
+            },
+            "bf4c840c-e410-459b-921c-0db5161ab36c": {
+                "source": {
+                    "id": "7b71f416-4973-476d-bedb-b332394c7da9"
+                },
+                "target": {
+                    "id": "229e8cd7-1798-42ce-8ce6-b0a0a450eea3"
+                },
+                "z": 1
+            },
+            "fc6b28b4-fb76-4ba8-b58a-d0e9f2e208ee": {
+                "size": {
+                    "width": 60,
+                    "height": 60
+                },
+                "position": {
+                    "x": 300,
+                    "y": 300
+                },
+                "z": 1,
+                "embeds": []
+            },
+            "34ea8f05-a010-4451-bba1-0a76dc41df9e": {
+                "size": {
+                    "width": 60,
+                    "height": 60
+                },
+                "position": {
+                    "x": 540,
+                    "y": 300
+                },
+                "z": 1,
+                "embeds": [],
+                "isassociatedwith": [
+                    "fc6b28b4-fb76-4ba8-b58a-d0e9f2e208ee"
+                ]
+            },
+            "9e06684e-8dc2-4a28-abce-032d28c96f15": {
+                "size": {
+                    "width": 60,
+                    "height": 60
+                },
+                "position": {
+                    "x": 60,
+                    "y": 360
+                },
+                "z": 1,
+                "embeds": []
+            },
+            "513abf27-ab1b-4f87-85ed-dfdc313a4ef7": {
+                "size": {
+                    "width": 60,
+                    "height": 60
+                },
+                "position": {
+                    "x": 180,
+                    "y": 360
+                },
+                "z": 1,
+                "embeds": [],
+                "isassociatedwith": [
+                    "9e06684e-8dc2-4a28-abce-032d28c96f15"
+                ]
+            },
+            "f06b1bad-206e-4dd9-9e53-cc535d3028b1": {
+                "size": {
+                    "width": 140,
+                    "height": 140
+                },
+                "position": {
+                    "x": 1370,
+                    "y": 740
+                },
+                "z": 3,
+                "parent": "00805611-6a39-4c0c-940d-dd2322aaec8b",
+                "embeds": [],
+                "iscontainedinside": [
+                    "7b71f416-4973-476d-bedb-b332394c7da9"
+                ]
+            },
+            "05ac7f13-5f07-47a7-a640-9401a865caae": {
+                "size": {
+                    "width": 140,
+                    "height": 140
+                },
+                "position": {
+                    "x": 1040,
+                    "y": 670
+                },
+                "z": 3,
+                "parent": "00805611-6a39-4c0c-940d-dd2322aaec8b",
+                "embeds": [],
+                "iscontainedinside": [
+                    "7b71f416-4973-476d-bedb-b332394c7da9"
+                ]
+            },
+            "14eaaa3c-0e32-4db8-804e-e663fabe4f10": {
+                "size": {
+                    "width": 60,
+                    "height": 60
+                },
+                "position": {
+                    "x": 290,
+                    "y": 690
+                },
+                "z": 0,
+                "embeds": [],
+                "isassociatedwith": [
+                    "6ab84ccd-ec23-4e5b-b55a-a321f4275cfb"
+                ],
+                "iscontainedinside": [
+                    "00805611-6a39-4c0c-940d-dd2322aaec8b"
+                ]
+            },
+            "a0acde6f-56fb-45ed-9c4c-3a03a8b2d2c8": {
+                "size": {
+                    "width": 60,
+                    "height": 60
+                },
+                "position": {
+                    "x": 419.14213367242775,
+                    "y": 660.7073897339251
+                },
+                "z": 0,
+                "embeds": [],
+                "isassociatedwith": [
+                    "6ab84ccd-ec23-4e5b-b55a-a321f4275cfb",
+                    "f30d88be-4005-419c-8475-a803ec2e1cca"
+                ],
+                "iscontainedinside": [
+                    "f06b1bad-206e-4dd9-9e53-cc535d3028b1"
+                ]
+            },
+            "b255c65c-db21-40a1-8d81-4718b2fc68ba": {
+                "size": {
+                    "width": 60,
+                    "height": 60
+                },
+                "position": {
+                    "x": 545.2984834340347,
+                    "y": 675.3039921856813
+                },
+                "z": 0,
+                "embeds": [],
+                "isassociatedwith": [
+                    "6ab84ccd-ec23-4e5b-b55a-a321f4275cfb",
+                    "f30d88be-4005-419c-8475-a803ec2e1cca"
+                ],
+                "iscontainedinside": [
+                    "05ac7f13-5f07-47a7-a640-9401a865caae"
+                ]
+            },
+            "4ce391cc-e5c8-4384-8bf7-333d0ee3e637": {
+                "size": {
+                    "width": 60,
+                    "height": 60
+                },
+                "position": {
+                    "x": 210,
+                    "y": 710
+                },
+                "z": 0,
+                "embeds": []
+            },
+            "20c19626-8684-4fab-bcea-e0a6a1d5a95d": {
+                "size": {
+                    "width": 60,
+                    "height": 60
+                },
+                "position": {
+                    "x": 470,
+                    "y": 740
+                },
+                "z": 0,
+                "embeds": []
+            },
+            "7fdb903d-a9c1-410b-b61b-f48b455b9b31": {
+                "source": {
+                    "id": "4ce391cc-e5c8-4384-8bf7-333d0ee3e637"
+                },
+                "target": {
+                    "id": "14eaaa3c-0e32-4db8-804e-e663fabe4f10"
+                },
+                "z": 0
+            },
+            "833d7e86-818b-4307-88c7-9fa053b2e126": {
+                "source": {
+                    "id": "20c19626-8684-4fab-bcea-e0a6a1d5a95d"
+                },
+                "target": {
+                    "id": "a0acde6f-56fb-45ed-9c4c-3a03a8b2d2c8"
+                },
+                "z": 0
+            },
+            "61634ee6-9748-401e-ba4b-244e5605bd31": {
+                "size": {
+                    "width": 60,
+                    "height": 60
+                },
+                "position": {
+                    "x": 629.459520009777,
+                    "y": 719.7591808145539
+                },
+                "z": 0,
+                "embeds": [],
+                "isassociatedwith": [
+                    "a0acde6f-56fb-45ed-9c4c-3a03a8b2d2c8",
+                    "14eaaa3c-0e32-4db8-804e-e663fabe4f10",
+                    "b255c65c-db21-40a1-8d81-4718b2fc68ba"
+                ]
+            },
+            "d8d608b3-82b1-4705-ae70-87dfcf0deeaf": {
+                "size": {
+                    "width": 60,
+                    "height": 60
+                },
+                "position": {
+                    "x": 1560,
+                    "y": -60
+                },
+                "z": 1,
+                "embeds": [],
+                "iscontainedinside": [
+                    "7b71f416-4973-476d-bedb-b332394c7da9"
+                ]
+            },
+            "f30d88be-4005-419c-8475-a803ec2e1cca": {
+                "size": {
+                    "width": 60,
+                    "height": 60
+                },
+                "position": {
+                    "x": 1560,
+                    "y": 10
+                },
+                "z": 1,
+                "embeds": [],
+                "iscontainedinside": [
+                    "7b71f416-4973-476d-bedb-b332394c7da9"
+                ]
+            },
+            "3a621b0c-8d54-4369-bf51-ad2a3cd75059": {
+                "size": {
+                    "width": 60,
+                    "height": 60
+                },
+                "position": {
+                    "x": 1640,
+                    "y": 110
+                },
+                "z": 1,
+                "embeds": [],
+                "iscontainedinside": [
+                    "7b71f416-4973-476d-bedb-b332394c7da9"
+                ]
+            },
+            "f269b323-c76e-42e4-aa7b-9d7966433226": {
+                "size": {
+                    "width": 60,
+                    "height": 60
+                },
+                "position": {
+                    "x": 1680,
+                    "y": 10
+                },
+                "z": 1,
+                "embeds": [],
+                "iscontainedinside": [
+                    "7b71f416-4973-476d-bedb-b332394c7da9"
+                ]
+            }
+        }
+    }
+}
