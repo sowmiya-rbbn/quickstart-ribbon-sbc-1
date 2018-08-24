@@ -1,0 +1,1152 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: AWS CloudFormation Template to setup and deploy vSBC HA instances and
+  2 PKTART instances to test vSBC. This template creates required vpc, subnet and
+  other routing elements required IAM role to performce IP movement betweenn two vSBC
+  instances.
+Metadata:
+  AWS::CloudFormation::Interface:
+    ParameterGroups:
+      - Label:
+          default: Common and PKTART data
+        Parameters:
+          - KeyPairName
+      - Label:
+          default: SBC Configuration
+        Parameters:
+          - SBCInstanceType
+          - AMIID
+      - Label:
+          default: Network Configuration
+        Parameters:
+          - VPCCIDR
+          - ManagementSubnetCIDR
+          - SBCHASubnetCIDR
+          - PacketSubnet1CIDR
+          - availabilityZoneForSBC
+      - Label:
+          default: 'Optional: SBC configuration. For default configuration no need
+            to change these values.'
+        Parameters:
+          - SBCPersonalityType
+          - SBCActiveInstanceName
+          - SBCPassiveInstanceName
+          - SBCSystemName
+          - Tenancy
+          - PlacementId
+          - SBCVolumeType
+          - SBCVolumeIOPS
+          - SBCVolumeSize
+Parameters:
+  #TODO: Mappings.
+  AMIID:
+    Description: 'AMI ID of SBC : ami-xxxxxxxx'
+    Type: AWS::EC2::Image::Id
+    MaxLength: '21'
+    Default: ami-0a49b638bad956f96
+    AllowedPattern: ami-[a-z0-9]*
+    ConstraintDescription: Must be a valid AMI ID
+  HfnAMIID:
+    Description: 'AMI ID of Mangler Node, select latest AWS Linux AMI ID : ami-xxxxxxxx'
+    Type: AWS::EC2::Image::Id
+    MaxLength: '21'
+    Default: ami-b70554c8
+    AllowedPattern: ami-[a-z0-9]*
+    ConstraintDescription: Must be a valid Mangler Instance AMI ID
+  HFNScriptS3Location:
+    Description: Location of Mangler script in S3, see installation guide for more
+      details
+    Type: String
+    MinLength: '1'
+    Default: s3://haforwarding/HFN.sh
+    ConstraintDescription: Must be a valid S3 location
+  KeyPairName:
+    Description: 'Name of an existing EC2 KeyPair to enable SSH access to the SBC
+      and Mangler instance '
+    Type: AWS::EC2::KeyPair::KeyName
+    ConstraintDescription: must be the name of an existing EC2 KeyPair.
+  VPCCIDR:
+    Description: VPC CIDR block for new VPC that will be used to create SBC and PKTART
+      test tool.
+    Type: String
+    Default: 10.74.0.0/16
+    AllowedPattern: (\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})/(\d{1,2})
+    ConstraintDescription: Must be a valid IP CIDR range of the form x.x.x.x/x.
+  ManagementSubnetCIDR:
+    Description: Enter a CIDR for pirvate subnet for SBC, this new subnet will be
+      served by Mangler instance.
+    Type: String
+    MinLength: '1'
+    Default: 10.74.10.0/24
+    AllowedPattern: (\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})/(\d{1,2})
+    ConstraintDescription: Must be a valid IP CIDR range of the form x.x.x.x/x and
+      subnet of VPC.
+  SBCHASubnetCIDR:
+    Description: Enter a CIDR for pirvate subnet for SBC, this new subnet will be
+      served by Mangler instance.
+    Type: String
+    MinLength: '1'
+    Default: 10.74.20.0/24
+    AllowedPattern: (\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})/(\d{1,2})
+    ConstraintDescription: Must be a valid IP CIDR range of the form x.x.x.x/x and
+      subnet of VPC.
+  PacketSubnet1CIDR:
+    Description: Enter a CIDR for pirvate subnet for SBC, this new subnet will be
+      served by Mangler instance.
+    Type: String
+    MinLength: '1'
+    Default: 10.74.40.0/24
+    AllowedPattern: (\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})/(\d{1,2})
+    ConstraintDescription: Must be a valid IP CIDR range of the form x.x.x.x/x and
+      subnet of VPC.
+  PublicHFNPacketSubnetCIDR:
+    Description: Enter a CIDR for pirvate subnet for SBC, this new subnet will be
+      served by Mangler instance.
+    Type: String
+    MinLength: '1'
+    Default: 10.74.50.0/24
+    AllowedPattern: (\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})/(\d{1,2})
+    ConstraintDescription: Must be a valid IP CIDR range of the form x.x.x.x/x and
+      subnet of VPC.
+  PrivateHFNSubnetCIDR:
+    Description: Enter a CIDR for pirvate subnet for SBC, this new subnet will be
+      served by Mangler instance.
+    Type: String
+    MinLength: '1'
+    Default: 10.74.60.0/24
+    AllowedPattern: (\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})/(\d{1,2})
+    ConstraintDescription: Must be a valid IP CIDR range of the form x.x.x.x/x and
+      subnet of VPC.
+  VPCID:
+    Description: ID of your existing VPC for deployment
+    Type: AWS::EC2::VPC::Id
+  # This is an unused Variable.
+  NumberOfAlternateIPOnPkt1:
+    Description: Enter Number of IPs required on PKT1 port
+    Type: Number
+    Default: '1'
+    MaxValue: '14'
+    MinValue: '1'
+    # - Optional: Existing VPC w/existing Bastion Template (etc).
+  HFNManagementNeedsEIP:
+    Description: Do you want EIP on Management Interface of Mangler? Select Yes if
+      you want to manage Mangler instance using EIP.
+    Type: String
+    Default: 'Yes'
+    AllowedValues:
+      - 'Yes'
+      - 'No'
+  # What is this used for?
+  # - Used for above EIP. Create a conditional / SG / (...)
+  HFNManagementEIPAccessCIDR:
+    Description: The CIDR range used to access the HFN Management EIP.
+    Type: String
+    Default: ''
+  # Removed in leiu of VPC Template.
+  # - come back to this.
+  availabilityZoneForSBC:
+    Description: Enter Availability Zone for SBC, New subnets for SBC will be created
+      here.
+    Type: AWS::EC2::AvailabilityZone::Name
+  SBCInstanceType:
+    Description: Instance type for the SBC Mangler.
+    Type: String
+    Default: m5.xlarge
+    AllowedValues:
+      - m4.xlarge
+      - m5.xlarge
+      - c3.2xlarge
+      - c3.4xlarge
+      - c3.8xlarge
+      - c4.2xlarge
+      - c4.4xlarge
+      - c4.8xlarge
+      - c5.2xlarge
+      - c5.4xlarge
+      - c5.8xlarge
+    ConstraintDescription: Must be a valid EC2 instance type.
+  SBCPersonalityType:
+    Description: SBC Personality Type. Currently only supports 'isbc' (Integrated). Distributed is currently not supported.
+    Type: String
+    Default: isbc
+    AllowedValues:
+      - isbc
+    ConstraintDescription: Must be a valid SBC Personality type.
+  # Why is this needed?
+  # - Config Files.
+  # SBC Active and Standby. (Var rename)
+  SBCActiveInstanceName:
+    Description: CE name of the active instance
+    Type: String
+    Default: vsbc1
+    MaxLength: '63'
+    AllowedPattern: ^[A-Za-z]{1}[-A-Za-z0-9.]*[A-Za-z0-9]{1}$
+    ConstraintDescription: 'Enter valid ceName(instance name).  Regex: ^[A-Za-z]{1}[-A-Za-z0-9.]*[A-Za-z0-9]{1}$'
+  # Why is this needed?
+  # Config Files
+  SBCPassiveInstanceName:
+    Description: CE name of the standby instance
+    Type: String
+    Default: vsbc2
+    MaxLength: '63'
+    AllowedPattern: ^[A-Za-z]{1}[-A-Za-z0-9.]*[A-Za-z0-9]{1}$
+    ConstraintDescription: 'Enter valid ceName(instance name).  Regex: ^[A-Za-z]{1}[-A-Za-z0-9.]*[A-Za-z0-9]{1}$'
+  # Parameter Not Used.
+  SBCSystemName:
+    Description: System Name
+    Type: String
+    Default: vsbcSystem
+    MaxLength: '26'
+    AllowedPattern: ^[A-Za-z]{1}[-A-Za-z0-9]*[A-Za-z0-9]{1}$
+    ConstraintDescription: 'Enter valid system name.  Regex: ^[A-Za-z]{1}[-A-Za-z0-9]*[A-Za-z0-9]{1}$ '
+  # TODO: Rename. De-couple scope. 
+  SSHAccessCIDR:
+    Description: IP CIDR from where you could SSH into SBC and PKTART instances
+    Type: String
+    MinLength: '9'
+    MaxLength: '18'
+    Default: '0.0.0.0/0'
+    AllowedPattern: (\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})/(\d{1,2})
+    ConstraintDescription: must be a valid CIDR range of the form x.x.x.x/x.
+  # Removed due to VPC Template.
+  Tenancy:
+    Description: Tenancy attribute for SBC instances
+    Type: String
+    Default: default
+    AllowedValues:
+      - default
+      - dedicated
+  # Removed due to VPC Template.
+  # - Is this something we should support?
+  # - Does the VPC Template handle this already?
+  # - Can we condition it? 
+  PlacementId:
+    Description: PlacementGroup to launch SBC instances(Optional)
+    Type: String
+    Default: ''
+  SBCVolumeType:
+    Description: Select Type of Volume for SBC
+    Type: String
+    Default: io1
+    AllowedValues:
+      - gp2
+      - io1
+  CreateVPCEndPoint:
+    Description: Do you want to create VPC End-point to access API server? if you
+      select no then SBC will reach API server using EIP on mgt0 ports
+    Type: String
+    Default: 'yes'
+    AllowedValues:
+      - 'yes'
+      - 'no'
+  SBCVolumeIOPS:
+    Description: Enter IOPS reservation for IO1 type EBS volume [<= 1950]. This value is ignored for GP2 type volumes.
+    Type: Number
+    Default: '600'
+    MaxValue: '1950'
+  SBCVolumeSize:
+    Description: Enter size of disk in GiB. Minimum disk required is 65 GiB
+    Type: Number
+    Default: '65'
+    MinValue: '65'
+    MaxValue: '1000'
+Conditions:
+  # This condition is not used.
+  EipOnPkt0: !Equals
+    - 'true'
+    - 'true'
+  VolumeTypeIO1: !Equals
+    - !Ref 'SBCVolumeType'
+    - io1
+  CreateVPCEndPoint: !Equals
+    - !Ref 'CreateVPCEndPoint'
+    - 'yes'
+  EipForHFEManagementInterface: !Equals
+    - !Ref 'HFNManagementNeedsEIP'
+    - 'Yes'
+  noVPCEndPointForMgt: !Equals
+    - !Ref 'CreateVPCEndPoint'
+    - 'no'
+Rules:
+  NameValidation:
+    Assertions:
+    - Assert:
+      !Not
+      - !Equal
+        - !Ref 'SBCActiveInstanceName'
+        - !Ref 'SBCPassiveInstanceName'
+      AssertionDescription: "SBCActiveInstanceName and SBCPassiveInstanceName must be unique"
+    - Assert:
+      !Not
+      - !Equal
+        - !Ref 'SBCActiveInstanceName'
+        - !Ref 'SBCSystemName'
+      AssertionDescription: "SBCActiveInstanceName and SBCSystemName cannot be the same."
+    - Assert:
+      !Not
+      - !Equal
+        - !Ref 'SBCPassiveInstanceName'
+        - !Ref 'SBCSystemName'
+      AssertionDescription: "SBCPassiveInstanceName and SBCSystemName cannot be the same."
+Mappings:
+  AWSAMIRegionMap:
+    AMI:
+      <SBC_AMI_MAPPING>: <SBC_AMI_MAPPING_NAME>
+      <SBC_PKT_MAPPING>: <PKT_AMI_MAPPING_NAME>
+    us-east-1:
+      <SBC_AMI_MAPPING>:    <AMI_ID>
+      <SBC_PKT_MAPPING>:    <AMI_ID>
+    us-east-2:
+      <SBC_AMI_MAPPING>:    <AMI_ID>
+      <SBC_PKT_MAPPING>:    <AMI_ID>
+    us-west-1:
+      <SBC_AMI_MAPPING>:    <AMI_ID>
+      <SBC_PKT_MAPPING>:    <AMI_ID>
+    us-west-2:
+      <SBC_AMI_MAPPING>:    <AMI_ID>
+      <SBC_PKT_MAPPING>:    <AMI_ID>
+    ca-central-1:
+      <SBC_AMI_MAPPING>:    <AMI_ID>
+      <SBC_PKT_MAPPING>:    <AMI_ID>
+    ap-south-1:
+      <SBC_AMI_MAPPING>:    <AMI_ID>
+      <SBC_PKT_MAPPING>:    <AMI_ID>
+    ap-northeast-2:
+      <SBC_AMI_MAPPING>:    <AMI_ID>
+      <SBC_PKT_MAPPING>:    <AMI_ID>
+    ap-southeast-1:
+      <SBC_AMI_MAPPING>:    <AMI_ID>
+      <SBC_PKT_MAPPING>:    <AMI_ID>
+    ap-southeast-2:
+      <SBC_AMI_MAPPING>:    <AMI_ID>
+      <SBC_PKT_MAPPING>:    <AMI_ID>
+    eu-central-1:
+      <SBC_AMI_MAPPING>:    <AMI_ID>
+      <SBC_PKT_MAPPING>:    <AMI_ID>
+    eu-west-1:
+      <SBC_AMI_MAPPING>:    <AMI_ID>
+      <SBC_PKT_MAPPING>:    <AMI_ID>
+    eu-west-2:
+      <SBC_AMI_MAPPING>:    <AMI_ID>
+      <SBC_PKT_MAPPING>:    <AMI_ID>
+    eu-west-3:
+      <SBC_AMI_MAPPING>:    <AMI_ID>
+      <SBC_PKT_MAPPING>:    <AMI_ID>
+    sa-east-1:
+      <SBC_AMI_MAPPING>:    <AMI_ID>
+      <SBC_PKT_MAPPING>:    <AMI_ID>
+Resources:
+  # Order:
+  # - Resource Type
+  # -- SBC Active/Combined
+  # -- SBC Passive/Combined
+  # -- HFE
+  # IAM Instance Roles.
+  SBCInstanceRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub "SBCInstanceRole-${AWS::Region}"
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - ec2.amazonaws.com
+            Action:
+              - sts:AssumeRole
+      Path: /
+      Policies:
+        - PolicyName: All EC2 actions on SBC Instances.
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - ec2:AllocateAddress
+                  - ec2:AssignPrivateIpAddresses
+                  - ec2:AssociateAddress
+                  - ec2:AttachNetworkInterface
+                  - ec2:DisassociateAddress
+                  - ec2:DescribeInstances
+                  - ec2:DescribeAddresses
+                  - ec2:DescribeNetworkInterfaces
+                  - ec2:DescribeInstanceAttribute
+                  - ec2:DescribeRegions
+                  - ec2:ModifyInstanceAttribute
+                  - ec2:DescribeSubnets
+                #Resource:
+  HFEInstanceRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub "HFEInstanceRole-${AWS::Region}"
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - ec2.amazonaws.com
+            Action:
+              - sts:AssumeRole
+      Path: /
+      Policies:
+        - PolicyName: Allow access to S3 Bucket.
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - s3:Get*
+                  - s3:List*
+                Resource:
+                - 'arn:aws:s3:::${QSS3BucketName}'
+                - 'arn:aws:s3:::${QSS3BucketName}/*'
+  # IAM Instance Profiles.
+  SBCInstanceProfile:
+    Type: AWS::IAM::InstanceProfile
+    Properties:
+      InstanceProfileName: !Sub "SBCInstanceProfile-${AWS::Region}"
+      Path: /
+      Roles: !Ref 'SBCInstanceRole'
+  HFEInstanceProfile:
+    Type: AWS::IAM::InstanceProfile
+    Properties:
+      InstanceProfileName: !Sub "HFEInstanceProfile-${AWS::Region}"
+      Path: /
+      Roles: !Ref 'HFEInstanceRole'
+  # EC2 Instances.
+  SBCActiveInstance:
+    Type: AWS::EC2::Instance
+    Properties:
+      ImageId: !Ref 'AMIID'
+      IamInstanceProfile: !Ref 'SBCInstanceProfile'
+      BlockDeviceMappings:
+        - DeviceName: /dev/sda1
+          Ebs:
+            VolumeType: !Ref 'SBCVolumeType'
+            VolumeSize: !Ref 'SBCVolumeSize'
+            Iops: !If
+              - VolumeTypeIO1
+              - !Ref 'SBCVolumeIOPS'
+              - !Ref 'AWS::NoValue'
+            DeleteOnTermination: 'true'
+      InstanceType: !Ref 'SBCInstanceType'
+      Tenancy: !Ref 'Tenancy'
+      PlacementGroupName: !Ref 'PlacementId'
+      EbsOptimized: 'True'
+      KeyName: !Ref 'KeyPairName'
+      NetworkInterfaces:
+        - NetworkInterfaceId: !Ref 'SBCActiveMgtIface'
+          DeviceIndex: '0'
+        - NetworkInterfaceId: !Ref 'SBCActiveHAIface'
+          DeviceIndex: '1'
+        - NetworkInterfaceId: !Ref 'SBCActiveInVoipIface'
+          DeviceIndex: '2'
+        - NetworkInterfaceId: !Ref 'SBCActiveExVoipIface'
+          DeviceIndex: '3'
+      Tags:
+        - Key: Name
+          Value: !Sub "${AWS::StackName}-1"
+      UserData: !Base64
+        !Sub '
+          { "CERole"               : "ACTIVE",
+            "ReverseNatPkt0"       : "True",
+            "ReverseNatPkt1"       : "False",
+            "IAM_ROLE"             : ${SBCInstanceRole},
+            "ALT_Mgt0_00"          : "LOGICAL_MGMT_IP",
+            "ALT_Pkt0_00"          : "VIP1",
+            "ALT_Pkt1_00"          : "VIP2",
+            "ClusterIp"            : "${SBCPassiveHAIface.PrimaryPrivateIpAddress}",
+            "HFN"                  : !Select [0, ${HFEPublicInterface.SecondaryPrivateIpAddresses}],
+            "SbcPersonalityType"   : "${SBCPersonalityType}",
+            "SbcMgmtMode"          : "centralized",
+            "TemplateName"         : "AWS_HA_template.json",
+            "TemplateVersion"      : "V07.00.00A011",
+            "CEName"               : "${SBCActiveInstanceName}",
+            "PeerCEName"           : "${SBCPassiveInstanceName}",
+            "PeerCEHa0IPv4Address" : "${SBCPassiveHAIface.PrimaryPrivateIpAddress}",
+            "SystemName"           : "${SBCSystemName}",
+            "ActiveRoleMgtId"      : "${SBCActiveMgtIface}",
+            "NodeName"             : "${AWS::StackName}"
+          }'
+  SBCPassiveInstance:
+    Type: AWS::EC2::Instance
+    Properties:
+      ImageId: !Ref 'AMIID'
+      BlockDeviceMappings:
+        - DeviceName: /dev/sda1
+          Ebs:
+            VolumeType: !Ref 'SBCVolumeType'
+            VolumeSize: !Ref 'SBCVolumeSize'
+            Iops: !If
+              - VolumeTypeIO1
+              - !Ref 'SBCVolumeIOPS'
+              - !Ref 'AWS::NoValue'
+            DeleteOnTermination: 'true'
+      IamInstanceProfile: !Ref 'SBCInstanceProfile'
+      InstanceType: !Ref 'SBCInstanceType'
+      Tenancy: !Ref 'Tenancy'
+      PlacementGroupName: !Ref 'PlacementId'
+      EbsOptimized: 'True'
+      KeyName: !Ref 'KeyPairName'
+      NetworkInterfaces:
+        - NetworkInterfaceId: !Ref 'SBCPassiveMgtIface'
+          DeviceIndex: '0'
+        - NetworkInterfaceId: !Ref 'SBCPassiveHAIface'
+          DeviceIndex: '1'
+        - NetworkInterfaceId: !Ref 'SBCPassiveInVoipIface'
+          DeviceIndex: '2'
+        - NetworkInterfaceId: !Ref 'SBCPassiveExVoipIface'
+          DeviceIndex: '3'
+      Tags:
+        - Key: Name
+          Value: !Sub "${AWS::StackName}-2"
+      UserData: !Base64
+        !Sub '
+          { "CERole"               : "ACTIVE",
+            "ReverseNatPkt0"       : "True",
+            "ReverseNatPkt1"       : "False",
+            "IAM_ROLE"             : ${SBCInstanceRole},
+            "ALT_Mgt0_00"          : "LOGICAL_MGMT_IP",
+            "ALT_Pkt0_00"          : "VIP1",
+            "ALT_Pkt1_00"          : "VIP2",
+            "ClusterIp"            : "${SBCPassiveHAIface.PrimaryPrivateIpAddress}",
+            "HFN"                  : !Select [0, ${HFEPublicInterface.SecondaryPrivateIpAddresses}],
+            "SbcPersonalityType"   : "${SBCPersonalityType}",
+            "SbcMgmtMode"          : "centralized",
+            "TemplateName"         : "AWS_HA_template.json",
+            "TemplateVersion"      : "V07.00.00A011",
+            "CEName"               : "${SBCActiveInstanceName}",
+            "PeerCEName"           : "${SBCPassiveInstanceName}",
+            "PeerCEHa0IPv4Address" : "${SBCPassiveHAIface.PrimaryPrivateIpAddress}",
+            "SystemName"           : "${SBCSystemName}",
+            "ActiveRoleMgtId"      : "${SBCActiveMgtIface}",
+            "NodeName"             : "${AWS::StackName}"
+          }'
+  HFEInstance:
+    Type: AWS::EC2::Instance
+    Properties:
+      ImageId: !Ref 'HfnAMIID'
+      BlockDeviceMappings:
+        - DeviceName: /dev/xvda
+          Ebs:
+            VolumeType: gp2
+            VolumeSize: '20'
+            DeleteOnTermination: 'false'
+      # TODO:
+      # FIXME: Secondary IAM for this instance. S3:* only?
+      IamInstanceProfile: !Ref 'sweHFNIAMProfileName'
+      InstanceType: !Ref 'SBCInstanceType'
+      Tenancy: !Ref 'Tenancy'
+      PlacementGroupName: !Ref 'PlacementId'
+      EbsOptimized: 'True'
+      KeyName: !Ref 'KeyPairName'
+      NetworkInterfaces:
+        - NetworkInterfaceId: !Ref 'HFEPublicInterface'
+          DeviceIndex: '0'
+        - NetworkInterfaceId: !Ref 'HFEManagementInterface'
+          DeviceIndex: '1'
+        - NetworkInterfaceId: !Ref 'HFEPrivateInterface'
+          DeviceIndex: '2'
+      Tags:
+        - Key: Name
+              # TODO: Sub vs Join
+          Value: "HFE Instance"
+      UserData: !Base64
+      #TODO: Send to Cfn-Init.
+        Fn::Join:
+          - ''
+          - - 'Content-Type: multipart/mixed; boundary="//"'
+            - "\nMIME-Version: 1.0"
+            - "\n--//"
+            - "\nContent-Type: text/cloud-config; charset=\"us-ascii\""
+            - "\nMIME-Version: 1.0"
+            - "\nContent-Transfer-Encoding: 7bit"
+            - "\nContent-Disposition: attachment; filename=\"cloud-config.txt\""
+            - "\n#cloud-config"
+            - "\ncloud_final_modules:"
+            - "\n- [scripts-user, always]"
+            - "\n--//"
+            - "\nContent-Type: text/x-shellscript; charset=\"us-ascii\""
+            - "\nMIME-Version: 1.0"
+            - "\nContent-Transfer-Encoding: 7bit"
+            - "\nContent-Disposition: attachment; filename=\"userdata.txt\""
+            - "\n#!/bin/bash"
+            - "\nHFN_DIR=\"/home/ec2-user/HFN/\""
+            - "\nHFN_FILE=\"$HFN_DIR/HFN.sh\""
+            - "\nLOG_FILE=\"$HFN_DIR/cloud-init-nat.log\""
+            - "\nNAT_VAR=\"$HFN_DIR/natVars.input\""
+            - "\ntimestamp()"
+            - "\n{"
+            - "\ndate +\"%Y-%m-%d %T\""
+            - "\n}"
+            - "\nif [ ! -d $HFN_DIR ]; then"
+            - "\nmkdir -p $HFN_DIR/;"
+            - "\nfi;"
+            - "\n/bin/echo $(timestamp) \" =========================    cloud-init\
+              \ configuration for HFN    ==========================================\"\
+              \ >> $LOG_FILE"
+            - "\naws s3 cp "
+            - !Ref 'HFNScriptS3Location'
+            - ' $HFN_FILE'
+            - "\nif [ $? -ne 0 ]; then"
+            - "\n/bin/echo $(timestamp) \"Error:Could not copy HFN script from S3\
+              \ bucket.\" >> $LOG_FILE"
+            - "\nelse"
+            - "\n/bin/echo $(timestamp) \"Copied HFN script from S3 bucket.\" >> $LOG_FILE"
+            - "\nfi;"
+            - "\n/bin/echo >  $NAT_VAR"
+            - "\n/bin/echo \"SBC_SECONDARY_IP=\\\""
+            - !Select
+              - '0'
+              - !GetAtt 'SBCActiveInVoipIface.SecondaryPrivateIpAddresses'
+            - \"" >> $NAT_VAR
+            - "\n/bin/echo \"REMOTE_SSH_MACHINE_IP=\\\""
+            - !If
+              - EipForHFEManagementInterface
+              - !Ref 'HFNManagementEIPAccessCIDR'
+              - ''
+            - \"">> $NAT_VAR
+            - "\n/bin/echo $(timestamp) \"Copied natVars.input\" >> $LOG_FILE"
+            - "\nsudo chmod 744 $HFN_FILE"
+            - "\nsudo /bin/bash $HFN_FILE setup"
+            - "\n/bin/echo \"Configured using HFN script - $HFN_FILE\" >> $LOG_FILE"
+            - "\n/bin/echo $(timestamp) \" =========================   Done    ==========================================\"\
+              \ >> $LOG_FILE"
+            - "\n--//"
+  # VPC Endpoints
+  SBCEndPoint:
+    Type: AWS::EC2::VPCEndpoint
+    Condition: CreateVPCEndPoint
+    Properties:
+      VpcEndpointType: Interface
+      PrivateDnsEnabled: 'True'
+      SubnetIds: !Ref 'SBCManagementSubnet'
+      SecurityGroupIds: !Ref 'SBCManagementSG'
+      ServiceName: !Sub "com.amazonaws.${AWS::Region}.ec2"
+      VpcId: !Ref 'VPCID'
+  # Subnets
+  # - ExVoip
+  # - InVoip / Private
+  # - Mgmt
+  # - HA
+  SBCExVoipSubnet:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref 'VPCID'
+      CidrBlock: !Ref 'PacketSubnet1CIDR'
+      AvailabilityZone: !Ref 'availabilityZoneForSBC'
+      Tags:
+        - Key: Name
+          Value: !Sub "${SBCSystemName}-External Voip (ExVoip) Subnet"
+  SBCManagementSubnet:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref 'VPCID'
+      CidrBlock: !Ref 'ManagementSubnetCIDR'
+      AvailabilityZone: !Ref 'availabilityZoneForSBC'
+      Tags:
+        - Key: Name
+          Value: !Sub "${SBCSystemName}-Management Subnet"
+  SBCHASubnet:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref 'VPCID'
+      CidrBlock: !Ref 'SBCHASubnetCIDR'
+      AvailabilityZone: !Ref 'availabilityZoneForSBC'
+      Tags:
+        - Key: Name
+          Value: !Sub "${SBCSystemName}-HA Subnet"
+  HFEPublicSubnet:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref 'VPCID'
+      CidrBlock: !Ref 'PublicHFNPacketSubnetCIDR'
+      AvailabilityZone: !Ref 'availabilityZoneForSBC'
+      Tags:
+        - Key: Name
+          Value: !Sub "${SBCSystemName}-HFE Public Subnet"
+  HFEPrivateSubnet:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref 'VPCID'
+      CidrBlock: !Ref 'PrivateHFNSubnetCIDR'
+      AvailabilityZone: !Ref 'availabilityZoneForSBC'
+      Tags:
+        - Key: Name
+          Value: !Sub "${SBCSystemName}-HFE Public Subnet"
+  # Network Interfaces
+  SBCActiveExVoipIface:
+    Type: AWS::EC2::NetworkInterface
+    Properties:
+      SubnetId: !Ref 'SBCExVoipSubnet'
+      Description: !Sub "${SBCSystemName}-pkt1A_Ribbon"
+      GroupSet:
+        - !Ref 'SBCInternalVoipSG'
+      SecondaryPrivateIpAddressCount: 1
+      Tags:
+        - Key: Name
+          Value: !Sub "${SBCSystemName}-pkt1A_Ribbon"
+  SBCActiveInVoipIface:
+    Type: AWS::EC2::NetworkInterface
+    Properties:
+      SubnetId: !Ref 'HFEPrivateSubnet'
+      Description: !Sub "${SBCSystemName}-pkt0A_Ribbon"
+      GroupSet:
+        - !Ref 'SBCInternalVoipSG'
+      SecondaryPrivateIpAddressCount: 1
+      SourceDestCheck: 'false'
+      Tags:
+        - Key: Name
+          Value: !Sub "${SBCSystemName}-pkt0A_Ribbon"
+  SBCActiveMgtIface:
+    Type: AWS::EC2::NetworkInterface
+    Properties:
+      SubnetId: !Ref 'SBCManagementSubnet'
+      # is 'mgt0A_Ribbon' the OS Interface name?
+      Description: !Sub "${SBCSystemName}-mgt0A_Ribbon"
+      GroupSet:
+        - !Ref 'SBCManagementSG'
+      SecondaryPrivateIpAddressCount: 1
+      SourceDestCheck: 'true'
+      Tags:
+        - Key: Name
+          Value: !Sub "${SBCSystemName}-mgt0A_Ribbon"
+  SBCActiveHAIface:
+    Type: AWS::EC2::NetworkInterface
+    Properties:
+      SubnetId: !Ref 'SBCHASubnet'
+      Description: !Sub "${SBCSystemName}-ha0A_Ribbon"
+      GroupSet:
+        - !Ref 'SBCHASecurityGroup'
+      SourceDestCheck: 'true'
+      Tags:
+        - Key: Name
+          Value: !Sub "${SBCSystemName}-ha0A_Ribbon"
+  SBCPassiveExVoipIface:
+    Type: AWS::EC2::NetworkInterface
+    Properties:
+      SubnetId: !Ref 'SBCExVoipSubnet'
+      Description: !Sub "${SBCSystemName}-pkt1B_Ribbon"
+      GroupSet:
+        - !Ref 'SBCInternalVoipSG'
+      Tags:
+        - Key: Name
+          Value: !Sub "${SBCSystemName}-pkt1B_Ribbon"
+  SBCPassiveInVoipIface:
+    Type: AWS::EC2::NetworkInterface
+    Properties:
+      SubnetId: !Ref 'HFEPrivateSubnet'
+      Description: !Sub "${SBCSystemName}-pkt0B_Ribbon"
+      GroupSet:
+        - !Ref 'SBCInternalVoipSG'
+      SourceDestCheck: 'false'
+      Tags:
+        - Key: Name
+          Value: !Sub "${SBCSystemName}-pkt0B_Ribbon"
+  SBCPassiveMgtIface:
+    Type: AWS::EC2::NetworkInterface
+    Properties:
+      SubnetId: !Ref 'SBCManagementSubnet'
+      Description: !Sub "${SBCSystemName}-mgt0B_Ribbon"
+      GroupSet:
+        - !Ref 'SBCManagementSG'
+      SourceDestCheck: 'true'
+      Tags:
+        - Key: Name
+          Value: !Sub "${SBCSystemName}-mgt0B_Ribbon"
+  SBCPassiveHAIface:
+    Type: AWS::EC2::NetworkInterface
+    Properties:
+      SubnetId: !Ref 'SBCHASubnet'
+      Description: !Sub "${SBCSystemName}-ha0B_Ribbon"
+      GroupSet:
+        - !Ref 'SBCHASecurityGroup'
+      SourceDestCheck: 'true'
+      Tags:
+        - Key: Name
+          Value: !Sub "${SBCSystemName}-ha0B_Ribbon"
+  HFEPublicInterface:
+    Type: AWS::EC2::NetworkInterface
+    Properties:
+      SubnetId: !Ref 'HFEPublicSubnet'
+      GroupSet:
+        - !Ref 'SBCExternalVoipSG'
+      SecondaryPrivateIpAddressCount: '1'
+      SourceDestCheck: 'true'
+      Tags:
+        - Key: Name
+          Value: !Sub "${SBCSystemName} HFE Public Interface"
+  HFEPrivateInterface:
+    Type: AWS::EC2::NetworkInterface
+    Properties:
+      SubnetId: !Ref 'HFEPrivateSubnet'
+      GroupSet:
+        - !Ref 'SBCInternalVoipSG'
+      SourceDestCheck: 'false'
+      Tags:
+        - Key: Name
+          Value: !Sub "${SBCSystemName} HFE Private Interface"
+  HFEManagementInterface:
+    Type: AWS::EC2::NetworkInterface
+    Properties:
+      SubnetId: !Ref 'SBCManagementSubnet'
+      GroupSet:
+        - !Ref 'HFEManagementSG'
+      SourceDestCheck: 'true'
+      Tags:
+        - Key: Name
+          Value: !Sub "${SBCSystemName} HFE Management Interface"
+  # Security Groups
+  SBCExternalVoipSG:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Security Group for SBC External Voip traffic. (Incoming calls)
+      VpcId: !Ref 'VPCID'
+      SecurityGroupIngress:
+        - IpProtocol: '-1'
+          FromPort: '-1'
+          ToPort: '-1'
+          CidrIp: '0.0.0.0/0'
+        - IpProtocol: '-1'
+          FromPort: '-1'
+          ToPort: '-1'
+          CidrIp: !Ref 'SSHAccessCIDR'
+      Tags:
+        - Key: Name
+              # TODO: Sub vs Join
+          Value: !Join
+            - '-'
+            - - !Ref SBCSystemName
+              - SecurityGroup5_Ribbon
+  SBCInternalVoipSG:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Security Group for SBC Internal Voip traffic. (Relay to internal infra)
+      VpcId: !Ref 'VPCID'
+      SecurityGroupIngress:
+        - IpProtocol: '-1'
+          FromPort: '-1'
+          ToPort: '-1'
+          CidrIp: '0.0.0.0/0'
+        - IpProtocol: '-1'
+          FromPort: '-1'
+          ToPort: '-1'
+          CidrIp: !Ref 'SSHAccessCIDR'
+      Tags:
+        - Key: Name
+              # TODO: Sub vs Join
+          Value: !Join
+            - '-'
+            - - !Ref SBCSystemName
+              - SecurityGroup3_Ribbon
+  SBCHASecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Security group for SBC HA interface traffic.
+      VpcId: !Ref 'VPCID'
+      SecurityGroupIngress:
+        - IpProtocol: '-1'
+          FromPort: '-1'
+          ToPort: '-1'
+          CidrIp: '0.0.0.0/0'
+        - IpProtocol: '-1'
+          FromPort: '-1'
+          ToPort: '-1'
+          CidrIp: !Ref 'SSHAccessCIDR'
+      Tags:
+        - Key: Name
+          Value: !Sub "${SBCSystemName} HA Security Group"
+  SBCManagementSG:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Security group for Mgt SBC
+      VpcId: !Ref 'VPCID'
+      # These rules need refactoring.
+      SecurityGroupIngress:
+        - IpProtocol: '-1'
+          FromPort: '-1'
+          ToPort: '-1'
+          CidrIp: '0.0.0.0/0'
+        - IpProtocol: '-1'
+          FromPort: '-1'
+          ToPort: '-1'
+          CidrIp: !Ref 'SSHAccessCIDR'
+      Tags:
+        - Key: Name
+          Value: !Sub "${SBCSystemName}-SecurityGroup1_Ribbon"
+  HFEManagementSG:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Security Group for HFE Management Traffic.
+      VpcId: !Ref 'VPCID'
+      SecurityGroupIngress:
+        - IpProtocol: '-1'
+          FromPort: '-1'
+          ToPort: '-1'
+          CidrIp: '0.0.0.0/0'
+        - IpProtocol: '-1'
+          FromPort: '-1'
+          ToPort: '-1'
+          CidrIp: !Ref 'SSHAccessCIDR'
+      Tags:
+        - Key: Name
+              # TODO: Sub vs Join
+          Value: !Join
+            - '-'
+            - - !Ref SBCSystemName
+              - SecurityGroup4_Ribbon
+  # Elastic IPs
+  # TODO: Duplicates
+  SBCActiveMgtEIP:
+    Type: AWS::EC2::EIP
+    Condition: noVPCEndPointForMgt
+    Properties:
+      Domain: !Ref ${VPCID}
+  SBCActiveMgtEIP:
+    Type: AWS::EC2::EIP
+    Condition: noVPCEndPointForMgt
+    Properties:
+      Domain: !Ref ${VPCID}
+  HFEExVoipEIP:
+    Type: AWS::EC2::EIP
+    Properties:
+      Domain: !Ref ${VPCID}
+  HFEPublicEIP:
+    Type: AWS::EC2::EIP
+    Properties:
+      Domain: vpc
+  HFEManagementEIP:
+    Type: AWS::EC2::EIP
+    Condition: EipForHFEManagementInterface
+    Properties:
+      Domain: !Ref ${VPCID}
+
+  SBCPassiveMgtEIP:
+    Type: AWS::EC2::EIP
+    Condition: noVPCEndPointForMgt
+    Properties:
+      Domain: !Ref ${VPCID}
+  HFEPublicEIPAssociation:
+    Type: AWS::EC2::EIPAssociation
+    Properties:
+      AllocationId: !GetAtt 'HFEPublicEIP.AllocationId'
+      NetworkInterfaceId: !Ref 'HFEPublicInterface'
+      PrivateIpAddress: !Select
+        - '0'
+        - !GetAtt 'HFEPublicInterface.SecondaryPrivateIpAddresses'
+  HFEExVoipEIPAssociation:
+    Type: AWS::EC2::EIPAssociation
+    Properties:
+      AllocationId: !GetAtt 'HFEExVoipEIP.AllocationId'
+      NetworkInterfaceId: !Ref 'HFEPublicInterface'
+  SBCActiveMgtEIPAssocaition:
+    Type: AWS::EC2::EIPAssociation
+    Condition: noVPCEndPointForMgt
+    Properties:
+      AllocationId: !GetAtt 'SBCActiveMgtEIP.AllocationId'
+      NetworkInterfaceId: !Ref 'SBCActiveMgtIface'
+      PrivateIpAddress: !GetAtt 'SBCActiveMgtIface.PrimaryPrivateIpAddress'
+  SBCPassiveMgtEIPAssociation:
+    Type: AWS::EC2::EIPAssociation
+    Condition: noVPCEndPointForMgt
+    Properties:
+      AllocationId: !GetAtt 'SBCPassiveMgtEIP.AllocationId'
+      NetworkInterfaceId: !Ref 'SBCPassiveMgtIface'
+      PrivateIpAddress: !GetAtt 'SBCPassiveMgtIface.PrimaryPrivateIpAddress'
+  HFEManagementEIPAssociation:
+    Type: AWS::EC2::EIPAssociation
+    Condition: EipForHFEManagementInterface
+    Properties:
+      AllocationId: !GetAtt 'HFEManagementEIP.AllocationId'
+      NetworkInterfaceId: !Ref 'HFEManagementInterface'
+  SBCActiveMgtEIPAssocaition:
+    Type: AWS::EC2::EIPAssociation
+    Condition: noVPCEndPointForMgt
+    Properties:
+      AllocationId: !GetAtt 'SBCActiveMgtEIP.AllocationId'
+      NetworkInterfaceId: !Ref 'SBCActiveMgtIface'
+      PrivateIpAddress: !Select
+        - '0'
+        - !GetAtt 'SBCActiveMgtIface.SecondaryPrivateIpAddresses'
+  UnknownIfNeeded:
+    PKTARTMgtA:
+      Type: AWS::EC2::NetworkInterface
+      Properties:
+        SubnetId: !Ref 'SBCManagementSubnet'
+        Description: !Sub "${SBCSystemName}-PKTARTMgtA_Ribbon"
+        GroupSet:
+          - !Ref 'securityGrpMgtPktart'
+        SourceDestCheck: 'true'
+        Tags:
+          - Key: Name
+            Value: !Join
+              - '-'
+              - - !Ref 'SystemName'
+                - PKTARTMgtA_Ribbon
+      Metadata:
+        AWS::CloudFormation::Designer:
+          id: 6b3d4631-2742-42aa-8ccb-91ff44b4c6e3
+    PKTARTPkt0:
+      Type: AWS::EC2::NetworkInterface
+      Properties:
+        SubnetId: !Ref 'HFEPublicSubnet'
+        Description: !Join
+          - '-'
+          - - !Ref 'SystemName'
+            - PKTARTPkt0_Ribbon
+        GroupSet:
+          - !Ref 'SBCInternalVoipSG'
+        SourceDestCheck: 'true'
+        Tags:
+          - Key: Name
+            Value: !Join
+              - '-'
+              - - !Ref 'SystemName'
+                - PKTARTPkt0_Ribbon
+    PKTARTMgtB:
+      Type: AWS::EC2::NetworkInterface
+      Properties:
+        SubnetId: !Ref 'SBCManagementSubnet'
+        Description: !Join
+          - '-'
+          - - !Ref 'SystemName'
+            - PKTARTMgtB_Ribbon
+        GroupSet:
+          - !Ref 'securityGrpMgtPktart'
+        SourceDestCheck: 'true'
+        Tags:
+          - Key: Name
+            Value: !Join
+              - '-'
+              - - !Ref 'SystemName'
+                - PKTARTMgtB_Ribbon
+      Metadata:
+        AWS::CloudFormation::Designer:
+          id: b68a0266-c1cc-4194-81c1-44d68061a4b2
+    PKTARTPkt1:
+      Type: AWS::EC2::NetworkInterface
+      Properties:
+        SubnetId: !Ref 'SBCExVoipSubnet'
+        Description: !Join
+          - '-'
+          - - !Ref 'SystemName'
+            - PKTARTPkt1_Ribbon
+        GroupSet:
+          - !Ref 'SBCInternalVoipSG'
+        SourceDestCheck: 'false'
+        Tags:
+          - Key: Name
+            Value: !Join
+              - '-'
+              - - !Ref 'SystemName'
+                - PKTARTPkt1_Ribbon
+    mgtPKTARTA:
+      Type: AWS::EC2::EIP
+      Condition: EipForPKTART
+      Properties:
+        Domain: vpc
+    mgtPKTARTB:
+      Type: AWS::EC2::EIP
+      Condition: EipForPKTART
+      Properties:
+        Domain: vpc
+    mgtPKTARTAEIPAssociation:
+      Type: AWS::EC2::EIPAssociation
+      Properties:
+        AllocationId: !GetAtt 'mgtPKTARTA.AllocationId'
+        NetworkInterfaceId: !Ref 'PKTARTMgtA'
+    pktPKTARTA:
+      Type: AWS::EC2::EIP
+      Properties:
+        Domain: vpc
+    pktPKTARTAEIPAssociation:
+      Type: AWS::EC2::EIPAssociation
+      Properties:
+        AllocationId: !GetAtt 'pktPKTARTA.AllocationId'
+        NetworkInterfaceId: !Ref 'PKTARTPkt0'
+    Ec2InstancePktARTAPkt0:
+      Type: AWS::EC2::Instance
+      Properties:
+        ImageId: !Ref 'PKTARTAMIID'
+        BlockDeviceMappings:
+          - DeviceName: /dev/xvda
+            Ebs:
+              VolumeType: gp2
+              VolumeSize: '50'
+              DeleteOnTermination: 'true'
+        InstanceType: !Ref 'PKTARTInstanceType'
+        Tenancy: !Ref 'Tenancy'
+        PlacementGroupName: !Ref 'PlacementId'
+        EbsOptimized: 'True'
+        KeyName: !Ref 'KeyName'
+        NetworkInterfaces:
+          - NetworkInterfaceId: !Ref 'PKTARTMgtA'
+            DeviceIndex: '0'
+          - NetworkInterfaceId: !Ref 'PKTARTPkt0'
+            DeviceIndex: '1'
+        Tags:
+          - Key: Name
+            Value: !Join
+              - '-'
+              - - !Ref 'AWS::StackName'
+                - PKTARTA_Pkt0
+    Ec2InstancePktARTBPkt1:
+      Type: AWS::EC2::Instance
+      Properties:
+        ImageId: !Ref 'PKTARTAMIID'
+        BlockDeviceMappings:
+          - DeviceName: /dev/xvda
+            Ebs:
+              VolumeType: gp2
+              VolumeSize: '50'
+              DeleteOnTermination: 'true'
+        InstanceType: !Ref 'PKTARTInstanceType'
+        Tenancy: !Ref 'Tenancy'
+        PlacementGroupName: !Ref 'PlacementId'
+        EbsOptimized: 'True'
+        KeyName: !Ref 'KeyName'
+        NetworkInterfaces:
+          - NetworkInterfaceId: !Ref 'PKTARTMgtB'
+            DeviceIndex: '0'
+          - NetworkInterfaceId: !Ref 'PKTARTPkt1'
+            DeviceIndex: '1'
+        Tags:
+          - Key: Name
+            Value: !Join
+              - '-'
+              - - !Ref 'AWS::StackName'
+                - PKTARTB_Pkt1
+    mgtPKTARTBEIPAssociation:
+      Type: AWS::EC2::EIPAssociation
+      Properties:
+        AllocationId: !GetAtt 'mgtPKTARTB.AllocationId'
+        NetworkInterfaceId: !Ref 'PKTARTMgtB'
+
+Outputs:
+  InstanceIdActive:
+    Value: !Ref 'SBCActiveInstance'
+  DefaultCliAdminPassword:
+    Description: 'It is eth0 interface-id of instance which has assigned active role
+      in the template. This is used as default CLI admin password '
+    Value: !Ref 'SBCActiveMgtIface'
+  Mgt0InterfaceIDActive:
+    Value: !Ref 'SBCActiveMgtIface'
+  HA0InterfaceIDActive:
+    Value: !Ref 'SBCActiveHAIface'
+  Pkt0InterfaceIDActive:
+    Value: !Ref 'SBCActiveInVoipIface'
+  Pkt1InterfaceIDActive:
+    Value: !Ref 'SBCActiveExVoipIface'
+  InstanceIdStandby:
+    Value: !Ref 'SBCPassiveInstance'
+  Mgt0InterfaceIDStandby:
+    Value: !Ref 'SBCPassiveMgtIface'
+  HA0InterfaceIDStandby:
+    Value: !Ref 'SBCPassiveHAIface'
+  Pkt0InterfaceIDStandby:
+    Value: !Ref 'SBCPassiveInVoipIface'
+  Pkt1InterfaceIDStandby:
+    Value: !Ref 'SBCPassiveExVoipIface'
+
+
