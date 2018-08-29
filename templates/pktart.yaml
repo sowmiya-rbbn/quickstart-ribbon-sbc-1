@@ -11,14 +11,14 @@ Parameters:
     Default: ami-0a49b638bad956f96
     AllowedPattern: ami-[a-z0-9]*
     ConstraintDescription: Must be a valid AMI ID
-  HfnAMIID:
+  HFNAMIID:
     Description: 'AMI ID of Mangler Node, select latest AWS Linux AMI ID : ami-xxxxxxxx'
     Type: AWS::EC2::Image::Id
     MaxLength: '21'
     Default: ami-b70554c8
     AllowedPattern: ami-[a-z0-9]*
     ConstraintDescription: Must be a valid Mangler Instance AMI ID
-  HfnScriptS3Location:
+  HFNScriptS3Location:
     Description: Location of Mangler script in S3, see installation guide for more
       details
     Type: String
@@ -62,7 +62,7 @@ Parameters:
     AllowedPattern: (\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})/(\d{1,2})
     ConstraintDescription: Must be a valid IP CIDR range of the form x.x.x.x/x and
       subnet of VPC.
-  SBCEVoipSubnetCIDR:
+  SBCExVoipSubnetCIDR:
     Description: Enter a CIDR for pirvate subnet for SBC, this new subnet will be
       served by Mangler instance.
     Type: String
@@ -71,7 +71,7 @@ Parameters:
     AllowedPattern: (\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})/(\d{1,2})
     ConstraintDescription: Must be a valid IP CIDR range of the form x.x.x.x/x and
       subnet of VPC.
-  HfnPublicPktSubnetCIDR:
+  HFNPublicPktSubnetCIDR:
     Description: Enter a CIDR for pirvate subnet for SBC, this new subnet will be
       served by Mangler instance.
     Type: String
@@ -80,7 +80,7 @@ Parameters:
     AllowedPattern: (\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})/(\d{1,2})
     ConstraintDescription: Must be a valid IP CIDR range of the form x.x.x.x/x and
       subnet of VPC.
-  HfnTowardsSBCSubnetCIDR:
+  HFNTowardsSBCSubnetCIDR:
     Description: Enter a CIDR for pirvate subnet for SBC, this new subnet will be
       served by Mangler instance.
     Type: String
@@ -390,7 +390,7 @@ SBCHFNInstanceProfile:
     Type: AWS::EC2::NetworkInterface
     Condition: NameValidationPassed
     Properties:
-      SubnetId: !Ref 'SBCEVoipSubnet'
+      SubnetId: !Ref 'SBCExVoipSubnet'
       Description: !Join
         - '-'
         - - !Ref SBCSystemName
@@ -474,7 +474,7 @@ SBCHFNInstanceProfile:
     Type: AWS::EC2::NetworkInterface
     Condition: NameValidationPassed
     Properties:
-      SubnetId: !Ref 'SBCEVoipSubnet'
+      SubnetId: !Ref 'SBCExVoipSubnet'
       Description: !Join
         - '-'
         - - !Ref 'SystemName'
@@ -557,7 +557,7 @@ SBCHFNInstanceProfile:
     Type: AWS::EC2::NetworkInterface
     Condition: NameValidationPassed
     Properties:
-      SubnetId: !Ref 'SBCEVoipSubnet'
+      SubnetId: !Ref 'SBCExVoipSubnet'
       Description: !Join
         - '-'
         - - !Ref 'SystemName'
@@ -644,11 +644,11 @@ SBCHFNInstanceProfile:
               - HFNPrivateRouteTable
   HFNPrivateRoute:
     Type: AWS::EC2::Route
-    DependsOn: HfnPrivate
+    DependsOn: HFNPrivate
     Properties:
       RouteTableId: !Ref 'HFNPrivateRouteTable'
       DestinationCidrBlock: '0.0.0.0/0'
-      NetworkInterfaceId: !Ref 'HfnPrivate'
+      NetworkInterfaceId: !Ref 'HFNPrivate'
   HFNPrivateRouteAssociation:
     Type: AWS::EC2::SubnetRouteTableAssociation
     Properties:
@@ -700,11 +700,11 @@ SBCHFNInstanceProfile:
     Metadata:
       AWS::CloudFormation::Designer:
         id: f92c50bc-9290-4c7d-8e37-6b0bab95b230
-  SBCEVoipSubnet:
+  SBCExVoipSubnet:
     Type: AWS::EC2::Subnet
     Properties:
       VpcId: !Ref 'vpc'
-      CidrBlock: !Ref 'SBCEVoipSubnetCIDR'
+      CidrBlock: !Ref 'SBCExVoipSubnetCIDR'
       AvailabilityZone: !Ref 'availabilityZoneForSBC'
       Tags:
         - Key: Name
@@ -899,7 +899,7 @@ SBCHFNInstanceProfile:
             - ', "HFN"                  : "'
             - !Select
               - '0'
-              - !GetAtt 'HfnPublic.SecondaryPrivateIpAddresses'
+              - !GetAtt 'HFNPublic.SecondaryPrivateIpAddresses'
             - '"'
             - ', "SbcPersonalityType"   : "'
             - !Ref 'SBCPersonality'
@@ -990,7 +990,7 @@ SBCHFNInstanceProfile:
             - ', "HFN"                  : "'
             - !Select
               - '0'
-              - !GetAtt 'HfnPublic.SecondaryPrivateIpAddresses'
+              - !GetAtt 'HFNPublic.SecondaryPrivateIpAddresses'
             - '"'
             - ', "SbcPersonalityType"   : "'
             - !Ref 'SBCPersonality'
@@ -1083,7 +1083,7 @@ SBCHFNInstanceProfile:
     Type: AWS::EC2::Subnet
     Properties:
       VpcId: !Ref 'vpc'
-      CidrBlock: !Ref 'HfnPublicPktSubnetCIDR'
+      CidrBlock: !Ref 'HFNPublicPktSubnetCIDR'
       AvailabilityZone: !Ref 'availabilityZoneForSBC'
       Tags:
         - Key: Name
@@ -1098,7 +1098,7 @@ SBCHFNInstanceProfile:
     Type: AWS::EC2::Subnet
     Properties:
       VpcId: !Ref 'vpc'
-      CidrBlock: !Ref 'HfnTowardsSBCSubnetCIDR'
+      CidrBlock: !Ref 'HFNTowardsSBCSubnetCIDR'
       AvailabilityZone: !Ref 'availabilityZoneForSBC'
       Tags:
         - Key: Name
@@ -1119,7 +1119,7 @@ SBCHFNInstanceProfile:
         - - !Ref 'SystemName'
           - HFEMgt
       GroupSet:
-        - !Ref 'securityGrpMgtHfn'
+        - !Ref 'securityGrpMgtHFN'
       SourceDestCheck: 'true'
       Tags:
         - Key: Name
@@ -1130,7 +1130,7 @@ SBCHFNInstanceProfile:
     Metadata:
       AWS::CloudFormation::Designer:
         id: 14eaaa3c-0e32-4db8-804e-e663fabe4f10
-  HfnPublic:
+  HFNPublic:
     Type: AWS::EC2::NetworkInterface
     Condition: NameValidationPassed
     Properties:
@@ -1138,7 +1138,7 @@ SBCHFNInstanceProfile:
       Description: !Join
         - '-'
         - - !Ref 'SystemName'
-          - Hfn_Public
+          - HFN_Public
       GroupSet:
         - !Ref 'securityGrpPktUntrusted'
       SecondaryPrivateIpAddressCount: '1'
@@ -1148,7 +1148,7 @@ SBCHFNInstanceProfile:
           Value: !Join
             - '-'
             - - !Ref 'SystemName'
-              - Hfn_Public
+              - HFN_Public
     Metadata:
       AWS::CloudFormation::Designer:
         id: a0acde6f-56fb-45ed-9c4c-3a03a8b2d2c8
@@ -1160,11 +1160,11 @@ SBCHFNInstanceProfile:
     Type: AWS::EC2::EIPAssociation
     Properties:
       AllocationId: !GetAtt 'hfnPublicEIP01.AllocationId'
-      NetworkInterfaceId: !Ref 'HfnPublic'
+      NetworkInterfaceId: !Ref 'HFNPublic'
       PrivateIpAddress: !Select
         - '0'
-        - !GetAtt 'HfnPublic.SecondaryPrivateIpAddresses'
-  HfnPrivate:
+        - !GetAtt 'HFNPublic.SecondaryPrivateIpAddresses'
+  HFNPrivate:
     Type: AWS::EC2::NetworkInterface
     Condition: NameValidationPassed
     Properties:
@@ -1172,7 +1172,7 @@ SBCHFNInstanceProfile:
       Description: !Join
         - '-'
         - - !Ref 'SystemName'
-          - Hfn_towards_SBC
+          - HFN_towards_SBC
       GroupSet:
         - !Ref 'securityGrpPktTrusted'
       SourceDestCheck: 'false'
@@ -1181,7 +1181,7 @@ SBCHFNInstanceProfile:
           Value: !Join
             - '-'
             - - !Ref 'SystemName'
-              - Hfn_towards_SBC
+              - HFN_towards_SBC
     Metadata:
       AWS::CloudFormation::Designer:
         id: b255c65c-db21-40a1-8d81-4718b2fc68ba
@@ -1193,7 +1193,7 @@ SBCHFNInstanceProfile:
     Metadata:
       AWS::CloudFormation::Designer:
         id: 4ce391cc-e5c8-4384-8bf7-333d0ee3e637
-  HfnPktEIP:
+  HFNPktEIP:
     Type: AWS::EC2::EIP
     Condition: NameValidationPassed
     Properties:
@@ -1201,20 +1201,20 @@ SBCHFNInstanceProfile:
     Metadata:
       AWS::CloudFormation::Designer:
         id: 20c19626-8684-4fab-bcea-e0a6a1d5a95d
-  HfnPktEIPAssociation:
+  HFNPktEIPAssociation:
     Type: AWS::EC2::EIPAssociation
     Condition: NameValidationPassed
     Properties:
-      AllocationId: !GetAtt 'HfnPktEIP.AllocationId'
-      NetworkInterfaceId: !Ref 'HfnPublic'
+      AllocationId: !GetAtt 'HFNPktEIP.AllocationId'
+      NetworkInterfaceId: !Ref 'HFNPublic'
     Metadata:
       AWS::CloudFormation::Designer:
         id: 833d7e86-818b-4307-88c7-9fa053b2e126
-  Ec2InstanceHfn:
+  Ec2InstanceHFN:
     Type: AWS::EC2::Instance
     Condition: NameValidationPassed
     Properties:
-      ImageId: !Ref 'HfnAMIID'
+      ImageId: !Ref 'HFNAMIID'
       BlockDeviceMappings:
         - DeviceName: /dev/xvda
           Ebs:
@@ -1228,11 +1228,11 @@ SBCHFNInstanceProfile:
       EbsOptimized: 'True'
       KeyName: !Ref 'KeyName'
       NetworkInterfaces:
-        - NetworkInterfaceId: !Ref 'HfnPublic'
+        - NetworkInterfaceId: !Ref 'HFNPublic'
           DeviceIndex: '0'
         - NetworkInterfaceId: !Ref 'HFEMgt'
           DeviceIndex: '1'
-        - NetworkInterfaceId: !Ref 'HfnPrivate'
+        - NetworkInterfaceId: !Ref 'HFNPrivate'
           DeviceIndex: '2'
       Tags:
         - Key: Name
@@ -1274,7 +1274,7 @@ SBCHFNInstanceProfile:
               \ configuration for HFN    ==========================================\"\
               \ >> $LOG_FILE"
             - "\naws s3 cp "
-            - !Ref 'HfnScriptS3Location'
+            - !Ref 'HFNScriptS3Location'
             - ' $HFN_FILE'
             - "\nif [ $? -ne 0 ]; then"
             - "\n/bin/echo $(timestamp) \"Error:Could not copy HFN script from S3\
@@ -1359,7 +1359,7 @@ SBCHFNInstanceProfile:
     Metadata:
       AWS::CloudFormation::Designer:
         id: f30d88be-4005-419c-8475-a803ec2e1cca
-  securityGrpMgtHfn:
+  securityGrpMgtHFN:
     Type: AWS::EC2::SecurityGroup
     Properties:
       GroupDescription: Security group for HFN mgt
@@ -1494,7 +1494,7 @@ Metadata:
           - vpcCIDR
           - SBCManagementSubnetCIDR
           - SBCHASubnetCIDR
-          - SBCEVoipSubnetCIDR
+          - SBCExVoipSubnetCIDR
           - availabilityZoneForSBC
       - Label:
           default: 'Optional: SBC configuration. For default configuration no need

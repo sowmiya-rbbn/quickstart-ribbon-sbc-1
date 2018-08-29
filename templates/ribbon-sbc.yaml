@@ -14,7 +14,6 @@ Metadata:
           default: SBC Configuration
         Parameters:
           - SBCInstanceType
-          - AMIID
       - Label:
           default: Network Configuration
         Parameters:
@@ -37,28 +36,6 @@ Metadata:
           - SBCVolumeIOPS
           - SBCVolumeSize
 Parameters:
-  #TODO: Mappings.
-  AMIID:
-    Description: 'AMI ID of SBC : ami-xxxxxxxx'
-    Type: AWS::EC2::Image::Id
-    MaxLength: '21'
-    Default: ami-0a49b638bad956f96
-    AllowedPattern: ami-[a-z0-9]*
-    ConstraintDescription: Must be a valid AMI ID
-  HfnAMIID:
-    Description: 'AMI ID of Mangler Node, select latest AWS Linux AMI ID : ami-xxxxxxxx'
-    Type: AWS::EC2::Image::Id
-    MaxLength: '21'
-    Default: ami-b70554c8
-    AllowedPattern: ami-[a-z0-9]*
-    ConstraintDescription: Must be a valid Mangler Instance AMI ID
-  HFNScriptS3Location:
-    Description: Location of Mangler script in S3, see installation guide for more
-      details
-    Type: String
-    MinLength: '1'
-    Default: s3://haforwarding/HFN.sh
-    ConstraintDescription: Must be a valid S3 location
   KeyPairName:
     Description: 'Name of an existing EC2 KeyPair to enable SSH access to the SBC
       and Mangler instance '
@@ -260,7 +237,7 @@ Conditions:
   CreateVPCEndPoint: !Equals
     - !Ref 'CreateVPCEndPoint'
     - 'yes'
-  EipForHFEManagementInterface: !Equals
+  EipForHFNManagementInterface: !Equals
     - !Ref 'HFNManagementNeedsEIP'
     - 'Yes'
   noVPCEndPointForMgt: !Equals
@@ -292,54 +269,69 @@ Mappings:
     AMI:
       <SBC_AMI_MAPPING>: <SBC_AMI_MAPPING_NAME>
       <SBC_PKT_MAPPING>: <PKT_AMI_MAPPING_NAME>
+      <HFN_AMI_MAPPING>: <HFN_AMI_MAPPING_HERE>
     us-east-1:
       <SBC_AMI_MAPPING>:    <AMI_ID>
       <SBC_PKT_MAPPING>:    <AMI_ID>
+      <HFN_AMI_MAPPING>:    <AMI_ID>
     us-east-2:
       <SBC_AMI_MAPPING>:    <AMI_ID>
       <SBC_PKT_MAPPING>:    <AMI_ID>
+      <HFN_AMI_MAPPING>:    <AMI_ID>
     us-west-1:
       <SBC_AMI_MAPPING>:    <AMI_ID>
       <SBC_PKT_MAPPING>:    <AMI_ID>
+      <HFN_AMI_MAPPING>:    <AMI_ID>
     us-west-2:
       <SBC_AMI_MAPPING>:    <AMI_ID>
       <SBC_PKT_MAPPING>:    <AMI_ID>
+      <HFN_AMI_MAPPING>:    <AMI_ID>
     ca-central-1:
       <SBC_AMI_MAPPING>:    <AMI_ID>
       <SBC_PKT_MAPPING>:    <AMI_ID>
+      <HFN_AMI_MAPPING>:    <AMI_ID>
     ap-south-1:
       <SBC_AMI_MAPPING>:    <AMI_ID>
       <SBC_PKT_MAPPING>:    <AMI_ID>
+      <HFN_AMI_MAPPING>:    <AMI_ID>
     ap-northeast-2:
       <SBC_AMI_MAPPING>:    <AMI_ID>
       <SBC_PKT_MAPPING>:    <AMI_ID>
+      <HFN_AMI_MAPPING>:    <AMI_ID>
     ap-southeast-1:
       <SBC_AMI_MAPPING>:    <AMI_ID>
       <SBC_PKT_MAPPING>:    <AMI_ID>
+      <HFN_AMI_MAPPING>:    <AMI_ID>
     ap-southeast-2:
       <SBC_AMI_MAPPING>:    <AMI_ID>
       <SBC_PKT_MAPPING>:    <AMI_ID>
+      <HFN_AMI_MAPPING>:    <AMI_ID>
     eu-central-1:
       <SBC_AMI_MAPPING>:    <AMI_ID>
       <SBC_PKT_MAPPING>:    <AMI_ID>
+      <HFN_AMI_MAPPING>:    <AMI_ID>
     eu-west-1:
       <SBC_AMI_MAPPING>:    <AMI_ID>
       <SBC_PKT_MAPPING>:    <AMI_ID>
+      <HFN_AMI_MAPPING>:    <AMI_ID>
     eu-west-2:
       <SBC_AMI_MAPPING>:    <AMI_ID>
       <SBC_PKT_MAPPING>:    <AMI_ID>
+      <HFN_AMI_MAPPING>:    <AMI_ID>
     eu-west-3:
       <SBC_AMI_MAPPING>:    <AMI_ID>
       <SBC_PKT_MAPPING>:    <AMI_ID>
+      <HFN_AMI_MAPPING>:    <AMI_ID>
     sa-east-1:
       <SBC_AMI_MAPPING>:    <AMI_ID>
       <SBC_PKT_MAPPING>:    <AMI_ID>
+      <HFN_AMI_MAPPING>:    <AMI_ID>
 Resources:
   # Order:
   # - Resource Type
   # -- SBC Active/Combined
   # -- SBC Passive/Combined
-  # -- HFE
+  # -- HFN
   # IAM Instance Roles.
   SBCInstanceRole:
     Type: AWS::IAM::Role
@@ -356,7 +348,7 @@ Resources:
               - sts:AssumeRole
       Path: /
       Policies:
-        - PolicyName: All EC2 actions on SBC Instances.
+        - PolicyName: Actions on SBC Instances.
           PolicyDocument:
             Version: '2012-10-17'
             Statement:
@@ -374,11 +366,11 @@ Resources:
                   - ec2:DescribeRegions
                   - ec2:ModifyInstanceAttribute
                   - ec2:DescribeSubnets
-                #Resource:
-  HFEInstanceRole:
+                Resource: "*"
+  HFNInstanceRole:
     Type: AWS::IAM::Role
     Properties:
-      RoleName: !Sub "HFEInstanceRole-${AWS::Region}"
+      RoleName: !Sub "HFNInstanceRole-${AWS::Region}"
       AssumeRolePolicyDocument:
         Version: '2012-10-17'
         Statement:
@@ -408,17 +400,20 @@ Resources:
       InstanceProfileName: !Sub "SBCInstanceProfile-${AWS::Region}"
       Path: /
       Roles: !Ref 'SBCInstanceRole'
-  HFEInstanceProfile:
+  HFNInstanceProfile:
     Type: AWS::IAM::InstanceProfile
     Properties:
-      InstanceProfileName: !Sub "HFEInstanceProfile-${AWS::Region}"
+      InstanceProfileName: !Sub "HFNInstanceProfile-${AWS::Region}"
       Path: /
-      Roles: !Ref 'HFEInstanceRole'
+      Roles: !Ref 'HFNInstanceRole'
   # EC2 Instances.
   SBCActiveInstance:
     Type: AWS::EC2::Instance
     Properties:
-      ImageId: !Ref 'AMIID'
+      ImageId: !FindInMap
+        - AWSAMIRegionMap
+        - !Ref 'AWS::Region'
+        - <SBC_AMI_MAPPING>
       IamInstanceProfile: !Ref 'SBCInstanceProfile'
       BlockDeviceMappings:
         - DeviceName: /dev/sda1
@@ -457,7 +452,7 @@ Resources:
             "ALT_Pkt0_00"          : "VIP1",
             "ALT_Pkt1_00"          : "VIP2",
             "ClusterIp"            : "${SBCPassiveHAIface.PrimaryPrivateIpAddress}",
-            "HFN"                  : !Select [0, ${HFEPublicInterface.SecondaryPrivateIpAddresses}],
+            "HFN"                  : !Select [0, ${HFNPublicInterface.SecondaryPrivateIpAddresses}],
             "SbcPersonalityType"   : "${SBCPersonalityType}",
             "SbcMgmtMode"          : "centralized",
             "TemplateName"         : "AWS_HA_template.json",
@@ -472,7 +467,10 @@ Resources:
   SBCPassiveInstance:
     Type: AWS::EC2::Instance
     Properties:
-      ImageId: !Ref 'AMIID'
+      ImageId: !FindInMap
+        - AWSAMIRegionMap
+        - !Ref 'AWS::Region'
+        - <SBC_AMI_MAPPING>
       BlockDeviceMappings:
         - DeviceName: /dev/sda1
           Ebs:
@@ -511,7 +509,7 @@ Resources:
             "ALT_Pkt0_00"          : "VIP1",
             "ALT_Pkt1_00"          : "VIP2",
             "ClusterIp"            : "${SBCPassiveHAIface.PrimaryPrivateIpAddress}",
-            "HFN"                  : !Select [0, ${HFEPublicInterface.SecondaryPrivateIpAddresses}],
+            "HFN"                  : !Select [0, ${HFNPublicInterface.SecondaryPrivateIpAddresses}],
             "SbcPersonalityType"   : "${SBCPersonalityType}",
             "SbcMgmtMode"          : "centralized",
             "TemplateName"         : "AWS_HA_template.json",
@@ -523,10 +521,13 @@ Resources:
             "ActiveRoleMgtId"      : "${SBCActiveMgtIface}",
             "NodeName"             : "${AWS::StackName}"
           }'
-  HFEInstance:
+  HFNInstance:
     Type: AWS::EC2::Instance
     Properties:
-      ImageId: !Ref 'HfnAMIID'
+      ImageId: !FindInMap
+        - AWSAMIRegionMap
+        - !Ref 'AWS::Region'
+        - <HFN_AMI_MAPPING>
       BlockDeviceMappings:
         - DeviceName: /dev/xvda
           Ebs:
@@ -542,16 +543,16 @@ Resources:
       EbsOptimized: 'True'
       KeyName: !Ref 'KeyPairName'
       NetworkInterfaces:
-        - NetworkInterfaceId: !Ref 'HFEPublicInterface'
+        - NetworkInterfaceId: !Ref 'HFNPublicInterface'
           DeviceIndex: '0'
-        - NetworkInterfaceId: !Ref 'HFEManagementInterface'
+        - NetworkInterfaceId: !Ref 'HFNManagementInterface'
           DeviceIndex: '1'
-        - NetworkInterfaceId: !Ref 'HFEPrivateInterface'
+        - NetworkInterfaceId: !Ref 'HFNPrivateInterface'
           DeviceIndex: '2'
       Tags:
         - Key: Name
               # TODO: Sub vs Join
-          Value: "HFE Instance"
+          Value: "HFN Instance"
       UserData: !Base64
       #TODO: Send to Cfn-Init.
         Fn::Join:
@@ -603,7 +604,7 @@ Resources:
             - \"" >> $NAT_VAR
             - "\n/bin/echo \"REMOTE_SSH_MACHINE_IP=\\\""
             - !If
-              - EipForHFEManagementInterface
+              - EipForHFNManagementInterface
               - !Ref 'HFNManagementEIPAccessCIDR'
               - ''
             - \"">> $NAT_VAR
@@ -657,7 +658,7 @@ Resources:
       Tags:
         - Key: Name
           Value: !Sub "${SBCSystemName}-HA Subnet"
-  HFEPublicSubnet:
+  HFNPublicSubnet:
     Type: AWS::EC2::Subnet
     Properties:
       VpcId: !Ref 'VPCID'
@@ -665,8 +666,8 @@ Resources:
       AvailabilityZone: !Ref 'availabilityZoneForSBC'
       Tags:
         - Key: Name
-          Value: !Sub "${SBCSystemName}-HFE Public Subnet"
-  HFEPrivateSubnet:
+          Value: !Sub "${SBCSystemName}-HFN Public Subnet"
+  HFNPrivateSubnet:
     Type: AWS::EC2::Subnet
     Properties:
       VpcId: !Ref 'VPCID'
@@ -674,7 +675,7 @@ Resources:
       AvailabilityZone: !Ref 'availabilityZoneForSBC'
       Tags:
         - Key: Name
-          Value: !Sub "${SBCSystemName}-HFE Public Subnet"
+          Value: !Sub "${SBCSystemName}-HFN Public Subnet"
   # Network Interfaces
   SBCActiveExVoipIface:
     Type: AWS::EC2::NetworkInterface
@@ -690,7 +691,7 @@ Resources:
   SBCActiveInVoipIface:
     Type: AWS::EC2::NetworkInterface
     Properties:
-      SubnetId: !Ref 'HFEPrivateSubnet'
+      SubnetId: !Ref 'HFNPrivateSubnet'
       Description: !Sub "${SBCSystemName}-pkt0A_Ribbon"
       GroupSet:
         - !Ref 'SBCInternalVoipSG'
@@ -736,7 +737,7 @@ Resources:
   SBCPassiveInVoipIface:
     Type: AWS::EC2::NetworkInterface
     Properties:
-      SubnetId: !Ref 'HFEPrivateSubnet'
+      SubnetId: !Ref 'HFNPrivateSubnet'
       Description: !Sub "${SBCSystemName}-pkt0B_Ribbon"
       GroupSet:
         - !Ref 'SBCInternalVoipSG'
@@ -766,37 +767,37 @@ Resources:
       Tags:
         - Key: Name
           Value: !Sub "${SBCSystemName}-ha0B_Ribbon"
-  HFEPublicInterface:
+  HFNPublicInterface:
     Type: AWS::EC2::NetworkInterface
     Properties:
-      SubnetId: !Ref 'HFEPublicSubnet'
+      SubnetId: !Ref 'HFNPublicSubnet'
       GroupSet:
         - !Ref 'SBCExternalVoipSG'
       SecondaryPrivateIpAddressCount: '1'
       SourceDestCheck: 'true'
       Tags:
         - Key: Name
-          Value: !Sub "${SBCSystemName} HFE Public Interface"
-  HFEPrivateInterface:
+          Value: !Sub "${SBCSystemName} HFN Public Interface"
+  HFNPrivateInterface:
     Type: AWS::EC2::NetworkInterface
     Properties:
-      SubnetId: !Ref 'HFEPrivateSubnet'
+      SubnetId: !Ref 'HFNPrivateSubnet'
       GroupSet:
         - !Ref 'SBCInternalVoipSG'
       SourceDestCheck: 'false'
       Tags:
         - Key: Name
-          Value: !Sub "${SBCSystemName} HFE Private Interface"
-  HFEManagementInterface:
+          Value: !Sub "${SBCSystemName} HFN Private Interface"
+  HFNManagementInterface:
     Type: AWS::EC2::NetworkInterface
     Properties:
       SubnetId: !Ref 'SBCManagementSubnet'
       GroupSet:
-        - !Ref 'HFEManagementSG'
+        - !Ref 'HFNManagementSG'
       SourceDestCheck: 'true'
       Tags:
         - Key: Name
-          Value: !Sub "${SBCSystemName} HFE Management Interface"
+          Value: !Sub "${SBCSystemName} HFN Management Interface"
   # Security Groups
   SBCExternalVoipSG:
     Type: AWS::EC2::SecurityGroup
@@ -875,10 +876,10 @@ Resources:
       Tags:
         - Key: Name
           Value: !Sub "${SBCSystemName}-SecurityGroup1_Ribbon"
-  HFEManagementSG:
+  HFNManagementSG:
     Type: AWS::EC2::SecurityGroup
     Properties:
-      GroupDescription: Security Group for HFE Management Traffic.
+      GroupDescription: Security Group for HFN Management Traffic.
       VpcId: !Ref 'VPCID'
       SecurityGroupIngress:
         - IpProtocol: '-1'
@@ -902,44 +903,44 @@ Resources:
     Type: AWS::EC2::EIP
     Condition: noVPCEndPointForMgt
     Properties:
-      Domain: !Ref ${VPCID}
+      Domain: !Ref 'VPCID'
   SBCActiveMgtEIP:
     Type: AWS::EC2::EIP
     Condition: noVPCEndPointForMgt
     Properties:
-      Domain: !Ref ${VPCID}
-  HFEExVoipEIP:
+      Domain: !Ref 'VPCID'
+  HFNExVoipEIP:
     Type: AWS::EC2::EIP
     Properties:
-      Domain: !Ref ${VPCID}
-  HFEPublicEIP:
+      Domain: !Ref 'VPCID'
+  HFNPublicEIP:
     Type: AWS::EC2::EIP
     Properties:
       Domain: vpc
-  HFEManagementEIP:
+  HFNManagementEIP:
     Type: AWS::EC2::EIP
-    Condition: EipForHFEManagementInterface
+    Condition: EipForHFNManagementInterface
     Properties:
-      Domain: !Ref ${VPCID}
+      Domain: !Ref 'VPCID'
 
   SBCPassiveMgtEIP:
     Type: AWS::EC2::EIP
     Condition: noVPCEndPointForMgt
     Properties:
-      Domain: !Ref ${VPCID}
-  HFEPublicEIPAssociation:
+      Domain: !Ref 'VPCID'
+  HFNPublicEIPAssociation:
     Type: AWS::EC2::EIPAssociation
     Properties:
-      AllocationId: !GetAtt 'HFEPublicEIP.AllocationId'
-      NetworkInterfaceId: !Ref 'HFEPublicInterface'
+      AllocationId: !GetAtt 'HFNPublicEIP.AllocationId'
+      NetworkInterfaceId: !Ref 'HFNPublicInterface'
       PrivateIpAddress: !Select
         - '0'
-        - !GetAtt 'HFEPublicInterface.SecondaryPrivateIpAddresses'
-  HFEExVoipEIPAssociation:
+        - !GetAtt 'HFNPublicInterface.SecondaryPrivateIpAddresses'
+  HFNExVoipEIPAssociation:
     Type: AWS::EC2::EIPAssociation
     Properties:
-      AllocationId: !GetAtt 'HFEExVoipEIP.AllocationId'
-      NetworkInterfaceId: !Ref 'HFEPublicInterface'
+      AllocationId: !GetAtt 'HFNExVoipEIP.AllocationId'
+      NetworkInterfaceId: !Ref 'HFNPublicInterface'
   SBCActiveMgtEIPAssocaition:
     Type: AWS::EC2::EIPAssociation
     Condition: noVPCEndPointForMgt
@@ -954,12 +955,12 @@ Resources:
       AllocationId: !GetAtt 'SBCPassiveMgtEIP.AllocationId'
       NetworkInterfaceId: !Ref 'SBCPassiveMgtIface'
       PrivateIpAddress: !GetAtt 'SBCPassiveMgtIface.PrimaryPrivateIpAddress'
-  HFEManagementEIPAssociation:
+  HFNManagementEIPAssociation:
     Type: AWS::EC2::EIPAssociation
-    Condition: EipForHFEManagementInterface
+    Condition: EipForHFNManagementInterface
     Properties:
-      AllocationId: !GetAtt 'HFEManagementEIP.AllocationId'
-      NetworkInterfaceId: !Ref 'HFEManagementInterface'
+      AllocationId: !GetAtt 'HFNManagementEIP.AllocationId'
+      NetworkInterfaceId: !Ref 'HFNManagementInterface'
   SBCActiveMgtEIPAssocaition:
     Type: AWS::EC2::EIPAssociation
     Condition: noVPCEndPointForMgt
@@ -990,7 +991,7 @@ Resources:
     PKTARTPkt0:
       Type: AWS::EC2::NetworkInterface
       Properties:
-        SubnetId: !Ref 'HFEPublicSubnet'
+        SubnetId: !Ref 'HFNPublicSubnet'
         Description: !Join
           - '-'
           - - !Ref 'SystemName'
@@ -1068,7 +1069,10 @@ Resources:
     Ec2InstancePktARTAPkt0:
       Type: AWS::EC2::Instance
       Properties:
-        ImageId: !Ref 'PKTARTAMIID'
+        ImageId: !FindInMap
+        - AWSAMIRegionMap
+        - !Ref 'AWS::Region'
+        - <SBC_PKT_MAPPING>
         BlockDeviceMappings:
           - DeviceName: /dev/xvda
             Ebs:
@@ -1094,7 +1098,10 @@ Resources:
     Ec2InstancePktARTBPkt1:
       Type: AWS::EC2::Instance
       Properties:
-        ImageId: !Ref 'PKTARTAMIID'
+        ImageId: !FindInMap
+        - AWSAMIRegionMap
+        - !Ref 'AWS::Region'
+        - <SBC_PKT_MAPPING>
         BlockDeviceMappings:
           - DeviceName: /dev/xvda
             Ebs:
@@ -1149,4 +1156,32 @@ Outputs:
   Pkt1InterfaceIDStandby:
     Value: !Ref 'SBCPassiveExVoipIface'
 
-
+#
+##!/bin/bash
+#HFN_DIR="/home/ec2-user/HFN/"
+#HFN_FILE="$HFN_DIR/HFN.sh"
+#LOG_FILE="$HFN_DIR/cloud-init-nat.log"
+#NAT_VAR="$HFN_DIR/natVars.input"
+#function timestamp(){
+#  date +"%Y-%m-%d %T"
+#}
+#mkdir -p $HFN_DIR/;
+#aws s3 cp ${HFNScriptS3Location} $HFN_FILE
+#if [ $? -ne 0 ]; then
+#  /bin/echo $(timestamp) "Error:Could not copy HFN script from S3 bucket."
+#else
+#  /bin/echo $(timestamp) "Copied HFN script from S3 bucket."
+#fi;
+#/bin/echo "SBC_SECONDARY_IP=${SBCActiveInVoipIface.SecondaryPrivateIpAddresses.0}" >> $NAT_VAR
+#" >> $NAT_VAR
+#/bin/echo "REMOTE_SSH_MACHINE_IP=\\"
+#!If
+#  EipForHFNManagementInterface
+#  !Ref 'HFNManagementEIPAccessCIDR'
+#  ''
+#/bin/echo $(timestamp) "Copied natVars.input" >> $LOG_FILE
+#sudo chmod 744 $HFN_FILE
+#sudo /bin/bash $HFN_FILE setup
+#/bin/echo "Configured using HFN script $HFN_FILE" >> $LOG_FILE
+#/bin/echo $(timestamp) " =========================   Done    =========================================="\
+#  \ >> $LOG_FILE

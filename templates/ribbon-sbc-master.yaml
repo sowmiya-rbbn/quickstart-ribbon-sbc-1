@@ -1,0 +1,173 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: AWS CloudFormation Template to setup and deploy vSBC HA instances and
+  2 PKTART instances to test vSBC. This template creates required vpc, subnet and
+  other routing elements required IAM role to performce IP movement betweenn two vSBC
+  instances.
+Metadata:
+  AWS::CloudFormation::Interface:
+    ParameterGroups:
+      - Label:
+          default: Common and PKTART data
+        Parameters:
+          - KeyPairName
+      - Label:
+          default: SBC Configuration
+        Parameters:
+          - SBCInstanceType
+      - Label:
+          default: Network Configuration
+        Parameters:
+          - VPCCIDR
+          - ManagementSubnetCIDR
+          - SBCHASubnetCIDR
+          - SBCExVoipCIDR
+          - availabilityZoneForSBC
+      - Label:
+          default: 'Optional: SBC configuration. For default configuration no need
+            to change these values.'
+        Parameters:
+          - SBCPersonalityType
+          - SBCActiveInstanceName
+          - SBCPassiveInstanceName
+          - SBCSystemName
+          - Tenancy
+          - PlacementId
+          - SBCVolumeType
+          - SBCVolumeIOPS
+          - SBCVolumeSize
+Parameters:
+  # VPC.
+  KeyPairName:
+    Description: 'Name of an existing EC2 KeyPair to enable SSH access to the SBC
+      and Mangler instance '
+    Type: AWS::EC2::KeyPair::KeyName
+    ConstraintDescription: must be the name of an existing EC2 KeyPair.
+  VPCCIDR:
+    Description: VPC CIDR block for new VPC that will be used to create SBC and PKTART
+      test tool.
+    Type: String
+    Default: 10.74.0.0/16
+    AllowedPattern: (\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})/(\d{1,2})
+    ConstraintDescription: Must be a valid IP CIDR range of the form x.x.x.x/x.
+  ManagementSubnetCIDR:
+    Description: Enter a CIDR for pirvate subnet for SBC, this new subnet will be
+      served by Mangler instance.
+    Type: String
+    MinLength: '1'
+    Default: 10.74.10.0/24
+    AllowedPattern: (\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})/(\d{1,2})
+    ConstraintDescription: Must be a valid IP CIDR range of the form x.x.x.x/x and
+      subnet of VPC.
+  SBCHASubnetCIDR:
+    Description: Enter a CIDR for pirvate subnet for SBC, this new subnet will be
+      served by Mangler instance.
+    Type: String
+    MinLength: '1'
+    Default: 10.74.20.0/24
+    AllowedPattern: (\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})/(\d{1,2})
+    ConstraintDescription: Must be a valid IP CIDR range of the form x.x.x.x/x and
+      subnet of VPC.
+  SBCExVoipCIDR:
+    Description: Enter a CIDR for pirvate subnet for SBC, this new subnet will be
+      served by Mangler instance.
+    Type: String
+    MinLength: '1'
+    Default: 10.74.40.0/24
+    AllowedPattern: (\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})/(\d{1,2})
+    ConstraintDescription: Must be a valid IP CIDR range of the form x.x.x.x/x and
+      subnet of VPC.
+  SBCInVoipCIDR:
+    Description: Enter a CIDR for pirvate subnet for SBC, this new subnet will be
+      served by Mangler instance.
+    Type: String
+    MinLength: '1'
+    Default: 10.74.40.0/24
+    AllowedPattern: (\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})/(\d{1,2})
+    ConstraintDescription: Must be a valid IP CIDR range of the form x.x.x.x/x and
+      subnet of VPC.
+  HFNPublicCIDR:
+    Description: Enter a CIDR for pirvate subnet for SBC, this new subnet will be
+      served by Mangler instance.
+    Type: String
+    MinLength: '1'
+    Default: 10.74.50.0/24
+    AllowedPattern: (\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})/(\d{1,2})
+    ConstraintDescription: Must be a valid IP CIDR range of the form x.x.x.x/x and
+      subnet of VPC.
+  HFNPrivateCIDR:
+    Description: Enter a CIDR for pirvate subnet for SBC, this new subnet will be
+      served by Mangler instance.
+    Type: String
+    MinLength: '1'
+    Default: 10.74.60.0/24
+    AllowedPattern: (\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})/(\d{1,2})
+    ConstraintDescription: Must be a valid IP CIDR range of the form x.x.x.x/x and
+      subnet of VPC.
+  # // Remainder of parameters removed. Need to iron out params in SBC Stack first, then carry over.
+  # - QSS3BucketName
+  # - QSS3KeyPrefix
+Conditions:
+  # This condition is not used.
+  EipOnPkt0: !Equals
+    - 'true'
+    - 'true'
+  VolumeTypeIO1: !Equals
+    - !Ref 'SBCVolumeType'
+    - io1
+  CreateVPCEndPoint: !Equals
+    - !Ref 'CreateVPCEndPoint'
+    - 'yes'
+  EipForHFNManagementInterface: !Equals
+    - !Ref 'HFNManagementNeedsEIP'
+    - 'Yes'
+  noVPCEndPointForMgt: !Equals
+    - !Ref 'CreateVPCEndPoint'
+    - 'no'
+Rules:
+  NameValidation:
+    Assertions:
+    - Assert:
+      !Not
+      - !Equal
+        - !Ref 'SBCActiveInstanceName'
+        - !Ref 'SBCPassiveInstanceName'
+      AssertionDescription: "SBCActiveInstanceName and SBCPassiveInstanceName must be unique"
+    - Assert:
+      !Not
+      - !Equal
+        - !Ref 'SBCActiveInstanceName'
+        - !Ref 'SBCSystemName'
+      AssertionDescription: "SBCActiveInstanceName and SBCSystemName cannot be the same."
+    - Assert:
+      !Not
+      - !Equal
+        - !Ref 'SBCPassiveInstanceName'
+        - !Ref 'SBCSystemName'
+      AssertionDescription: "SBCPassiveInstanceName and SBCSystemName cannot be the same."
+Resources:
+  VPCStack:
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      TemplateURL:
+        Fn::Sub: https://${QSS3BucketName}.s3.amazonaws.com/${QSS3KeyPrefix}submodules/quickstart-aws-vpc/templates/aws-vpc.template
+      Parameters:
+        AvailabilityZones:
+          !Join:
+          - ','
+          - !Ref: AvailabilityZones
+        KeyPairName: !Ref: KeyPairName
+        PublicSubnet1CIDR: !Ref 'ManagementSubnetCIDR'
+        PublicSubnet2CIDR: !Ref 'SBCExVoipCIDR'
+        PublicSubnet3CIDR: !Ref 'HFNPublicCIDR'
+        PrivateSubnet1CIDR: !Ref 'SBCHASubnetCIDR'
+        PrivateSubnet2CIDR: !Ref 'SBCInVoipCIDR'
+        PrivateSubnet3CIDR: !Ref 'HFNPrivateCIDR'
+        NumberOfAZs: '1'
+        VPCCIDR: !Ref: 'VPCCIDR'
+  SBCStack:
+    DependsOn: VPCStack
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      TemplateURL: (...)
+      Parameters:
+        (...)
