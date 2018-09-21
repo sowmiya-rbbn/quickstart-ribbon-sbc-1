@@ -2339,3 +2339,165 @@ Metadata:
       embeds: []
       iscontainedinside:
         - 7b71f416-4973-476d-bedb-b332394c7da9
+
+
+
+
+ PKTARTMgtA:
+      Type: AWS::EC2::NetworkInterface
+      Properties:
+        SubnetId: !Ref 'SBCManagementSubnet'
+        Description: !Sub "${SBCSystemName}-PKTARTMgtA_Ribbon"
+        GroupSet:
+          - !Ref 'securityGrpMgtPktart'
+        SourceDestCheck: 'true'
+        Tags:
+          - Key: Name
+            Value: !Join
+              - '-'
+              - - !Ref 'SystemName'
+                - PKTARTMgtA_Ribbon
+      Metadata:
+        AWS::CloudFormation::Designer:
+          id: 6b3d4631-2742-42aa-8ccb-91ff44b4c6e3
+    PKTARTPkt0:
+      Type: AWS::EC2::NetworkInterface
+      Properties:
+        SubnetId: !Ref 'HFNPublicSubnet'
+        Description: !Join
+          - '-'
+          - - !Ref 'SystemName'
+            - PKTARTPkt0_Ribbon
+        GroupSet:
+          - !Ref 'SBCInternalVoipSG'
+        SourceDestCheck: 'true'
+        Tags:
+          - Key: Name
+            Value: !Join
+              - '-'
+              - - !Ref 'SystemName'
+                - PKTARTPkt0_Ribbon
+    PKTARTMgtB:
+      Type: AWS::EC2::NetworkInterface
+      Properties:
+        SubnetId: !Ref 'SBCManagementSubnet'
+        Description: !Join
+          - '-'
+          - - !Ref 'SystemName'
+            - PKTARTMgtB_Ribbon
+        GroupSet:
+          - !Ref 'securityGrpMgtPktart'
+        SourceDestCheck: 'true'
+        Tags:
+          - Key: Name
+            Value: !Join
+              - '-'
+              - - !Ref 'SystemName'
+                - PKTARTMgtB_Ribbon
+      Metadata:
+        AWS::CloudFormation::Designer:
+          id: b68a0266-c1cc-4194-81c1-44d68061a4b2
+    PKTARTPkt1:
+      Type: AWS::EC2::NetworkInterface
+      Properties:
+        SubnetId: !Ref 'SBCExVoipSubnet'
+        Description: !Join
+          - '-'
+          - - !Ref 'SystemName'
+            - PKTARTPkt1_Ribbon
+        GroupSet:
+          - !Ref 'SBCInternalVoipSG'
+        SourceDestCheck: 'false'
+        Tags:
+          - Key: Name
+            Value: !Join
+              - '-'
+              - - !Ref 'SystemName'
+                - PKTARTPkt1_Ribbon
+    mgtPKTARTA:
+      Type: AWS::EC2::EIP
+      Condition: EipForPKTART
+      Properties:
+        Domain: vpc
+    mgtPKTARTB:
+      Type: AWS::EC2::EIP
+      Condition: EipForPKTART
+      Properties:
+        Domain: vpc
+    mgtPKTARTAEIPAssociation:
+      Type: AWS::EC2::EIPAssociation
+      Properties:
+        AllocationId: !GetAtt 'mgtPKTARTA.AllocationId'
+        NetworkInterfaceId: !Ref 'PKTARTMgtA'
+    pktPKTARTA:
+      Type: AWS::EC2::EIP
+      Properties:
+        Domain: vpc
+    pktPKTARTAEIPAssociation:
+      Type: AWS::EC2::EIPAssociation
+      Properties:
+        AllocationId: !GetAtt 'pktPKTARTA.AllocationId'
+        NetworkInterfaceId: !Ref 'PKTARTPkt0'
+    Ec2InstancePktARTAPkt0:
+      Type: AWS::EC2::Instance
+      Properties:
+        ImageId: !FindInMap
+        - AWSAMIRegionMap
+        - !Ref 'AWS::Region'
+        - RIBBONPKTAMI
+        BlockDeviceMappings:
+          - DeviceName: /dev/xvda
+            Ebs:
+              VolumeType: gp2
+              VolumeSize: '50'
+              DeleteOnTermination: 'true'
+        InstanceType: !Ref 'PKTARTInstanceType'
+        Tenancy: !Ref 'Tenancy'
+        PlacementGroupName: !Ref 'PlacementId'
+        EbsOptimized: 'True'
+        KeyName: !Ref 'KeyName'
+        NetworkInterfaces:
+          - NetworkInterfaceId: !Ref 'PKTARTMgtA'
+            DeviceIndex: '0'
+          - NetworkInterfaceId: !Ref 'PKTARTPkt0'
+            DeviceIndex: '1'
+        Tags:
+          - Key: Name
+            Value: !Join
+              - '-'
+              - - !Ref 'AWS::StackName'
+                - PKTARTA_Pkt0
+    Ec2InstancePktARTBPkt1:
+      Type: AWS::EC2::Instance
+      Properties:
+        ImageId: !FindInMap
+        - AWSAMIRegionMap
+        - !Ref 'AWS::Region'
+        - RIBBONPKTAMI
+        BlockDeviceMappings:
+          - DeviceName: /dev/xvda
+            Ebs:
+              VolumeType: gp2
+              VolumeSize: '50'
+              DeleteOnTermination: 'true'
+        InstanceType: !Ref 'PKTARTInstanceType'
+        Tenancy: !Ref 'Tenancy'
+        PlacementGroupName: !Ref 'PlacementId'
+        EbsOptimized: 'True'
+        KeyName: !Ref 'KeyName'
+        NetworkInterfaces:
+          - NetworkInterfaceId: !Ref 'PKTARTMgtB'
+            DeviceIndex: '0'
+          - NetworkInterfaceId: !Ref 'PKTARTPkt1'
+            DeviceIndex: '1'
+        Tags:
+          - Key: Name
+            Value: !Join
+              - '-'
+              - - !Ref 'AWS::StackName'
+                - PKTARTB_Pkt1
+    mgtPKTARTBEIPAssociation:
+      Type: AWS::EC2::EIPAssociation
+      Properties:
+        AllocationId: !GetAtt 'mgtPKTARTB.AllocationId'
+        NetworkInterfaceId: !Ref 'PKTARTMgtB'
