@@ -13,7 +13,7 @@
 # 4/1/2018
 #
 # Module Description:
-# Script to enable HFN(HA forwarding node) instance as frontend for public facing 
+# Script to enable HFN(HA forwarding node) instance as frontend for public facing
 # PKT port of SBC.
 # The script will perform the following steps when called from cloud-init (setup function):
 # 1) Save old iptables rules : preConfigure
@@ -28,20 +28,20 @@
 # 5) Setup SNAT for traffic coming from SBC and forward it to public
 # end-points over eth0 (EIPs) : configureNATRules
 # 6) Configure route for IP of machine read in step #3(REMOTE_SSH_MACHINE_IP) : configureMgmtNAT
-# 7) Log applied iptables configuration and route: showCurrentConfig 
+# 7) Log applied iptables configuration and route: showCurrentConfig
 #
 #
 # For debugging-
 # Call HFN.sh with cleanup switch. e.g sh HFN.sh cleanup:
 # 1) Remove all routes set to forward SBC SIPs(pkt0)
-# 2) Save iptable entries 
+# 2) Save iptable entries
 # 3) Flush iptables
 # This option is useful to debug connectivity of end-point with HFN, after
 # calling this no packet is forwarded to SBC, user can ping all EIPs on eth0 to
-# make sure connectivity between end-point and HFN is working fine.
+# make sure connectivity between end-point and HFN is   working fine.
 # Once this is done user MUST reboot HFN node to restore all forwarding rules
 # and routes.
-# 
+#
 #
 # NOTE: This script is run by cloud-init in HFN instance.
 #
@@ -81,7 +81,7 @@ doneMessage()
     echo $(timestamp) " =========================    DONE HFN.sh     =========================================="
     echo $(timestamp) ""
     echo $(timestamp) ""
-    exit 
+    exit
 }
 
 errorAndExit()
@@ -117,7 +117,7 @@ getRegion()
     if [[ -z "$availZone" ]];then
         errorAndExit "Failed to get availability-zone."
     fi
-    
+
     region="${availZone::-1}"
     echo "$region"
 }
@@ -125,13 +125,13 @@ getRegion()
 getSWePkt0CIDR()
 {
     local region=""
-    
+
     # Get region.
     region=$(getRegion)
     if [[ -z "$region" ]];then
         errorAndExit "Failed to get region."
     fi
-   
+
     # Get subnet-id for SECONDARY_IP_OF_SBC.
     sbcPkt0SubnetId=`aws ec2 describe-network-interfaces --filters "Name=addresses.private-ip-address,Values=$SBC_SECONDARY_IP" --region $region | grep SubnetId | awk -F ":" '{print $2}' | awk -F "\"" '{print $2}'`
     if [[ -z "$sbcPkt0SubnetId" ]];then
@@ -147,7 +147,7 @@ getSWePkt0CIDR()
     echo "$sbcPkt0CIDR"
 }
 
-
+# route command is depreciated.
 routeCleanUp()
 {
     echo $(timestamp) " Route clean up for SWe Pkt0 secondary IPs and remote machine's public IP."
@@ -157,7 +157,7 @@ routeCleanUp()
     if [[ -z "$sbcPkt0CIDR" ]];then
         errorAndExit " Failed to get SWe Pkt0 CIDR."
     fi
-  
+
     ip route | grep -E "$sbcPkt0CIDR.*$ETH2_GW.*eth2"
     if [ "$?" = "0" ]; then
         #route del -net <CIDR> gw <GW_OF_ETH2> dev eth2
@@ -250,7 +250,7 @@ configureNATRules()
     echo $(timestamp) " ==================================================================="
     echo $(timestamp) ""
     echo $(timestamp) ""
-    
+
     local sbcPkt0CIDR=""
 
     iptables -A FORWARD -i eth0 -o eth2 -j ACCEPT
@@ -259,7 +259,7 @@ configureNATRules()
     else
         errorAndExit "Failed to set forward ACCEPT rule for all packets coming on EIP(eth0)"
     fi
-    
+
     # Get number of secondary IP assigned on HFN eth0 interface.
     secIpOnHfnEth0Count="${#secIpOnHfnEth0SortArr[@]}"
 
@@ -272,7 +272,7 @@ configureNATRules()
     if [[ -z "$sbcPkt0CIDR" ]];then
         errorAndExit "Failed to get SWe Pkt0 CIDR."
     fi
-   
+
     ip route | grep -E "$sbcPkt0CIDR.*$ETH2_GW.*eth2"
     if [ "$?" = "0" ]; then
         echo $(timestamp) " Route is already available to reach SBC Pkt0 CIDR  $sbcPkt0CIDR from eth2"
@@ -285,7 +285,7 @@ configureNATRules()
             errorAndExit "Failed to set route to reach SBC CIDR  $sbcPkt0CIDR from eth2"
         fi
     fi
-        
+
     for (( idx=0; idx<$addNumRoute; idx++ ))
     do
         #iptables -t nat -A PREROUTING  -i eth0 -d <DESTINATION_IP> -j DNAT --to <SECONDARY_IP_OF_SBC>
@@ -345,7 +345,7 @@ configureNATRules()
 
     for (( idx=0; idx<$addNumRoute; idx++ ))
     do
-        iptables -t nat -I POSTROUTING -o eth0 -s ${secIpOnSWePkt0SortArr[$idx]} -j SNAT --to ${secIpOnHfnEth0SortArr[$idx]}  
+        iptables -t nat -I POSTROUTING -o eth0 -s ${secIpOnSWePkt0SortArr[$idx]} -j SNAT --to ${secIpOnHfnEth0SortArr[$idx]}
         if [ "$?" = "0" ]; then
             echo $(timestamp) " Set up POSTROUTING rule (source IP ${secIpOnSWePkt0SortArr[$idx]}, to offset ${secIpOnHfnEth0SortArr[$idx]}) for packet sent on eth0 "
         else
@@ -436,13 +436,13 @@ getHfnEth0AndSWePkt0SipArray()
 {
     # Get region.
     local region=""
-    
+
     # Get region.
     region=$(getRegion)
     if [[ -z "$region" ]];then
         errorAndExit "Failed to get region."
     fi
-   
+
     # Get primary ip assigned on SWE PKT0 interface.
     priIpOnSWePkt0=`aws ec2 describe-network-interfaces --filters "Name=addresses.private-ip-address,Values=$SBC_SECONDARY_IP" --region $region | grep -E "PrivateIpAddress" | tail -1 | awk -F ":" '{print $2}' | awk -F "\"" '{print $2}'`
     if [[ -z "$priIpOnSWePkt0" ]];then
@@ -461,7 +461,7 @@ getHfnEth0AndSWePkt0SipArray()
 
     for ip in $secIpOnSWePkt0List;
     do
-        echo $ip >> $tmpSipSWePkt0File     
+        echo $ip >> $tmpSipSWePkt0File
     done
     secIpOnSWePkt0SortList=`sort -n -t . -k1,1 -k2,2 -k 3,3 -k4,4 $tmpSipSWePkt0File`
     echo $(timestamp) "List of secondary IP assigned on SWe Pkt0 in sorted order: $secIpOnSWePkt0SortList"
@@ -486,11 +486,11 @@ getHfnEth0AndSWePkt0SipArray()
 
     # Sort list of secondary ip assigned on HFN Eth0 interface.
     tmpSipHfnEth0File="/tmp/sipHfnEth0.txt"
-    echo " " > $tmpSipHfnEth0File     
+    echo " " > $tmpSipHfnEth0File
 
     for ip in $secIpOnHfnEth0List;
     do
-        echo $ip >> $tmpSipHfnEth0File     
+        echo $ip >> $tmpSipHfnEth0File
     done
     secIpOnHfnEth0SortList=`sort -n -t . -k1,1 -k2,2 -k 3,3 -k4,4 $tmpSipHfnEth0File`
     echo $(timestamp) "List of secondary IP assigned on HFN eth0 in sorted order: $secIpOnHfnEth0SortList"
@@ -516,9 +516,9 @@ main()
 {
     #Do this before we redirect all echo messages to log file
     echo 1 >  /proc/sys/net/ipv4/ip_forward
-    
+
     case $1 in
-        "setup") 
+        "setup")
             preConfigure
             readConfig
             getHfnEth0AndSWePkt0SipArray
@@ -533,7 +533,7 @@ main()
             routeCleanUp
             doneMessage
             ;;
-        *) 
+        *)
             usage "Unrecognized switch"
             ;;
     esac
