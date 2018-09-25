@@ -19,12 +19,9 @@ Metadata:
       - Label:
           default: Network Configuration
         Parameters:
-          - ManagementSubnetCIDR
-          - SBCHASubnetCIDR
-          - PacketSubnet1CIDR
           - SBCInternalVoipCIDR
           - SBCExternalVoipCIDR
-          - availabilityZoneForSBC
+          - SBCAvailabilityZone
       - Label:
           default: 'Optional: SBC configuration. For default configuration no need
             to change these values.'
@@ -46,22 +43,6 @@ Parameters:
   VPCID:
     Description: ID of your existing VPC for deployment
     Type: AWS::EC2::VPC::Id
-  ManagementSubnetCIDR:
-    Description: CIDR used within the Management Subnet
-    Type: String
-    MinLength: '1'
-    Default: 10.74.10.0/24
-    AllowedPattern: (\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})/(\d{1,2})
-    ConstraintDescription: Must be a valid IP CIDR range of the form x.x.x.x/x and
-      subnet of VPC.
-  SBCHASubnetCIDR:
-    Description: CIDR used within the SBC High Availability subnet.
-    Type: String
-    MinLength: '1'
-    Default: 10.74.20.0/24
-    AllowedPattern: (\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})/(\d{1,2})
-    ConstraintDescription: Must be a valid IP CIDR range of the form x.x.x.x/x and
-      subnet of VPC.
   SBCExternalVoipCIDR:
     Description: CIDR used within the SBC External Voip (public facing) subnet.
     Type: String
@@ -79,31 +60,6 @@ Parameters:
     AllowedPattern: (\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})/(\d{1,2})
     ConstraintDescription: Must be a valid IP CIDR range of the form x.x.x.x/x and
       subnet of VPC.
-  PacketSubnet1CIDR:
-    Description: Enter a CIDR for pirvate subnet for SBC, this new subnet will be
-      served by Mangler instance.
-    Type: String
-    MinLength: '1'
-    Default: 10.74.40.0/24
-    AllowedPattern: (\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})/(\d{1,2})
-    ConstraintDescription: Must be a valid IP CIDR range of the form x.x.x.x/x and
-      subnet of VPC.
-  PublicHFEPacketSubnetCIDR:
-    Description: CIDR used within the HFE Public Subnet.
-    Type: String
-    MinLength: '1'
-    Default: 10.74.50.0/24
-    AllowedPattern: (\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})/(\d{1,2})
-    ConstraintDescription: Must be a valid IP CIDR range of the form x.x.x.x/x and
-      subnet of VPC.
-  PrivateHFESubnetCIDR:
-    Description: CIDR used for the HFE Private Subnet.
-    Type: String
-    MinLength: '1'
-    Default: 10.74.60.0/24
-    AllowedPattern: (\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})/(\d{1,2})
-    ConstraintDescription: Must be a valid IP CIDR range of the form x.x.x.x/x and
-      subnet of VPC.
   HFEManagementNeedsEIP:
     Description: Enable EIP on the management interface of the HFE instance(s)?
     Type: String
@@ -118,17 +74,17 @@ Parameters:
     AllowedPattern: (\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})/(\d{1,2})
     ConstraintDescription: Must be a valid IP CIDR range of the form x.x.x.x/x
   SBCExVoipSubnet:
-    Type: AWS::EC2::Subnet
+    Type: String
   SBCManagementSubnet:
-      Type: AWS::EC2::Subnet
+    Type: String
   SBCHASubnet:
-    Type: AWS::EC2::Subnet
+    Type: String
   HFEPublicSubnet:
-    Type: AWS::EC2::Subnet
+    Type: String
   HFEPrivateSubnet:
-    Type: AWS::EC2::Subnet
+    Type: String
 # TODO: Removed in leiu of VPC Template. come back to this.
-  availabilityZoneForSBC:
+  SBCAvailabilityZone:
     Description: Enter Availability Zone for SBC, New subnets for SBC will be created
       here.
     Type: AWS::EC2::AvailabilityZone::Name
@@ -254,20 +210,17 @@ Conditions:
 Rules:
   NameValidation:
     Assertions:
-    - Assert:
-      !Not
+    - Assert: !Not
       - !Equal
         - !Ref 'SBCActiveInstanceName'
         - !Ref 'SBCPassiveInstanceName'
       AssertionDescription: "SBCActiveInstanceName and SBCPassiveInstanceName must be unique"
-    - Assert:
-      !Not
+    - Assert: !Not
       - !Equal
         - !Ref 'SBCActiveInstanceName'
         - !Ref 'SBCSystemName'
       AssertionDescription: "SBCActiveInstanceName and SBCSystemName cannot be the same."
-    - Assert:
-      !Not
+    - Assert: !Not
       - !Equal
         - !Ref 'SBCPassiveInstanceName'
         - !Ref 'SBCSystemName'
@@ -451,7 +404,7 @@ Resources:
         - Key: Name
           Value: !Sub "${AWS::StackName}-1"
       UserData: !Base64
-        !Sub '
+        !Sub |
           { "CERole"               : "ACTIVE",
             "ReverseNatPkt0"       : "True",
             "ReverseNatPkt1"       : "False",
@@ -471,7 +424,7 @@ Resources:
             "SystemName"           : "${SBCSystemName}",
             "ActiveRoleMgtId"      : "${SBCActiveMgtIface}",
             "NodeName"             : "${AWS::StackName}"
-          }'
+          }
   SBCPassiveInstance:
     Type: AWS::EC2::Instance
     Properties:
@@ -508,7 +461,7 @@ Resources:
         - Key: Name
           Value: !Sub "${AWS::StackName}-2"
       UserData: !Base64
-        !Sub '
+        !Sub |
           { "CERole"               : "ACTIVE",
             "ReverseNatPkt0"       : "True",
             "ReverseNatPkt1"       : "False",
@@ -528,7 +481,7 @@ Resources:
             "SystemName"           : "${SBCSystemName}",
             "ActiveRoleMgtId"      : "${SBCActiveMgtIface}",
             "NodeName"             : "${AWS::StackName}"
-          }'
+          }
   HFEInstance:
     Type: AWS::EC2::Instance
     Properties:

@@ -107,6 +107,192 @@ Parameters:
     default: Quick Start S3 bucket name
   QSS3KeyPrefix:
     default: Quick Start S3 key prefix
+  KeyPairName:
+    Description: 'Name of an existing EC2 KeyPair to enable SSH access to various EC2 instances'
+    Type: AWS::EC2::KeyPair::KeyName
+    ConstraintDescription: must be the name of an existing EC2 KeyPair.
+  VPCID:
+    Description: ID of your existing VPC for deployment
+    Type: AWS::EC2::VPC::Id
+  ManagementSubnetCIDR:
+    Description: CIDR used within the Management Subnet
+    Type: String
+    MinLength: '1'
+    Default: 10.74.10.0/24
+    AllowedPattern: (\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})/(\d{1,2})
+    ConstraintDescription: Must be a valid IP CIDR range of the form x.x.x.x/x and
+      subnet of VPC.
+  SBCHASubnetCIDR:
+    Description: CIDR used within the SBC High Availability subnet.
+    Type: String
+    MinLength: '1'
+    Default: 10.74.20.0/24
+    AllowedPattern: (\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})/(\d{1,2})
+    ConstraintDescription: Must be a valid IP CIDR range of the form x.x.x.x/x and
+      subnet of VPC.
+  SBCExternalVoipCIDR:
+    Description: CIDR used within the SBC External Voip (public facing) subnet.
+    Type: String
+    MinLength: '1'
+    Default: 10.74.20.0/24
+    AllowedPattern: (\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})/(\d{1,2})
+    ConstraintDescription: Must be a valid IP CIDR range of the form x.x.x.x/x and
+      subnet of VPC.
+  SBCInternalVoipCIDR:
+    Description: CIDR used within the SBC Internal Voip (private) subnet.
+      served by Mangler instance.
+    Type: String
+    MinLength: '1'
+    Default: 10.74.20.0/24
+    AllowedPattern: (\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})/(\d{1,2})
+    ConstraintDescription: Must be a valid IP CIDR range of the form x.x.x.x/x and
+      subnet of VPC.
+  PublicHFEPacketSubnetCIDR:
+    Description: CIDR used within the HFE Public Subnet.
+    Type: String
+    MinLength: '1'
+    Default: 10.74.50.0/24
+    AllowedPattern: (\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})/(\d{1,2})
+    ConstraintDescription: Must be a valid IP CIDR range of the form x.x.x.x/x and
+      subnet of VPC.
+  PrivateHFESubnetCIDR:
+    Description: CIDR used for the HFE Private Subnet.
+    Type: String
+    MinLength: '1'
+    Default: 10.74.60.0/24
+    AllowedPattern: (\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})/(\d{1,2})
+    ConstraintDescription: Must be a valid IP CIDR range of the form x.x.x.x/x and
+      subnet of VPC.
+  HFEManagementNeedsEIP:
+    Description: Enable EIP on the management interface of the HFE instance(s)?
+    Type: String
+    Default: 'Yes'
+    AllowedValues:
+      - 'Yes'
+      - 'No'
+  HFEManagementEIPAccessCIDR:
+    Description: The CIDR range used to access the HFE Management EIP.
+    Type: String
+    Default: ''
+    AllowedPattern: (\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})/(\d{1,2})
+    ConstraintDescription: Must be a valid IP CIDR range of the form x.x.x.x/x
+  SBCExVoipSubnet:
+    Type: String
+  SBCManagementSubnet:
+    Type: String
+  SBCHASubnet:
+    Type: String
+  HFEPublicSubnet:
+    Type: String
+  HFEPrivateSubnet:
+    Type: String
+# TODO: Removed in leiu of VPC Template. come back to this.
+  SBCAvailabilityZone:
+    Description: Enter Availability Zone for SBC, New subnets for SBC will be created
+      here.
+    Type: AWS::EC2::AvailabilityZone::Name
+  SBCInstanceType:
+    Description: Instance type for the SBC Mangler.
+    Type: String
+    Default: m5.xlarge
+    AllowedValues:
+      - m4.xlarge
+      - m5.xlarge
+      - c3.2xlarge
+      - c3.4xlarge
+      - c3.8xlarge
+      - c4.2xlarge
+      - c4.4xlarge
+      - c4.8xlarge
+      - c5.2xlarge
+      - c5.4xlarge
+      - c5.8xlarge
+    ConstraintDescription: Must be a valid EC2 instance type.
+  SBCPersonalityType:
+    Description: SBC Personality Type. Currently only supports 'isbc' (Integrated). Distributed is currently not supported.
+    Type: String
+    Default: isbc
+    AllowedValues:
+      - isbc
+    ConstraintDescription: Must be a valid SBC Personality type.
+  SBCActiveInstanceName:
+    Description: CE name of the active instance
+    Type: String
+    Default: vsbc1
+    MaxLength: '63'
+    AllowedPattern: ^[A-Za-z]{1}[-A-Za-z0-9.]*[A-Za-z0-9]{1}$
+    ConstraintDescription: 'Enter valid ceName(instance name).  Regex: ^[A-Za-z]{1}[-A-Za-z0-9.]*[A-Za-z0-9]{1}$'
+  SBCPassiveInstanceName:
+    Description: CE name of the standby instance
+    Type: String
+    Default: vsbc2
+    MaxLength: '63'
+    AllowedPattern: ^[A-Za-z]{1}[-A-Za-z0-9.]*[A-Za-z0-9]{1}$
+    ConstraintDescription: 'Enter valid ceName(instance name).  Regex: ^[A-Za-z]{1}[-A-Za-z0-9.]*[A-Za-z0-9]{1}$'
+  SBCSystemName:
+    Description: System Name
+    Type: String
+    Default: vsbcSystem
+    MaxLength: '26'
+    AllowedPattern: ^[A-Za-z]{1}[-A-Za-z0-9]*[A-Za-z0-9]{1}$
+    ConstraintDescription: 'Enter valid system name.  Regex: ^[A-Za-z]{1}[-A-Za-z0-9]*[A-Za-z0-9]{1}$ '
+  # TODO: Rename. De-couple scope.
+  SSHAccessCIDR:
+    Description: IP CIDR from where you could SSH into SBC and PKTART instances
+    Type: String
+    MinLength: '9'
+    MaxLength: '18'
+    Default: '0.0.0.0/0'
+    AllowedPattern: (\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})/(\d{1,2})
+    ConstraintDescription: must be a valid CIDR range of the form x.x.x.x/x.
+  # TODO: Removed due to VPC Template.
+  Tenancy:
+    Description: Tenancy attribute for SBC instances
+    Type: String
+    Default: default
+    AllowedValues:
+      - default
+      - dedicated
+  # TODO: Removed due to VPC Template.
+  # - Is this something we should support?
+  # - Does the VPC Template handle this already?
+  # - Can we condition it?
+  PlacementId:
+    Description: PlacementGroup to launch SBC instances(Optional)
+    Type: String
+    Default: ''
+  SBCVolumeType:
+    Description: Select Type of Volume for SBC
+    Type: String
+    Default: io1
+    AllowedValues:
+      - gp2
+      - io1
+  CreateVPCEndPoint:
+    Description: Do you want to create VPC End-point to access API server? if you
+      select no then SBC will reach API server using EIP on mgt0 ports
+    Type: String
+    Default: 'yes'
+    AllowedValues:
+      - 'yes'
+      - 'no'
+  SBCVolumeIOPS:
+    Description: Enter IOPS reservation for IO1 type EBS volume [<= 1950]. This value is ignored for GP2 type volumes.
+    Type: Number
+    Default: '600'
+    MaxValue: '1950'
+  SBCVolumeSize:
+    Description: Enter size of disk in GiB. Minimum disk required is 65 GiB
+    Type: Number
+    Default: '65'
+    MinValue: '65'
+    MaxValue: '1000'
+  QSS3BucketName:
+    Type: String
+    Default: aws-quickstart
+  QSS3KeyPrefix:
+    Type: String
+    Default: quickstart-ribbon-sbc/
 Conditions:
   # This condition is not used.
   EipOnPkt0: !Equals
