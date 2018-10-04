@@ -193,8 +193,8 @@ Parameters:
 Conditions:
   # FIXME: This condition is not used.
   EipOnPkt0: !Equals
-    - 'true'
-    - 'true'
+    - true
+    - true
   VolumeTypeIO1: !Equals
     - !Ref 'SBCVolumeType'
     - io1
@@ -389,11 +389,11 @@ Resources:
               - VolumeTypeIO1
               - !Ref 'SBCVolumeIOPS'
               - !Ref 'AWS::NoValue'
-            DeleteOnTermination: 'true'
+            DeleteOnTermination: true
       InstanceType: !Ref 'SBCInstanceType'
       Tenancy: !Ref 'Tenancy'
       PlacementGroupName: !Ref 'PlacementId'
-      EbsOptimized: 'True'
+      EbsOptimized: true
       KeyName: !Ref 'KeyPairName'
       NetworkInterfaces:
         - NetworkInterfaceId: !Ref 'SBCActiveMgtIface'
@@ -446,12 +446,12 @@ Resources:
               - VolumeTypeIO1
               - !Ref 'SBCVolumeIOPS'
               - !Ref 'AWS::NoValue'
-            DeleteOnTermination: 'true'
+            DeleteOnTermination: true
       IamInstanceProfile: !Ref 'SBCInstanceProfile'
       InstanceType: !Ref 'SBCInstanceType'
       Tenancy: !Ref 'Tenancy'
       PlacementGroupName: !Ref 'PlacementId'
-      EbsOptimized: 'True'
+      EbsOptimized: true
       KeyName: !Ref 'KeyPairName'
       NetworkInterfaces:
         - NetworkInterfaceId: !Ref 'SBCPassiveMgtIface'
@@ -499,13 +499,13 @@ Resources:
         - DeviceName: /dev/xvda
           Ebs:
             VolumeType: gp2
-            VolumeSize: '20'
-            DeleteOnTermination: 'false'
+            VolumeSize: 20
+            DeleteOnTermination: false
       IamInstanceProfile: !Ref 'HFEInstanceProfile'
       InstanceType: !Ref 'SBCInstanceType'
       Tenancy: !Ref 'Tenancy'
       PlacementGroupName: !Ref 'PlacementId'
-      EbsOptimized: 'True'
+      EbsOptimized: true
       KeyName: !Ref 'KeyPairName'
       NetworkInterfaces:
         - NetworkInterfaceId: !Ref 'HFEPublicInterface'
@@ -552,7 +552,7 @@ Resources:
     Condition: CreateVPCEndPoint
     Properties:
       VpcEndpointType: Interface
-      PrivateDnsEnabled: 'True'
+      PrivateDnsEnabled: true
       SubnetIds: !Ref 'SBCManagementSubnet'
       SecurityGroupIds: !Ref 'SBCManagementSG'
       ServiceName: !Sub "com.amazonaws.${AWS::Region}.ec2"
@@ -577,7 +577,7 @@ Resources:
       GroupSet:
         - !Ref 'SBCInternalVoipSG'
       SecondaryPrivateIpAddressCount: 1
-      SourceDestCheck: 'false'
+      SourceDestCheck: false
       Tags:
         - Key: Name
           Value: !Sub "${SBCSystemName}-pkt0A_Ribbon"
@@ -590,7 +590,7 @@ Resources:
       GroupSet:
         - !Ref 'SBCManagementSG'
       SecondaryPrivateIpAddressCount: 1
-      SourceDestCheck: 'true'
+      SourceDestCheck: true
       Tags:
         - Key: Name
           Value: !Sub "${SBCSystemName}-mgt0A_Ribbon"
@@ -601,7 +601,7 @@ Resources:
       Description: !Sub "${SBCSystemName}-ha0A_Ribbon"
       GroupSet:
         - !Ref 'SBCHASecurityGroup'
-      SourceDestCheck: 'true'
+      SourceDestCheck: true
       Tags:
         - Key: Name
           Value: !Sub "${SBCSystemName}-ha0A_Ribbon"
@@ -622,7 +622,7 @@ Resources:
       Description: !Sub "${SBCSystemName}-pkt0B_Ribbon"
       GroupSet:
         - !Ref 'SBCInternalVoipSG'
-      SourceDestCheck: 'false'
+      SourceDestCheck: false
       Tags:
         - Key: Name
           Value: !Sub "${SBCSystemName}-pkt0B_Ribbon"
@@ -633,7 +633,7 @@ Resources:
       Description: !Sub "${SBCSystemName}-mgt0B_Ribbon"
       GroupSet:
         - !Ref 'SBCManagementSG'
-      SourceDestCheck: 'true'
+      SourceDestCheck: true
       Tags:
         - Key: Name
           Value: !Sub "${SBCSystemName}-mgt0B_Ribbon"
@@ -644,7 +644,7 @@ Resources:
       Description: !Sub "${SBCSystemName}-ha0B_Ribbon"
       GroupSet:
         - !Ref 'SBCHASecurityGroup'
-      SourceDestCheck: 'true'
+      SourceDestCheck: true
       Tags:
         - Key: Name
           Value: !Sub "${SBCSystemName}-ha0B_Ribbon"
@@ -654,8 +654,8 @@ Resources:
       SubnetId: !Ref 'HFEPublicSubnet'
       GroupSet:
         - !Ref 'SBCExternalVoipSG'
-      SecondaryPrivateIpAddressCount: '1'
-      SourceDestCheck: 'true'
+      SecondaryPrivateIpAddressCount: 1
+      SourceDestCheck: true
       Tags:
         - Key: Name
           Value: !Sub "${SBCSystemName} HFE Public Interface"
@@ -665,7 +665,7 @@ Resources:
       SubnetId: !Ref 'HFEPrivateSubnet'
       GroupSet:
         - !Ref 'SBCInternalVoipSG'
-      SourceDestCheck: 'false'
+      SourceDestCheck: false
       Tags:
         - Key: Name
           Value: !Sub "${SBCSystemName} HFE Private Interface"
@@ -675,7 +675,7 @@ Resources:
       SubnetId: !Ref 'SBCManagementSubnet'
       GroupSet:
         - !Ref 'HFEManagementSG'
-      SourceDestCheck: 'true'
+      SourceDestCheck: true
       Tags:
         - Key: Name
           Value: !Sub "${SBCSystemName} HFE Management Interface"
@@ -687,12 +687,12 @@ Resources:
       VpcId: !Ref 'VPCID'
       SecurityGroupIngress:
         - IpProtocol: 'udp'
-          FromPort: '5060'
-          ToPort: '5061'
+          FromPort: 5060
+          ToPort: 5061
           CidrIp: !Ref SBCExternalVoipCIDR
         - IpProtocol: 'tcp'
-          FromPort: '5060'
-          ToPort: '5061'
+          FromPort: 5060
+          ToPort: 5061
           CidrIp: !Ref SBCExternalVoipCIDR
       Tags:
         - Key: Name
@@ -707,12 +707,12 @@ Resources:
       VpcId: !Ref 'VPCID'
       SecurityGroupIngress:
         - IpProtocol: 'tcp'
-          FromPort: '5060'
-          ToPort: '5061'
+          FromPort: 5060
+          ToPort: 5061
           CidrIp: !Ref 'SBCInternalVoipCIDR'
         - IpProtocol: 'udp'
-          FromPort: '5060'
-          ToPort: '5061'
+          FromPort: 5060
+          ToPort: 5061
           CidrIp: !Ref 'SBCInternalVoipCIDR'
       Tags:
         - Key: Name
@@ -727,12 +727,12 @@ Resources:
       VpcId: !Ref 'VPCID'
       SecurityGroupIngress:
         - IpProtocol: '-1'
-          FromPort: '-1'
-          ToPort: '-1'
+          FromPort: 0
+          ToPort: 65535
           CidrIp: '0.0.0.0/0'
         - IpProtocol: '-1'
-          FromPort: '-1'
-          ToPort: '-1'
+          FromPort: 0
+          ToPort: 65535
           CidrIp: !Ref 'SSHAccessCIDR'
       Tags:
         - Key: Name
@@ -745,12 +745,12 @@ Resources:
       # These rules need refactoring.
       SecurityGroupIngress:
         - IpProtocol: '-1'
-          FromPort: '-1'
-          ToPort: '-1'
+          FromPort: 0
+          ToPort: 65535
           CidrIp: '0.0.0.0/0'
         - IpProtocol: '-1'
-          FromPort: '-1'
-          ToPort: '-1'
+          FromPort: 0
+          ToPort: 65535
           CidrIp: !Ref 'SSHAccessCIDR'
       Tags:
         - Key: Name
@@ -762,12 +762,12 @@ Resources:
       VpcId: !Ref 'VPCID'
       SecurityGroupIngress:
         - IpProtocol: '-1'
-          FromPort: '-1'
-          ToPort: '-1'
+          FromPort: 0
+          ToPort: 65535
           CidrIp: '0.0.0.0/0'
         - IpProtocol: '-1'
-          FromPort: '-1'
-          ToPort: '-1'
+          FromPort: 0
+          ToPort: 65535
           CidrIp: !Ref 'SSHAccessCIDR'
       Tags:
         - Key: Name
