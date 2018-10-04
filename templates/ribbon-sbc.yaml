@@ -407,8 +407,9 @@ Resources:
       Tags:
         - Key: Name
           Value: !Sub "${AWS::StackName}-1"
-      UserData: !Base64
-        !Sub |
+      UserData:
+        Fn::Base64:
+          !Sub |
           { "CERole"               : "ACTIVE",
             "ReverseNatPkt0"       : "True",
             "ReverseNatPkt1"       : "False",
@@ -464,8 +465,9 @@ Resources:
       Tags:
         - Key: Name
           Value: !Sub "${AWS::StackName}-2"
-      UserData: !Base64
-        !Sub |
+      UserData:
+        Fn::Base64:
+          !Sub |
           { "CERole"               : "ACTIVE",
             "ReverseNatPkt0"       : "True",
             "ReverseNatPkt1"       : "False",
