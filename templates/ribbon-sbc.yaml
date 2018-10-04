@@ -229,67 +229,51 @@ Mappings:
   AWSAMIRegionMap:
     AMI:
       RIBBONSBCAMI: sbc-V07.00.00S401-connexip-os_06.00.00-S401_1_amd64_07_06_18_17_58
-      RIBBONPKTAMI: <PKT_AMI_MAPPING_NAME>
       RIBBONHFEAMI: <HFE_AMI_MAPPING_HERE>
     us-east-1:
       RIBBONSBCAMI:    ami-0a49b638bad956f96
-      RIBBONPKTAMI:    <AMI_ID>
       RIBBONHFEAMI:    <AMI_ID>
     us-east-2:
       RIBBONSBCAMI:   ami-040489bb244cfbac8
-      RIBBONPKTAMI:    <AMI_ID>
       RIBBONHFEAMI:    <AMI_ID>
     us-west-1:
       RIBBONSBCAMI:    ami-0aaf1884917ca603b
-      RIBBONPKTAMI:    <AMI_ID>
       RIBBONHFEAMI:    <AMI_ID>
     us-west-2:
       RIBBONSBCAMI:    ami-08fab2a9d7088ba15
-      RIBBONPKTAMI:    <AMI_ID>
       RIBBONHFEAMI:    <AMI_ID>
     ca-central-1:
       RIBBONSBCAMI:    ami-0dfc13891ced16640
-      RIBBONPKTAMI:    <AMI_ID>
       RIBBONHFEAMI:    <AMI_ID>
     ap-south-1:
       RIBBONSBCAMI:    ami-0e80e378bf3340301
-      RIBBONPKTAMI:    <AMI_ID>
       RIBBONHFEAMI:    <AMI_ID>
     ap-northeast-1:
       RIBBONSBCAMI:   ami-0b998ba31f803a582
-      RIBBONPKTAMI:   <AMI_ID>
       RIBBONHFEAMI:   <AMI_ID>
     ap-northeast-2:
       RIBBONSBCAMI:    ami-0d5025bc94b5d40a
-      RIBBONPKTAMI:    <AMI_ID>
       RIBBONHFEAMI:    <AMI_ID>
     ap-southeast-1:
       RIBBONSBCAMI:    ami-0880a3f8389c85d3b
-      RIBBONPKTAMI:    <AMI_ID>
       RIBBONHFEAMI:    <AMI_ID>
     ap-southeast-2:
       RIBBONSBCAMI:    ami-0da24ac9dbc63c918
-      RIBBONPKTAMI:    <AMI_ID>
       RIBBONHFEAMI:    <AMI_ID>
     eu-central-1:
       RIBBONSBCAMI:    ami-0ba8b5524933c9d74
-      RIBBONPKTAMI:    <AMI_ID>
       RIBBONHFEAMI:    <AMI_ID>
     eu-west-1:
       RIBBONSBCAMI:    ami-0cd7cbbfb3ddc53d0
-      RIBBONPKTAMI:    <AMI_ID>
       RIBBONHFEAMI:    <AMI_ID>
     eu-west-2:
       RIBBONSBCAMI:    ami-0de70b55413388d40
-      RIBBONPKTAMI:    <AMI_ID>
       RIBBONHFEAMI:    <AMI_ID>
     eu-west-3:
       RIBBONSBCAMI:     ami-0c725161f776a4287
-      RIBBONPKTAMI:    <AMI_ID>
       RIBBONHFEAMI:    <AMI_ID>
     sa-east-1:
       RIBBONSBCAMI:    ami-02eb35cc2d652817e
-      RIBBONPKTAMI:    <AMI_ID>
       RIBBONHFEAMI:    <AMI_ID>
 Resources:
   # Order:
