@@ -1,8 +1,9 @@
 AWSTemplateFormatVersion: '2010-09-09'
-Description: AWS CloudFormation Template to setup and deploy vSBC HA instances and
-  2 PKTART instances to test vSBC. This template creates required vpc, subnet and
-  other routing elements required IAM role to performce IP movement betweenn two vSBC
-  instances.
+Description: >-
+    AWS CloudFormation Template to setup and deploy vSBC HA instances and
+    2 PKTART instances to test vSBC. This template creates required vpc, subnet and
+    other routing elements required IAM role to performce IP movement betweenn two vSBC
+    instances.
 Metadata:
   AWS::CloudFormation::Interface:
     ParameterGroups:
@@ -70,7 +71,7 @@ Parameters:
   HFEManagementEIPAccessCIDR:
     Description: The CIDR range used to access the HFE Management EIP.
     Type: String
-    Default: ''
+    Default: 127.0.0.1/32
     AllowedPattern: (\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})/(\d{1,2})
     ConstraintDescription: Must be a valid IP CIDR range of the form x.x.x.x/x
   SBCExVoipSubnet:
@@ -83,7 +84,6 @@ Parameters:
     Type: String
   HFEPrivateSubnet:
     Type: String
-# TODO: Removed in leiu of VPC Template. come back to this.
   SBCAvailabilityZone:
     Description: Enter Availability Zone for SBC, New subnets for SBC will be created
       here.
@@ -133,7 +133,7 @@ Parameters:
     MaxLength: '26'
     AllowedPattern: ^[A-Za-z]{1}[-A-Za-z0-9]*[A-Za-z0-9]{1}$
     ConstraintDescription: 'Enter valid system name.  Regex: ^[A-Za-z]{1}[-A-Za-z0-9]*[A-Za-z0-9]{1}$ '
-  # TODO: Rename. De-couple scope. 
+  # TODO: Rename. De-couple scope.
   SSHAccessCIDR:
     Description: IP CIDR from where you could SSH into SBC and PKTART instances
     Type: String
@@ -153,7 +153,7 @@ Parameters:
   # TODO: Removed due to VPC Template.
   # - Is this something we should support?
   # - Does the VPC Template handle this already?
-  # - Can we condition it? 
+  # - Can we condition it?
   PlacementId:
     Description: PlacementGroup to launch SBC instances(Optional)
     Type: String
@@ -210,20 +210,23 @@ Conditions:
 Rules:
   NameValidation:
     Assertions:
-    - Assert: !Not
-      - !Equal
-        - !Ref 'SBCActiveInstanceName'
-        - !Ref 'SBCPassiveInstanceName'
+    - Assert:
+        Fn::Not:
+        - Fn::Equal:
+          - !Ref 'SBCActiveInstanceName'
+          - !Ref 'SBCPassiveInstanceName'
       AssertionDescription: "SBCActiveInstanceName and SBCPassiveInstanceName must be unique"
-    - Assert: !Not
-      - !Equal
-        - !Ref 'SBCActiveInstanceName'
-        - !Ref 'SBCSystemName'
+    - Assert:
+        Fn::Not:
+        - Fn::Equal:
+          - !Ref 'SBCActiveInstanceName'
+          - !Ref 'SBCSystemName'
       AssertionDescription: "SBCActiveInstanceName and SBCSystemName cannot be the same."
-    - Assert: !Not
-      - !Equal
-        - !Ref 'SBCPassiveInstanceName'
-        - !Ref 'SBCSystemName'
+    - Assert:
+        Fn::Not:
+        - Fn::Equal:
+          - !Ref 'SBCPassiveInstanceName'
+          - !Ref 'SBCSystemName'
       AssertionDescription: "SBCPassiveInstanceName and SBCSystemName cannot be the same."
 Mappings:
   AWSAMIRegionMap:
@@ -231,50 +234,50 @@ Mappings:
       RIBBONSBCAMI: sbc-V07.00.00S401-connexip-os_06.00.00-S401_1_amd64_07_06_18_17_58
       RIBBONHFEAMI: <HFE_AMI_MAPPING_HERE>
     us-east-1:
-      RIBBONSBCAMI:    ami-0a49b638bad956f96
-      RIBBONHFEAMI:    <AMI_ID>
+      RIBBONSBCAMI: ami-0a49b638bad956f96
+      RIBBONHFEAMI: <AMI_ID>
     us-east-2:
-      RIBBONSBCAMI:   ami-040489bb244cfbac8
-      RIBBONHFEAMI:    <AMI_ID>
+      RIBBONSBCAMI: ami-040489bb244cfbac8
+      RIBBONHFEAMI: <AMI_ID>
     us-west-1:
-      RIBBONSBCAMI:    ami-0aaf1884917ca603b
-      RIBBONHFEAMI:    <AMI_ID>
+      RIBBONSBCAMI: ami-0aaf1884917ca603b
+      RIBBONHFEAMI: <AMI_ID>
     us-west-2:
-      RIBBONSBCAMI:    ami-08fab2a9d7088ba15
-      RIBBONHFEAMI:    <AMI_ID>
+      RIBBONSBCAMI: ami-08fab2a9d7088ba15
+      RIBBONHFEAMI: <AMI_ID>
     ca-central-1:
-      RIBBONSBCAMI:    ami-0dfc13891ced16640
-      RIBBONHFEAMI:    <AMI_ID>
+      RIBBONSBCAMI: ami-0dfc13891ced16640
+      RIBBONHFEAMI: <AMI_ID>
     ap-south-1:
-      RIBBONSBCAMI:    ami-0e80e378bf3340301
-      RIBBONHFEAMI:    <AMI_ID>
+      RIBBONSBCAMI: ami-0e80e378bf3340301
+      RIBBONHFEAMI: <AMI_ID>
     ap-northeast-1:
-      RIBBONSBCAMI:   ami-0b998ba31f803a582
-      RIBBONHFEAMI:   <AMI_ID>
+      RIBBONSBCAMI: ami-0b998ba31f803a582
+      RIBBONHFEAMI: <AMI_ID>
     ap-northeast-2:
-      RIBBONSBCAMI:    ami-0d5025bc94b5d40a
-      RIBBONHFEAMI:    <AMI_ID>
+      RIBBONSBCAMI: ami-0d5025bc94b5d40a
+      RIBBONHFEAMI: <AMI_ID>
     ap-southeast-1:
-      RIBBONSBCAMI:    ami-0880a3f8389c85d3b
-      RIBBONHFEAMI:    <AMI_ID>
+      RIBBONSBCAMI: ami-0880a3f8389c85d3b
+      RIBBONHFEAMI: <AMI_ID>
     ap-southeast-2:
-      RIBBONSBCAMI:    ami-0da24ac9dbc63c918
-      RIBBONHFEAMI:    <AMI_ID>
+      RIBBONSBCAMI: ami-0da24ac9dbc63c918
+      RIBBONHFEAMI: <AMI_ID>
     eu-central-1:
-      RIBBONSBCAMI:    ami-0ba8b5524933c9d74
-      RIBBONHFEAMI:    <AMI_ID>
+      RIBBONSBCAMI: ami-0ba8b5524933c9d74
+      RIBBONHFEAMI: <AMI_ID>
     eu-west-1:
-      RIBBONSBCAMI:    ami-0cd7cbbfb3ddc53d0
-      RIBBONHFEAMI:    <AMI_ID>
+      RIBBONSBCAMI: ami-0cd7cbbfb3ddc53d0
+      RIBBONHFEAMI: <AMI_ID>
     eu-west-2:
-      RIBBONSBCAMI:    ami-0de70b55413388d40
-      RIBBONHFEAMI:    <AMI_ID>
+      RIBBONSBCAMI: ami-0de70b55413388d40
+      RIBBONHFEAMI: <AMI_ID>
     eu-west-3:
-      RIBBONSBCAMI:     ami-0c725161f776a4287
-      RIBBONHFEAMI:    <AMI_ID>
+      RIBBONSBCAMI: ami-0c725161f776a4287
+      RIBBONHFEAMI: <AMI_ID>
     sa-east-1:
-      RIBBONSBCAMI:    ami-02eb35cc2d652817e
-      RIBBONHFEAMI:    <AMI_ID>
+      RIBBONSBCAMI: ami-02eb35cc2d652817e
+      RIBBONHFEAMI: <AMI_ID>
 Resources:
   # Order:
   # - Resource Type
@@ -282,254 +285,6 @@ Resources:
   # -- SBC Passive/Combined
   # -- HFE
   # IAM Instance Roles.
-  SBCInstanceRole:
-    Type: AWS::IAM::Role
-    Properties:
-      RoleName: !Sub "SBCInstanceRole-${AWS::Region}"
-      AssumeRolePolicyDocument:
-        Version: '2012-10-17'
-        Statement:
-          - Effect: Allow
-            Principal:
-              Service:
-                - ec2.amazonaws.com
-            Action:
-              - sts:AssumeRole
-      Path: /
-      Policies:
-        - PolicyName: Actions on SBC Instances.
-          PolicyDocument:
-            Version: '2012-10-17'
-            Statement:
-              - Effect: Allow
-                Action:
-                  - ec2:AllocateAddress
-                  - ec2:AssignPrivateIpAddresses
-                  - ec2:AssociateAddress
-                  - ec2:AttachNetworkInterface
-                  - ec2:DisassociateAddress
-                  - ec2:DescribeInstances
-                  - ec2:DescribeAddresses
-                  - ec2:DescribeNetworkInterfaces
-                  - ec2:DescribeInstanceAttribute
-                  - ec2:DescribeRegions
-                  - ec2:ModifyInstanceAttribute
-                  - ec2:DescribeSubnets
-                Resource: "*"
-  HFEInstanceRole:
-    Type: AWS::IAM::Role
-    Properties:
-      RoleName: !Sub "HFEInstanceRole-${AWS::Region}"
-      AssumeRolePolicyDocument:
-        Version: '2012-10-17'
-        Statement:
-          - Effect: Allow
-            Principal:
-              Service:
-                - ec2.amazonaws.com
-            Action:
-              - sts:AssumeRole
-      Path: /
-      Policies:
-        - PolicyName: Allow access to S3 Bucket.
-          PolicyDocument:
-            Version: '2012-10-17'
-            Statement:
-              - Effect: Allow
-                Action:
-                  - s3:Get*
-                  - s3:List*
-                Resource:
-                - 'arn:aws:s3:::${QSS3BucketName}'
-                - 'arn:aws:s3:::${QSS3BucketName}/*'
-  # IAM Instance Profiles.
-  SBCInstanceProfile:
-    Type: AWS::IAM::InstanceProfile
-    Properties:
-      InstanceProfileName: !Sub "SBCInstanceProfile-${AWS::Region}"
-      Path: /
-      Roles: !Ref 'SBCInstanceRole'
-  HFEInstanceProfile:
-    Type: AWS::IAM::InstanceProfile
-    Properties:
-      InstanceProfileName: !Sub "HFEInstanceProfile-${AWS::Region}"
-      Path: /
-      Roles: !Ref 'HFEInstanceRole'
-  # EC2 Instances.
-  SBCActiveInstance:
-    Type: AWS::EC2::Instance
-    Properties:
-      ImageId: !FindInMap
-        - AWSAMIRegionMap
-        - !Ref 'AWS::Region'
-        - RIBBONSBCAMI
-      IamInstanceProfile: !Ref 'SBCInstanceProfile'
-      BlockDeviceMappings:
-        - DeviceName: /dev/sda1
-          Ebs:
-            VolumeType: !Ref 'SBCVolumeType'
-            VolumeSize: !Ref 'SBCVolumeSize'
-            Iops: !If
-              - VolumeTypeIO1
-              - !Ref 'SBCVolumeIOPS'
-              - !Ref 'AWS::NoValue'
-            DeleteOnTermination: true
-      InstanceType: !Ref 'SBCInstanceType'
-      Tenancy: !Ref 'Tenancy'
-      PlacementGroupName: !Ref 'PlacementId'
-      EbsOptimized: true
-      KeyName: !Ref 'KeyPairName'
-      NetworkInterfaces:
-        - NetworkInterfaceId: !Ref 'SBCActiveMgtIface'
-          DeviceIndex: '0'
-        - NetworkInterfaceId: !Ref 'SBCActiveHAIface'
-          DeviceIndex: '1'
-        - NetworkInterfaceId: !Ref 'SBCActiveInVoipIface'
-          DeviceIndex: '2'
-        - NetworkInterfaceId: !Ref 'SBCActiveExVoipIface'
-          DeviceIndex: '3'
-      Tags:
-        - Key: Name
-          Value: !Sub "${AWS::StackName}-1"
-      UserData:
-        Fn::Base64:
-          !Sub |
-          { "CERole"               : "ACTIVE",
-            "ReverseNatPkt0"       : "True",
-            "ReverseNatPkt1"       : "False",
-            "IAM_ROLE"             : ${SBCInstanceRole},
-            "ALT_Mgt0_00"          : "LOGICAL_MGMT_IP",
-            "ALT_Pkt0_00"          : "VIP1",
-            "ALT_Pkt1_00"          : "VIP2",
-            "ClusterIp"            : "${SBCPassiveHAIface.PrimaryPrivateIpAddress}",
-            "HFE"                  : !Select [0, ${HFEPublicInterface.SecondaryPrivateIpAddresses}],
-            "SbcPersonalityType"   : "${SBCPersonalityType}",
-            "SbcMgmtMode"          : "centralized",
-            "TemplateName"         : "AWS_HA_template.json",
-            "TemplateVersion"      : "V07.00.00A011",
-            "CEName"               : "${SBCActiveInstanceName}",
-            "PeerCEName"           : "${SBCPassiveInstanceName}",
-            "PeerCEHa0IPv4Address" : "${SBCPassiveHAIface.PrimaryPrivateIpAddress}",
-            "SystemName"           : "${SBCSystemName}",
-            "ActiveRoleMgtId"      : "${SBCActiveMgtIface}",
-            "NodeName"             : "${AWS::StackName}"
-          }
-  SBCPassiveInstance:
-    Type: AWS::EC2::Instance
-    Properties:
-      ImageId: !FindInMap
-        - AWSAMIRegionMap
-        - !Ref 'AWS::Region'
-        - RIBBONSBCAMI
-      BlockDeviceMappings:
-        - DeviceName: /dev/sda1
-          Ebs:
-            VolumeType: !Ref 'SBCVolumeType'
-            VolumeSize: !Ref 'SBCVolumeSize'
-            Iops: !If
-              - VolumeTypeIO1
-              - !Ref 'SBCVolumeIOPS'
-              - !Ref 'AWS::NoValue'
-            DeleteOnTermination: true
-      IamInstanceProfile: !Ref 'SBCInstanceProfile'
-      InstanceType: !Ref 'SBCInstanceType'
-      Tenancy: !Ref 'Tenancy'
-      PlacementGroupName: !Ref 'PlacementId'
-      EbsOptimized: true
-      KeyName: !Ref 'KeyPairName'
-      NetworkInterfaces:
-        - NetworkInterfaceId: !Ref 'SBCPassiveMgtIface'
-          DeviceIndex: '0'
-        - NetworkInterfaceId: !Ref 'SBCPassiveHAIface'
-          DeviceIndex: '1'
-        - NetworkInterfaceId: !Ref 'SBCPassiveInVoipIface'
-          DeviceIndex: '2'
-        - NetworkInterfaceId: !Ref 'SBCPassiveExVoipIface'
-          DeviceIndex: '3'
-      Tags:
-        - Key: Name
-          Value: !Sub "${AWS::StackName}-2"
-      UserData:
-        Fn::Base64:
-          !Sub |
-          { "CERole"               : "ACTIVE",
-            "ReverseNatPkt0"       : "True",
-            "ReverseNatPkt1"       : "False",
-            "IAM_ROLE"             : ${SBCInstanceRole},
-            "ALT_Mgt0_00"          : "LOGICAL_MGMT_IP",
-            "ALT_Pkt0_00"          : "VIP1",
-            "ALT_Pkt1_00"          : "VIP2",
-            "ClusterIp"            : "${SBCPassiveHAIface.PrimaryPrivateIpAddress}",
-            "HFE"                  : !Select [0, ${HFEPublicInterface.SecondaryPrivateIpAddresses}],
-            "SbcPersonalityType"   : "${SBCPersonalityType}",
-            "SbcMgmtMode"          : "centralized",
-            "TemplateName"         : "AWS_HA_template.json",
-            "TemplateVersion"      : "V07.00.00A011",
-            "CEName"               : "${SBCActiveInstanceName}",
-            "PeerCEName"           : "${SBCPassiveInstanceName}",
-            "PeerCEHa0IPv4Address" : "${SBCPassiveHAIface.PrimaryPrivateIpAddress}",
-            "SystemName"           : "${SBCSystemName}",
-            "ActiveRoleMgtId"      : "${SBCActiveMgtIface}",
-            "NodeName"             : "${AWS::StackName}"
-          }
-  HFEInstance:
-    Type: AWS::EC2::Instance
-    Properties:
-      ImageId: !FindInMap
-        - AWSAMIRegionMap
-        - !Ref 'AWS::Region'
-        - RIBBONHFEAMI
-      BlockDeviceMappings:
-        - DeviceName: /dev/xvda
-          Ebs:
-            VolumeType: gp2
-            VolumeSize: 20
-            DeleteOnTermination: false
-      IamInstanceProfile: !Ref 'HFEInstanceProfile'
-      InstanceType: !Ref 'SBCInstanceType'
-      Tenancy: !Ref 'Tenancy'
-      PlacementGroupName: !Ref 'PlacementId'
-      EbsOptimized: true
-      KeyName: !Ref 'KeyPairName'
-      NetworkInterfaces:
-        - NetworkInterfaceId: !Ref 'HFEPublicInterface'
-          DeviceIndex: '0'
-        - NetworkInterfaceId: !Ref 'HFEManagementInterface'
-          DeviceIndex: '1'
-        - NetworkInterfaceId: !Ref 'HFEPrivateInterface'
-          DeviceIndex: '2'
-      Tags:
-        - Key: Name
-          Value: "HFE Instance"
-      UserData:
-        Fn::Base64: !Sub |
-          #!/bin/bash
-          HFE_DIR="/home/ec2-user/HFE/"
-          HFE_FILE="$HFE_DIR/HFE.sh"
-          LOG_FILE="$HFE_DIR/cloud-init-nat.log"
-          NAT_VAR="$HFE_DIR/natVars.input"
-          function timestamp(){
-            date +"%Y-%m-%d %T"
-          }
-          mkdir -p ${!HFE_DIR};
-          aws s3 cp ${HFEScriptS3Location} $HFE_FILE
-          if [ $? -ne 0 ]; then
-            /bin/echo $(!timestamp) "Error:Could not copy HFE script from S3 bucket."
-          else
-            /bin/echo $(!timestamp) "Copied HFE script from S3 bucket."
-          fi;
-          /bin/echo "SBC_SECONDARY_IP=${SBCActiveInVoipIface.SecondaryPrivateIpAddresses.0}" >> $NAT_VAR
-          " >> $NAT_VAR
-          /bin/echo "REMOTE_SSH_MACHINE_IP=\\"
-          !If
-            EipForHFEManagementInterface
-            !Ref 'HFEManagementEIPAccessCIDR'
-            ''
-          /bin/echo $(!timestamp) "Copied natVars.input" >> ${!LOG_FILE}
-          sudo chmod 744 ${!HFE_FILE}
-          sudo /bin/bash ${!HFE_FILE} setup
-          /bin/echo "Configured using HFE script ${!HFE_FILE}" >> ${!LOG_FILE}
-          /bin/echo $(!timestamp) " =========================   Done    ==========================================" >> ${!LOG_FILE}
   # VPC Endpoints
   SBCEndPoint:
     Type: AWS::EC2::VPCEndpoint
@@ -537,8 +292,10 @@ Resources:
     Properties:
       VpcEndpointType: Interface
       PrivateDnsEnabled: true
-      SubnetIds: !Ref 'SBCManagementSubnet'
-      SecurityGroupIds: !Ref 'SBCManagementSG'
+      SubnetIds:
+        - !Ref 'SBCManagementSubnet'
+      SecurityGroupIds:
+        - !Ref 'SBCManagementSG'
       ServiceName: !Sub "com.amazonaws.${AWS::Region}.ec2"
       VpcId: !Ref 'VPCID'
   # Network Interfaces
@@ -819,6 +576,259 @@ Resources:
       PrivateIpAddress: !Select
         - '0'
         - !GetAtt 'SBCActiveMgtIface.SecondaryPrivateIpAddresses'
+
+  SBCInstanceRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub "SBCInstanceRole-${AWS::Region}"
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - ec2.amazonaws.com
+            Action:
+              - sts:AssumeRole
+      Path: /
+      Policies:
+        - PolicyName: Actions on SBC Instances.
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - ec2:AllocateAddress
+                  - ec2:AssignPrivateIpAddresses
+                  - ec2:AssociateAddress
+                  - ec2:AttachNetworkInterface
+                  - ec2:DisassociateAddress
+                  - ec2:DescribeInstances
+                  - ec2:DescribeAddresses
+                  - ec2:DescribeNetworkInterfaces
+                  - ec2:DescribeInstanceAttribute
+                  - ec2:DescribeRegions
+                  - ec2:ModifyInstanceAttribute
+                  - ec2:DescribeSubnets
+                Resource: "*"
+  HFEInstanceRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub "HFEInstanceRole-${AWS::Region}"
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - ec2.amazonaws.com
+            Action:
+              - sts:AssumeRole
+      Path: /
+      Policies:
+        - PolicyName: Allow access to S3 Bucket.
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - s3:Get*
+                  - s3:List*
+                Resource:
+                - 'arn:aws:s3:::${QSS3BucketName}'
+                - 'arn:aws:s3:::${QSS3BucketName}/*'
+  # IAM Instance Profiles.
+  SBCInstanceProfile:
+    Type: AWS::IAM::InstanceProfile
+    Properties:
+      InstanceProfileName: !Sub "SBCInstanceProfile-${AWS::Region}"
+      Path: /
+      Roles:
+        - !Ref 'SBCInstanceRole'
+  HFEInstanceProfile:
+    Type: AWS::IAM::InstanceProfile
+    Properties:
+      InstanceProfileName: !Sub "HFEInstanceProfile-${AWS::Region}"
+      Path: /
+      Roles:
+        - !Ref 'HFEInstanceRole'
+  # EC2 Instances.
+  SBCActiveInstance:
+    DependsOn: HFEPublicInterface
+    Type: AWS::EC2::Instance
+    Properties:
+      ImageId: !FindInMap
+        - AWSAMIRegionMap
+        - !Ref 'AWS::Region'
+        - RIBBONSBCAMI
+      IamInstanceProfile: !Ref 'SBCInstanceProfile'
+      BlockDeviceMappings:
+        - DeviceName: /dev/sda1
+          Ebs:
+            VolumeType: !Ref 'SBCVolumeType'
+            VolumeSize: !Ref 'SBCVolumeSize'
+            Iops: !If
+              - VolumeTypeIO1
+              - !Ref 'SBCVolumeIOPS'
+              - !Ref 'AWS::NoValue'
+            DeleteOnTermination: true
+      InstanceType: !Ref 'SBCInstanceType'
+      Tenancy: !Ref 'Tenancy'
+      PlacementGroupName: !Ref 'PlacementId'
+      EbsOptimized: true
+      KeyName: !Ref 'KeyPairName'
+      NetworkInterfaces:
+        - NetworkInterfaceId: !Ref 'SBCActiveMgtIface'
+          DeviceIndex: '0'
+        - NetworkInterfaceId: !Ref 'SBCActiveHAIface'
+          DeviceIndex: '1'
+        - NetworkInterfaceId: !Ref 'SBCActiveInVoipIface'
+          DeviceIndex: '2'
+        - NetworkInterfaceId: !Ref 'SBCActiveExVoipIface'
+          DeviceIndex: '3'
+      Tags:
+        - Key: Name
+          Value: !Sub "${AWS::StackName}-1"
+      UserData:
+        Fn::Base64:
+          !Sub |
+          { "CERole"               : "ACTIVE",
+            "ReverseNatPkt0"       : "True",
+            "ReverseNatPkt1"       : "False",
+            "IAM_ROLE"             : ${SBCInstanceRole},
+            "ALT_Mgt0_00"          : "LOGICAL_MGMT_IP",
+            "ALT_Pkt0_00"          : "VIP1",
+            "ALT_Pkt1_00"          : "VIP2",
+            "ClusterIp"            : "${SBCPassiveHAIface.PrimaryPrivateIpAddress}",
+            "HFE"                  : "${HFEPublicInterface.SecondaryPrivateIpAddresses.0}",
+            "SbcPersonalityType"   : "${SBCPersonalityType}",
+            "SbcMgmtMode"          : "centralized",
+            "TemplateName"         : "AWS_HA_template.json",
+            "TemplateVersion"      : "V07.00.00A011",
+            "CEName"               : "${SBCActiveInstanceName}",
+            "PeerCEName"           : "${SBCPassiveInstanceName}",
+            "PeerCEHa0IPv4Address" : "${SBCPassiveHAIface.PrimaryPrivateIpAddress}",
+            "SystemName"           : "${SBCSystemName}",
+            "ActiveRoleMgtId"      : "${SBCActiveMgtIface}",
+            "NodeName"             : "${AWS::StackName}"
+          }
+  SBCPassiveInstance:
+    Type: AWS::EC2::Instance
+    DependsOn: HFEPublicInterface
+    Properties:
+      ImageId: !FindInMap
+        - AWSAMIRegionMap
+        - !Ref 'AWS::Region'
+        - RIBBONSBCAMI
+      BlockDeviceMappings:
+        - DeviceName: /dev/sda1
+          Ebs:
+            VolumeType: !Ref 'SBCVolumeType'
+            VolumeSize: !Ref 'SBCVolumeSize'
+            Iops: !If
+              - VolumeTypeIO1
+              - !Ref 'SBCVolumeIOPS'
+              - !Ref 'AWS::NoValue'
+            DeleteOnTermination: true
+      IamInstanceProfile: !Ref 'SBCInstanceProfile'
+      InstanceType: !Ref 'SBCInstanceType'
+      Tenancy: !Ref 'Tenancy'
+      PlacementGroupName: !Ref 'PlacementId'
+      EbsOptimized: true
+      KeyName: !Ref 'KeyPairName'
+      NetworkInterfaces:
+        - NetworkInterfaceId: !Ref 'SBCPassiveMgtIface'
+          DeviceIndex: '0'
+        - NetworkInterfaceId: !Ref 'SBCPassiveHAIface'
+          DeviceIndex: '1'
+        - NetworkInterfaceId: !Ref 'SBCPassiveInVoipIface'
+          DeviceIndex: '2'
+        - NetworkInterfaceId: !Ref 'SBCPassiveExVoipIface'
+          DeviceIndex: '3'
+      Tags:
+        - Key: Name
+          Value: !Sub "${AWS::StackName}-2"
+      UserData:
+        Fn::Base64:
+          !Sub |
+          { "CERole"               : "ACTIVE",
+            "ReverseNatPkt0"       : "True",
+            "ReverseNatPkt1"       : "False",
+            "IAM_ROLE"             : ${SBCInstanceRole},
+            "ALT_Mgt0_00"          : "LOGICAL_MGMT_IP",
+            "ALT_Pkt0_00"          : "VIP1",
+            "ALT_Pkt1_00"          : "VIP2",
+            "ClusterIp"            : "${SBCPassiveHAIface.PrimaryPrivateIpAddress}",
+            "HFE"                  : "${HFEPublicInterface.SecondaryPrivateIpAddresses.0}",
+            "SbcPersonalityType"   : "${SBCPersonalityType}",
+            "SbcMgmtMode"          : "centralized",
+            "TemplateName"         : "AWS_HA_template.json",
+            "TemplateVersion"      : "V07.00.00A011",
+            "CEName"               : "${SBCActiveInstanceName}",
+            "PeerCEName"           : "${SBCPassiveInstanceName}",
+            "PeerCEHa0IPv4Address" : "${SBCPassiveHAIface.PrimaryPrivateIpAddress}",
+            "SystemName"           : "${SBCSystemName}",
+            "ActiveRoleMgtId"      : "${SBCActiveMgtIface}",
+            "NodeName"             : "${AWS::StackName}"
+          }
+  HFEInstance:
+    Type: AWS::EC2::Instance
+    Properties:
+      ImageId: !FindInMap
+        - AWSAMIRegionMap
+        - !Ref 'AWS::Region'
+        - RIBBONHFEAMI
+      BlockDeviceMappings:
+        - DeviceName: /dev/xvda
+          Ebs:
+            VolumeType: gp2
+            VolumeSize: 20
+            DeleteOnTermination: false
+      IamInstanceProfile: !Ref 'HFEInstanceProfile'
+      InstanceType: !Ref 'SBCInstanceType'
+      Tenancy: !Ref 'Tenancy'
+      PlacementGroupName: !Ref 'PlacementId'
+      EbsOptimized: true
+      KeyName: !Ref 'KeyPairName'
+      NetworkInterfaces:
+        - NetworkInterfaceId: !Ref 'HFEPublicInterface'
+          DeviceIndex: '0'
+        - NetworkInterfaceId: !Ref 'HFEManagementInterface'
+          DeviceIndex: '1'
+        - NetworkInterfaceId: !Ref 'HFEPrivateInterface'
+          DeviceIndex: '2'
+      Tags:
+        - Key: Name
+          Value: "HFE Instance"
+      UserData:
+        Fn::Base64: !Sub |
+          #!/bin/bash
+          HFE_DIR="/home/ec2-user/HFE/"
+          HFE_FILE="$HFE_DIR/HFE.sh"
+          LOG_FILE="$HFE_DIR/cloud-init-nat.log"
+          NAT_VAR="$HFE_DIR/natVars.input"
+          function timestamp(){
+            date +"%Y-%m-%d %T"
+          }
+          mkdir -p ${!HFE_DIR};
+          aws s3 cp s3://${QSS3BucketName}/${QSS3KeyPrefix}scripts/HFE.sh $HFE_FILE
+          if [ $? -ne 0 ]; then
+            /bin/echo $(timestamp) "Error:Could not copy HFE script from S3 bucket."
+          else
+            /bin/echo $(timestamp) "Copied HFE script from S3 bucket."
+          fi;
+          /bin/echo "SBC_SECONDARY_IP=${SBCActiveInVoipIface.SecondaryPrivateIpAddresses.0}" >> $NAT_VAR
+          " >> $NAT_VAR
+          /bin/echo "REMOTE_SSH_MACHINE_IP=\\"
+          !If
+            EipForHFEManagementInterface
+            !Ref 'HFEManagementEIPAccessCIDR'
+            ''
+          /bin/echo $(!timestamp) "Copied natVars.input" >> ${!LOG_FILE}
+          sudo chmod 744 ${!HFE_FILE}
+          sudo /bin/bash ${!HFE_FILE} setup
+          /bin/echo "Configured using HFE script ${!HFE_FILE}" >> ${!LOG_FILE}
+          /bin/echo $(!timestamp) " =========================   Done    ==========================================" >> ${!LOG_FILE}
 
 Outputs:
   InstanceIdActive:
