@@ -212,19 +212,19 @@ Rules:
     Assertions:
     - Assert:
         Fn::Not:
-        - Fn::Equal:
+        - Fn::Equals:
           - !Ref 'SBCActiveInstanceName'
           - !Ref 'SBCPassiveInstanceName'
       AssertionDescription: "SBCActiveInstanceName and SBCPassiveInstanceName must be unique"
     - Assert:
         Fn::Not:
-        - Fn::Equal:
+        - Fn::Equals:
           - !Ref 'SBCActiveInstanceName'
           - !Ref 'SBCSystemName'
       AssertionDescription: "SBCActiveInstanceName and SBCSystemName cannot be the same."
     - Assert:
         Fn::Not:
-        - Fn::Equal:
+        - Fn::Equals:
           - !Ref 'SBCPassiveInstanceName'
           - !Ref 'SBCSystemName'
       AssertionDescription: "SBCPassiveInstanceName and SBCSystemName cannot be the same."
@@ -691,27 +691,29 @@ Resources:
           Value: !Sub "${AWS::StackName}-1"
       UserData:
         Fn::Base64:
-          !Sub |
-          { "CERole"               : "ACTIVE",
-            "ReverseNatPkt0"       : "True",
-            "ReverseNatPkt1"       : "False",
-            "IAM_ROLE"             : ${SBCInstanceRole},
-            "ALT_Mgt0_00"          : "LOGICAL_MGMT_IP",
-            "ALT_Pkt0_00"          : "VIP1",
-            "ALT_Pkt1_00"          : "VIP2",
-            "ClusterIp"            : "${SBCPassiveHAIface.PrimaryPrivateIpAddress}",
-            "HFE"                  : "${HFEPublicInterface.SecondaryPrivateIpAddresses.0}",
-            "SbcPersonalityType"   : "${SBCPersonalityType}",
-            "SbcMgmtMode"          : "centralized",
-            "TemplateName"         : "AWS_HA_template.json",
-            "TemplateVersion"      : "V07.00.00A011",
-            "CEName"               : "${SBCActiveInstanceName}",
-            "PeerCEName"           : "${SBCPassiveInstanceName}",
-            "PeerCEHa0IPv4Address" : "${SBCPassiveHAIface.PrimaryPrivateIpAddress}",
-            "SystemName"           : "${SBCSystemName}",
-            "ActiveRoleMgtId"      : "${SBCActiveMgtIface}",
-            "NodeName"             : "${AWS::StackName}"
-          }
+          Fn::Sub:
+          - |
+            { "CERole"               : "ACTIVE",
+              "ReverseNatPkt0"       : "True",
+              "ReverseNatPkt1"       : "False",
+              "IAM_ROLE"             : ${SBCInstanceRole},
+              "ALT_Mgt0_00"          : "LOGICAL_MGMT_IP",
+              "ALT_Pkt0_00"          : "VIP1",
+              "ALT_Pkt1_00"          : "VIP2",
+              "ClusterIp"            : "${SBCPassiveHAIface.PrimaryPrivateIpAddress}",
+              "HFE"                  : "${HFEPub_SecondaryPrivIP}",
+              "SbcPersonalityType"   : "${SBCPersonalityType}",
+              "SbcMgmtMode"          : "centralized",
+              "TemplateName"         : "AWS_HA_template.json",
+              "TemplateVersion"      : "V07.00.00A011",
+              "CEName"               : "${SBCActiveInstanceName}",
+              "PeerCEName"           : "${SBCPassiveInstanceName}",
+              "PeerCEHa0IPv4Address" : "${SBCPassiveHAIface.PrimaryPrivateIpAddress}",
+              "SystemName"           : "${SBCSystemName}",
+              "ActiveRoleMgtId"      : "${SBCActiveMgtIface}",
+              "NodeName"             : "${AWS::StackName}"
+            }
+          - { HFEPub_SecondaryPrivIP: !Select [0, !GetAtt HFEPublicInterface.SecondaryPrivateIpAddresses] }
   SBCPassiveInstance:
     Type: AWS::EC2::Instance
     DependsOn: HFEPublicInterface
@@ -750,27 +752,29 @@ Resources:
           Value: !Sub "${AWS::StackName}-2"
       UserData:
         Fn::Base64:
-          !Sub |
-          { "CERole"               : "ACTIVE",
-            "ReverseNatPkt0"       : "True",
-            "ReverseNatPkt1"       : "False",
-            "IAM_ROLE"             : ${SBCInstanceRole},
-            "ALT_Mgt0_00"          : "LOGICAL_MGMT_IP",
-            "ALT_Pkt0_00"          : "VIP1",
-            "ALT_Pkt1_00"          : "VIP2",
-            "ClusterIp"            : "${SBCPassiveHAIface.PrimaryPrivateIpAddress}",
-            "HFE"                  : "${HFEPublicInterface.SecondaryPrivateIpAddresses.0}",
-            "SbcPersonalityType"   : "${SBCPersonalityType}",
-            "SbcMgmtMode"          : "centralized",
-            "TemplateName"         : "AWS_HA_template.json",
-            "TemplateVersion"      : "V07.00.00A011",
-            "CEName"               : "${SBCActiveInstanceName}",
-            "PeerCEName"           : "${SBCPassiveInstanceName}",
-            "PeerCEHa0IPv4Address" : "${SBCPassiveHAIface.PrimaryPrivateIpAddress}",
-            "SystemName"           : "${SBCSystemName}",
-            "ActiveRoleMgtId"      : "${SBCActiveMgtIface}",
-            "NodeName"             : "${AWS::StackName}"
-          }
+          Fn::Sub:
+          - |
+            { "CERole"               : "ACTIVE",
+              "ReverseNatPkt0"       : "True",
+              "ReverseNatPkt1"       : "False",
+              "IAM_ROLE"             : ${SBCInstanceRole},
+              "ALT_Mgt0_00"          : "LOGICAL_MGMT_IP",
+              "ALT_Pkt0_00"          : "VIP1",
+              "ALT_Pkt1_00"          : "VIP2",
+              "ClusterIp"            : "${SBCPassiveHAIface.PrimaryPrivateIpAddress}",
+              "HFE"                  : "${HFEPub_SecondaryPrivIP}",
+              "SbcPersonalityType"   : "${SBCPersonalityType}",
+              "SbcMgmtMode"          : "centralized",
+              "TemplateName"         : "AWS_HA_template.json",
+              "TemplateVersion"      : "V07.00.00A011",
+              "CEName"               : "${SBCActiveInstanceName}",
+              "PeerCEName"           : "${SBCPassiveInstanceName}",
+              "PeerCEHa0IPv4Address" : "${SBCPassiveHAIface.PrimaryPrivateIpAddress}",
+              "SystemName"           : "${SBCSystemName}",
+              "ActiveRoleMgtId"      : "${SBCActiveMgtIface}",
+              "NodeName"             : "${AWS::StackName}"
+            }
+          - { HFEPub_SecondaryPrivIP: !Select [0, !GetAtt HFEPublicInterface.SecondaryPrivateIpAddresses] }
   HFEInstance:
     Type: AWS::EC2::Instance
     Properties:
@@ -801,34 +805,33 @@ Resources:
         - Key: Name
           Value: "HFE Instance"
       UserData:
-        Fn::Base64: !Sub |
-          #!/bin/bash
-          HFE_DIR="/home/ec2-user/HFE/"
-          HFE_FILE="$HFE_DIR/HFE.sh"
-          LOG_FILE="$HFE_DIR/cloud-init-nat.log"
-          NAT_VAR="$HFE_DIR/natVars.input"
-          function timestamp(){
-            date +"%Y-%m-%d %T"
-          }
-          mkdir -p ${!HFE_DIR};
-          aws s3 cp s3://${QSS3BucketName}/${QSS3KeyPrefix}scripts/HFE.sh $HFE_FILE
-          if [ $? -ne 0 ]; then
-            /bin/echo $(timestamp) "Error:Could not copy HFE script from S3 bucket."
-          else
-            /bin/echo $(timestamp) "Copied HFE script from S3 bucket."
-          fi;
-          /bin/echo "SBC_SECONDARY_IP=${SBCActiveInVoipIface.SecondaryPrivateIpAddresses.0}" >> $NAT_VAR
-          " >> $NAT_VAR
-          /bin/echo "REMOTE_SSH_MACHINE_IP=\\"
-          !If
-            EipForHFEManagementInterface
-            !Ref 'HFEManagementEIPAccessCIDR'
-            ''
-          /bin/echo $(!timestamp) "Copied natVars.input" >> ${!LOG_FILE}
-          sudo chmod 744 ${!HFE_FILE}
-          sudo /bin/bash ${!HFE_FILE} setup
-          /bin/echo "Configured using HFE script ${!HFE_FILE}" >> ${!LOG_FILE}
-          /bin/echo $(!timestamp) " =========================   Done    ==========================================" >> ${!LOG_FILE}
+        Fn::Base64:
+          Fn::Sub:
+          - |
+            #!/bin/bash
+            HFE_DIR="/home/ec2-user/HFE/"
+            HFE_FILE="$HFE_DIR/HFE.sh"
+            LOG_FILE="$HFE_DIR/cloud-init-nat.log"
+            NAT_VAR="$HFE_DIR/natVars.input"
+            function timestamp(){
+              date +"%Y-%m-%d %T"
+            }
+            mkdir -p ${!HFE_DIR};
+            aws s3 cp s3://${QSS3BucketName}/${QSS3KeyPrefix}scripts/HFE.sh ${!HFE_FILE}
+            if [ $? -ne 0 ]; then
+              /bin/echo $(timestamp) "Error:Could not copy HFE script from S3 bucket."
+            else
+              /bin/echo $(timestamp) "Copied HFE script from S3 bucket."
+            fi;
+            /bin/echo "SBC_SECONDARY_IP=${SBC_SECONDARY_IP}" >> ${!NAT_VAR}
+            /bin/echo "REMOTE_SSH_MACHINE_IP=${REMOTE_SSH_MACHINE_IP}"
+            /bin/echo $(!timestamp) "Copied natVars.input" >> ${!LOG_FILE}
+            sudo chmod 744 ${!HFE_FILE}
+            sudo /bin/bash ${!HFE_FILE} setup
+            /bin/echo "Configured using HFE script ${!HFE_FILE}" >> ${!LOG_FILE}
+            /bin/echo $(timestamp) " =========================   Done    ==========================================" >> ${!LOG_FILE}
+          - {SBC_SECONDARY_IP: !Select [0, !GetAtt SBCActiveInVoipIface.SecondaryPrivateIpAddresses] , REMOTE_SSH_MACHINE_IP: !If [ EipForHFEManagementInterface, !Ref HFEManagementEIPAccessCIDR, ''] }
+
 
 Outputs:
   InstanceIdActive:
