@@ -593,7 +593,7 @@ Resources:
               - sts:AssumeRole
       Path: /
       Policies:
-        - PolicyName: Actions on SBC Instances.
+        - PolicyName: SBCInstancePermissions
           PolicyDocument:
             Version: '2012-10-17'
             Statement:
@@ -627,7 +627,7 @@ Resources:
               - sts:AssumeRole
       Path: /
       Policies:
-        - PolicyName: Allow access to S3 Bucket.
+        - PolicyName: AccessToS3Bucket
           PolicyDocument:
             Version: '2012-10-17'
             Statement:
