@@ -18,6 +18,7 @@ Metadata:
         Parameters:
           - KeyPairName
           - SBCInstanceType
+          - AsteriskInstanceType
       - Label:
           default: Network Configuration
         Parameters:
@@ -69,6 +70,13 @@ Parameters:
     AllowedValues:
       - 'Yes'
       - 'No'
+  ASTManagementNeedsEIP:
+    Description: Enable EIP on the management interface of the ASTinstance(s)?
+    Type: String
+    Default: 'Yes'
+    AllowedValues:
+    - 'Yes'
+    - 'No'
   HFEManagementEIPAccessCIDR:
     Description: The CIDR range used to access the HFE Management EIP.
     Type: String
@@ -106,6 +114,23 @@ Parameters:
       - c5.4xlarge
       - c5.8xlarge
     ConstraintDescription: Must be a valid EC2 instance type.
+  AsteriskInstanceType:
+      Description: Instance type for the Asterisk Instance.
+      Type: String
+      Default: m5.xlarge
+      AllowedValues:
+        - m4.xlarge
+        - m5.xlarge
+        - c3.2xlarge
+        - c3.4xlarge
+        - c3.8xlarge
+        - c4.2xlarge
+        - c4.4xlarge
+        - c4.8xlarge
+        - c5.2xlarge
+        - c5.4xlarge
+        - c5.8xlarge
+      ConstraintDescription: Must be a valid EC2 instance type.
   SBCPersonalityType:
     Description: SBC Personality Type. Currently only supports 'isbc' (Integrated). Distributed is currently not supported.
     Type: String
@@ -208,6 +233,9 @@ Conditions:
   NoVPCEndpointt: !Equals
     - !Ref 'CreateVPCEndPoint'
     - 'no'
+  EipForASTManagementInterface: !Equals
+  - !Ref ASTManagementNeedsEIP
+  - 'Yes'
 Rules:
   NameValidation:
     Assertions:
@@ -234,51 +262,67 @@ Mappings:
     AMI:
       RIBBONSBCAMI: sbc-V07.00.00S401-connexip-os_06.00.00-S401_1_amd64_07_06_18_17_58
       RIBBONHFEAMI: <HFE_AMI_MAPPING_HERE>
+      RIBBONASTERISKAMI: <RIBBON_ASTERISK_AMI>
     us-east-1:
       RIBBONSBCAMI: ami-0a49b638bad956f96
       RIBBONHFEAMI: <AMI_ID>
+      RIBBONASTERISKAMI: <AMI_ID>
     us-east-2:
       RIBBONSBCAMI: ami-040489bb244cfbac8
       RIBBONHFEAMI: <AMI_ID>
+      RIBBONASTERISKAMI: <AMI_ID>
     us-west-1:
       RIBBONSBCAMI: ami-0aaf1884917ca603b
       RIBBONHFEAMI: <AMI_ID>
+      RIBBONASTERISKAMI: <AMI_ID>
     us-west-2:
       RIBBONSBCAMI: ami-08fab2a9d7088ba15
       RIBBONHFEAMI: <AMI_ID>
+      RIBBONASTERISKAMI: <AMI_ID>
     ca-central-1:
       RIBBONSBCAMI: ami-0dfc13891ced16640
       RIBBONHFEAMI: <AMI_ID>
+      RIBBONASTERISKAMI: <AMI_ID>
     ap-south-1:
       RIBBONSBCAMI: ami-0e80e378bf3340301
       RIBBONHFEAMI: <AMI_ID>
+      RIBBONASTERISKAMI: <AMI_ID>
     ap-northeast-1:
       RIBBONSBCAMI: ami-0b998ba31f803a582
       RIBBONHFEAMI: <AMI_ID>
+      RIBBONASTERISKAMI: <AMI_ID>
     ap-northeast-2:
       RIBBONSBCAMI: ami-0d5025bc94b5d40a
       RIBBONHFEAMI: <AMI_ID>
+      RIBBONASTERISKAMI: <AMI_ID>
     ap-southeast-1:
       RIBBONSBCAMI: ami-0880a3f8389c85d3b
       RIBBONHFEAMI: <AMI_ID>
+      RIBBONASTERISKAMI: <AMI_ID>
     ap-southeast-2:
       RIBBONSBCAMI: ami-0da24ac9dbc63c918
       RIBBONHFEAMI: <AMI_ID>
+      RIBBONASTERISKAMI: <AMI_ID>
     eu-central-1:
       RIBBONSBCAMI: ami-0ba8b5524933c9d74
       RIBBONHFEAMI: <AMI_ID>
+      RIBBONASTERISKAMI: <AMI_ID>
     eu-west-1:
       RIBBONSBCAMI: ami-0cd7cbbfb3ddc53d0
       RIBBONHFEAMI: <AMI_ID>
+      RIBBONASTERISKAMI: <AMI_ID>
     eu-west-2:
       RIBBONSBCAMI: ami-0de70b55413388d40
       RIBBONHFEAMI: <AMI_ID>
+      RIBBONASTERISKAMI: <AMI_ID>
     eu-west-3:
       RIBBONSBCAMI: ami-0c725161f776a4287
       RIBBONHFEAMI: <AMI_ID>
+      RIBBONASTERISKAMI: <AMI_ID>
     sa-east-1:
       RIBBONSBCAMI: ami-02eb35cc2d652817e
       RIBBONHFEAMI: <AMI_ID>
+      RIBBONASTERISKAMI: <AMI_ID>
 Resources:
   # Order:
   # - Resource Type
@@ -832,7 +876,69 @@ Resources:
               /bin/echo "Configured using HFE script ${!HFE_FILE}" >> ${!LOG_FILE}
               /bin/echo $(timestamp) " =========================   Done    ==========================================" >> ${!LOG_FILE}
             - {SBC_SECONDARY_IP: !Select [0, !GetAtt SBCActiveInVoipIface.SecondaryPrivateIpAddresses], REMOTE_SSH_MACHINE_IP: !If [EipForHFEManagementInterface, !Ref HFEManagementEIPAccessCIDR, '']}
-
+  SBCAsteriskInstance:
+    Type: 'AWS::EC2::Instance'
+    Properties:
+      ImageId: !FindInMap
+        - AWSAMIRegionMap
+        - !Ref 'AWS::Region'
+        - RIBBONASTERISKAMI
+      BlockDeviceMappings:
+        - DeviceName: /dev/xvda
+          Ebs:
+            VolumeType: gp2
+            VolumeSize: 20
+            DeleteOnTermination: false
+      InstanceType: !Ref AsteriskInstanceType
+      EbsOptimized: true
+      KeyName: !Ref KeyPairName
+      NetworkInterfaces:
+        - NetworkInterfaceId: !Ref ASTManagementInterface
+          DeviceIndex: '0'
+      Tags:
+        - Key: Name
+          Value: Ribbon SBC Asterisk Instance
+  ASTManagementEIP:
+    Type: 'AWS::EC2::EIP'
+    Condition: EipForASTManagementInterface
+    Properties:
+      Domain: !Ref VPCID
+  ASTManagementInterface:
+    Type: 'AWS::EC2::NetworkInterface'
+    Properties:
+      SubnetId: !Ref SBCManagementSubnet
+      GroupSet:
+        - !Ref ASTManagementSG
+      SourceDestCheck: true
+      Tags:
+        - Key: Name
+          Value: !Sub Asterisk Management Interface
+  ASTManagementSG:
+    Type: 'AWS::EC2::SecurityGroup'
+    Properties:
+      GroupDescription: Security Group for HFE Management Traffic.
+      VpcId: !Ref VPCID
+      SecurityGroupIngress:
+        - IpProtocol: '-1'
+          FromPort: 0
+          ToPort: 65535
+          CidrIp: 0.0.0.0/0
+        - IpProtocol: '-1'
+          FromPort: 0
+          ToPort: 65535
+          CidrIp: !Ref SSHAccessCIDR
+      Tags:
+        - Key: Name
+          Value: !Join
+            - '-'
+            - - !Ref SBCSystemName
+              - SecurityGroup5_Ribbon
+  AsteriskMgmtEIPAssc:
+    Type: 'AWS::EC2::EIPAssociation'
+    Condition: EipForASTManagementInterface
+    Properties:
+      AllocationId: !GetAtt ASTManagementEIP.AllocationId
+      NetworkInterfaceId: !Ref ASTManagementInterface
 Outputs:
   InstanceIdActive:
     Value: !Ref 'SBCActiveInstance'
