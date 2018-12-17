@@ -1,3 +1,4 @@
+---
 AWSTemplateFormatVersion: '2010-09-09'
 Description: AWS CloudFormation Template to setup and deploy vSBC HA instances and
   2 PKTART instances to test vSBC. This template creates required vpc, subnet and
@@ -151,7 +152,7 @@ Parameters:
     Default: ''
     AllowedPattern: (\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})/(\d{1,2})
     ConstraintDescription: Must be a valid IP CIDR range of the form x.x.x.x/x
-# TODO: Removed in leiu of VPC Template. come back to this.
+  # TODO: Removed in leiu of VPC Template. come back to this.
   SBCAvailabilityZone:
     Description: Enter Availability Zone for SBC, New subnets for SBC will be created
       here.
@@ -210,22 +211,6 @@ Parameters:
     Default: '0.0.0.0/0'
     AllowedPattern: (\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})/(\d{1,2})
     ConstraintDescription: must be a valid CIDR range of the form x.x.x.x/x.
-  # TODO: Removed due to VPC Template.
-  Tenancy:
-    Description: Tenancy attribute for SBC instances
-    Type: String
-    Default: default
-    AllowedValues:
-      - default
-      - dedicated
-  # TODO: Removed due to VPC Template.
-  # - Is this something we should support?
-  # - Does the VPC Template handle this already?
-  # - Can we condition it?
-  PlacementId:
-    Description: PlacementGroup to launch SBC instances(Optional)
-    Type: String
-    Default: ''
   SBCVolumeType:
     Description: Select Type of Volume for SBC
     Type: String
@@ -278,24 +263,24 @@ Conditions:
 Rules:
   NameValidation:
     Assertions:
-    - Assert:
-      !Not
-      - !Equal
-        - !Ref 'SBCActiveInstanceName'
-        - !Ref 'SBCPassiveInstanceName'
-      AssertionDescription: "SBCActiveInstanceName and SBCPassiveInstanceName must be unique"
-    - Assert:
-      !Not
-      - !Equal
-        - !Ref 'SBCActiveInstanceName'
-        - !Ref 'SBCSystemName'
-      AssertionDescription: "SBCActiveInstanceName and SBCSystemName cannot be the same."
-    - Assert:
-      !Not
-      - !Equal
-        - !Ref 'SBCPassiveInstanceName'
-        - !Ref 'SBCSystemName'
-      AssertionDescription: "SBCPassiveInstanceName and SBCSystemName cannot be the same."
+      - Assert:
+        Fn::Not:
+          - !Equal
+            - !Ref 'SBCActiveInstanceName'
+            - !Ref 'SBCPassiveInstanceName'
+        AssertionDescription: "SBCActiveInstanceName and SBCPassiveInstanceName must be unique"
+      - Assert:
+        Fn::Not:
+          - !Equal
+            - !Ref 'SBCActiveInstanceName'
+            - !Ref 'SBCSystemName'
+        AssertionDescription: "SBCActiveInstanceName and SBCSystemName cannot be the same."
+      - Assert:
+        Fn::Not:
+          - !Equal
+            - !Ref 'SBCPassiveInstanceName'
+            - !Ref 'SBCSystemName'
+        AssertionDescription: "SBCPassiveInstanceName and SBCSystemName cannot be the same."
 Resources:
   VPCStack:
     Type: AWS::CloudFormation::Stack
@@ -320,57 +305,57 @@ Resources:
     Type: AWS::EC2::Subnet
     Properties:
       VpcId: !GetAtt
-      - VPCStack
-      - Outputs.VPCID
+        - VPCStack
+        - Outputs.VPCID
       CidrBlock: !Ref 'PublicHFEPacketSubnetCIDR'
       AvailabilityZone: !Ref 'SBCAvailabilityZone'
       Tags:
-      - Key: Name
-        Value: !Sub "${SBCSystemName}-External Voip (ExVoip) Subnet"
+        - Key: Name
+          Value: !Sub "${SBCSystemName}-External Voip (ExVoip) Subnet"
   SBCManagementSubnet:
     Type: AWS::EC2::Subnet
     Properties:
       VpcId: !GetAtt
-      - VPCStack
-      - Outputs.VPCID
+        - VPCStack
+        - Outputs.VPCID
       CidrBlock: !Ref 'ManagementSubnetCIDR'
       AvailabilityZone: !Ref 'SBCAvailabilityZone'
       Tags:
-      - Key: Name
-        Value: !Sub "${SBCSystemName}-Management Subnet"
+        - Key: Name
+          Value: !Sub "${SBCSystemName}-Management Subnet"
   SBCHASubnet:
     Type: AWS::EC2::Subnet
     Properties:
       VpcId: !GetAtt
-      - VPCStack
-      - Outputs.VPCID
+        - VPCStack
+        - Outputs.VPCID
       CidrBlock: !Ref 'SBCHASubnetCIDR'
       AvailabilityZone: !Ref 'SBCAvailabilityZone'
       Tags:
-      - Key: Name
-        Value: !Sub "${SBCSystemName}-HA Subnet"
+        - Key: Name
+          Value: !Sub "${SBCSystemName}-HA Subnet"
   HFEPublicSubnet:
     Type: AWS::EC2::Subnet
     Properties:
       VpcId: !GetAtt
-      - VPCStack
-      - Outputs.VPCID
+        - VPCStack
+        - Outputs.VPCID
       CidrBlock: !Ref 'PublicHFEPacketSubnetCIDR'
       AvailabilityZone: !Ref 'SBCAvailabilityZone'
       Tags:
-      - Key: Name
-        Value: !Sub "${SBCSystemName}-HFE Public Subnet"
+        - Key: Name
+          Value: !Sub "${SBCSystemName}-HFE Public Subnet"
   HFEPrivateSubnet:
     Type: AWS::EC2::Subnet
     Properties:
       VpcId: !GetAtt
-      - VPCStack
-      - Outputs.VPCID
+        - VPCStack
+        - Outputs.VPCID
       CidrBlock: !Ref 'PrivateHFESubnetCIDR'
       AvailabilityZone: !Ref 'SBCAvailabilityZone'
       Tags:
-      - Key: Name
-        Value: !Sub "${SBCSystemName}-HFE Public Subnet"
+        - Key: Name
+          Value: !Sub "${SBCSystemName}-HFE Public Subnet"
   SBCStack:
     DependsOn: VPCStack
     Type: AWS::CloudFormation::Stack
