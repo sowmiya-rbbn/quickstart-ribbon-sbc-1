@@ -1,0 +1,26 @@
+[
+    {
+        "ParameterKey": "QSS3BucketName",
+        "ParameterValue": "$[taskcat_autobucket]"
+    },
+    {
+        "ParameterKey": "KeyPairName",
+        "ParameterValue": "override"
+    },
+    {
+        "ParameterKey": "SBCAvailabilityZone",
+        "ParameterValue":"$[taskcat_genaz_1]"
+    },
+    {
+        "ParameterKey": "AvailabilityZones",
+        "ParameterValue":"$[taskcat_genaz_2]"
+    },
+    {
+        "ParameterKey":"HFEManagementEIPAccessCIDR",
+        "ParameterValue":"127.0.0.1/32"
+    },
+    {
+        "ParameterKey":"SSHAccessCIDR",
+        "ParameterValue":"127.0.0.1/32"
+    }
+]

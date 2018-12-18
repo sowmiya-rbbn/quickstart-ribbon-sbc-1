@@ -29,8 +29,6 @@ Metadata:
           - SBCActiveInstanceName
           - SBCPassiveInstanceName
           - SBCSystemName
-          - Tenancy
-          - PlacementId
           - SBCVolumeType
           - SBCVolumeIOPS
           - SBCVolumeSize
@@ -46,7 +44,7 @@ Parameters:
       test tool.
     Type: String
     Default: 10.74.0.0/16
-    AllowedPattern: (\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})/(\d{1,2})
+    AllowedPattern: '^((\d|[1-9]\d|1\d{2}|2[0-4]\d|25[0-5])\.){3}(\d|[1-9]\d|1\d{2}|2[0-4]\d|25[0-5])(\/(\d|[1-2]\d|3[0-2]))$'
     ConstraintDescription: Must be a valid IP CIDR range of the form x.x.x.x/x.
   AvailabilityZones:
     Description: >-
@@ -60,7 +58,7 @@ Parameters:
     Type: String
     MinLength: '1'
     Default: 10.74.10.0/24
-    AllowedPattern: (\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})/(\d{1,2})
+    AllowedPattern: '^((\d|[1-9]\d|1\d{2}|2[0-4]\d|25[0-5])\.){3}(\d|[1-9]\d|1\d{2}|2[0-4]\d|25[0-5])(\/(\d|[1-2]\d|3[0-2]))$'
     ConstraintDescription: Must be a valid IP CIDR range of the form x.x.x.x/x and
       subnet of VPC.
   SBCInVoipCIDR:
@@ -69,7 +67,7 @@ Parameters:
     Type: String
     MinLength: '1'
     Default: 10.74.20.0/24
-    AllowedPattern: (\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})/(\d{1,2})
+    AllowedPattern: '^((\d|[1-9]\d|1\d{2}|2[0-4]\d|25[0-5])\.){3}(\d|[1-9]\d|1\d{2}|2[0-4]\d|25[0-5])(\/(\d|[1-2]\d|3[0-2]))$'
     ConstraintDescription: Must be a valid IP CIDR range of the form x.x.x.x/x and
       subnet of VPC.
   HFEPublicCIDR:
@@ -78,7 +76,7 @@ Parameters:
     Type: String
     MinLength: '1'
     Default: 10.74.30.0/24
-    AllowedPattern: (\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})/(\d{1,2})
+    AllowedPattern: '^((\d|[1-9]\d|1\d{2}|2[0-4]\d|25[0-5])\.){3}(\d|[1-9]\d|1\d{2}|2[0-4]\d|25[0-5])(\/(\d|[1-2]\d|3[0-2]))$'
     ConstraintDescription: Must be a valid IP CIDR range of the form x.x.x.x/x and
       subnet of VPC.
   HFEPrivateCIDR:
@@ -87,7 +85,7 @@ Parameters:
     Type: String
     MinLength: '1'
     Default: 10.74.40.0/24
-    AllowedPattern: (\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})/(\d{1,2})
+    AllowedPattern: '^((\d|[1-9]\d|1\d{2}|2[0-4]\d|25[0-5])\.){3}(\d|[1-9]\d|1\d{2}|2[0-4]\d|25[0-5])(\/(\d|[1-2]\d|3[0-2]))$'
     ConstraintDescription: Must be a valid IP CIDR range of the form x.x.x.x/x and
       subnet of VPC.
   ManagementSubnetCIDR:
@@ -95,7 +93,7 @@ Parameters:
     Type: String
     MinLength: '1'
     Default: 10.74.50.0/24
-    AllowedPattern: (\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})/(\d{1,2})
+    AllowedPattern: '^((\d|[1-9]\d|1\d{2}|2[0-4]\d|25[0-5])\.){3}(\d|[1-9]\d|1\d{2}|2[0-4]\d|25[0-5])(\/(\d|[1-2]\d|3[0-2]))$'
     ConstraintDescription: Must be a valid IP CIDR range of the form x.x.x.x/x and
       subnet of VPC.
   SBCHASubnetCIDR:
@@ -103,7 +101,7 @@ Parameters:
     Type: String
     MinLength: '1'
     Default: 10.74.60.0/24
-    AllowedPattern: (\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})/(\d{1,2})
+    AllowedPattern: '^((\d|[1-9]\d|1\d{2}|2[0-4]\d|25[0-5])\.){3}(\d|[1-9]\d|1\d{2}|2[0-4]\d|25[0-5])(\/(\d|[1-2]\d|3[0-2]))$'
     ConstraintDescription: Must be a valid IP CIDR range of the form x.x.x.x/x and
       subnet of VPC.
   SBCExternalVoipCIDR:
@@ -111,7 +109,7 @@ Parameters:
     Type: String
     MinLength: '1'
     Default: 10.74.20.0/24
-    AllowedPattern: (\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})/(\d{1,2})
+    AllowedPattern: '^((\d|[1-9]\d|1\d{2}|2[0-4]\d|25[0-5])\.){3}(\d|[1-9]\d|1\d{2}|2[0-4]\d|25[0-5])(\/(\d|[1-2]\d|3[0-2]))$'
     ConstraintDescription: Must be a valid IP CIDR range of the form x.x.x.x/x and
       subnet of VPC.
   SBCInternalVoipCIDR:
@@ -120,7 +118,7 @@ Parameters:
     Type: String
     MinLength: '1'
     Default: 10.74.20.0/24
-    AllowedPattern: (\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})/(\d{1,2})
+    AllowedPattern: '^((\d|[1-9]\d|1\d{2}|2[0-4]\d|25[0-5])\.){3}(\d|[1-9]\d|1\d{2}|2[0-4]\d|25[0-5])(\/(\d|[1-2]\d|3[0-2]))$'
     ConstraintDescription: Must be a valid IP CIDR range of the form x.x.x.x/x and
       subnet of VPC.
   PublicHFEPacketSubnetCIDR:
@@ -128,7 +126,7 @@ Parameters:
     Type: String
     MinLength: '1'
     Default: 10.74.50.0/24
-    AllowedPattern: (\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})/(\d{1,2})
+    AllowedPattern: '^((\d|[1-9]\d|1\d{2}|2[0-4]\d|25[0-5])\.){3}(\d|[1-9]\d|1\d{2}|2[0-4]\d|25[0-5])(\/(\d|[1-2]\d|3[0-2]))$'
     ConstraintDescription: Must be a valid IP CIDR range of the form x.x.x.x/x and
       subnet of VPC.
   PrivateHFESubnetCIDR:
@@ -136,7 +134,7 @@ Parameters:
     Type: String
     MinLength: '1'
     Default: 10.74.60.0/24
-    AllowedPattern: (\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})/(\d{1,2})
+    AllowedPattern: '^((\d|[1-9]\d|1\d{2}|2[0-4]\d|25[0-5])\.){3}(\d|[1-9]\d|1\d{2}|2[0-4]\d|25[0-5])(\/(\d|[1-2]\d|3[0-2]))$'
     ConstraintDescription: Must be a valid IP CIDR range of the form x.x.x.x/x and
       subnet of VPC.
   HFEManagementNeedsEIP:
@@ -149,8 +147,8 @@ Parameters:
   HFEManagementEIPAccessCIDR:
     Description: The CIDR range used to access the HFE Management EIP.
     Type: String
-    Default: ''
-    AllowedPattern: (\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})/(\d{1,2})
+    Default: '127.0.0.1/32'
+    AllowedPattern: '^((\d|[1-9]\d|1\d{2}|2[0-4]\d|25[0-5])\.){3}(\d|[1-9]\d|1\d{2}|2[0-4]\d|25[0-5])(\/(\d|[1-2]\d|3[0-2]))$'
     ConstraintDescription: Must be a valid IP CIDR range of the form x.x.x.x/x
   # TODO: Removed in leiu of VPC Template. come back to this.
   SBCAvailabilityZone:
@@ -208,7 +206,7 @@ Parameters:
     Type: String
     MinLength: '9'
     MaxLength: '18'
-    Default: '0.0.0.0/0'
+    Default: '127.0.0.1/32'
     AllowedPattern: (\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})/(\d{1,2})
     ConstraintDescription: must be a valid CIDR range of the form x.x.x.x/x.
   SBCVolumeType:
@@ -261,32 +259,32 @@ Conditions:
     - !Ref 'CreateVPCEndPoint'
     - 'no'
 Rules:
-  NameValidation:
+  NameMismatch:
     Assertions:
       - Assert:
-        Fn::Not:
-          - !Equal
-            - !Ref 'SBCActiveInstanceName'
-            - !Ref 'SBCPassiveInstanceName'
+          Fn::Not:
+            - Fn::Equals:
+              - !Ref 'SBCActiveInstanceName'
+              - !Ref 'SBCPassiveInstanceName'
         AssertionDescription: "SBCActiveInstanceName and SBCPassiveInstanceName must be unique"
       - Assert:
-        Fn::Not:
-          - !Equal
-            - !Ref 'SBCActiveInstanceName'
-            - !Ref 'SBCSystemName'
+          Fn::Not:
+            - Fn::Equals:
+              - !Ref 'SBCActiveInstanceName'
+              - !Ref 'SBCSystemName'
         AssertionDescription: "SBCActiveInstanceName and SBCSystemName cannot be the same."
       - Assert:
-        Fn::Not:
-          - !Equal
-            - !Ref 'SBCPassiveInstanceName'
-            - !Ref 'SBCSystemName'
+          Fn::Not:
+            - Fn::Equals:
+              - !Ref 'SBCPassiveInstanceName'
+              - !Ref 'SBCSystemName'
         AssertionDescription: "SBCPassiveInstanceName and SBCSystemName cannot be the same."
 Resources:
   VPCStack:
     Type: AWS::CloudFormation::Stack
     Properties:
       TemplateURL:
-        Fn::Sub: https://${QSS3BucketName}.s3.amazonaws.com/${QSS3KeyPrefix}submodules/quickstart-aws-vpc/templates/aws-vpc.template
+        Fn::Sub: "https://${QSS3BucketName}.s3.amazonaws.com/${QSS3KeyPrefix}submodules/quickstart-aws-vpc/templates/aws-vpc.template"
       Parameters:
         AvailabilityZones:
           Fn::Join:
@@ -360,7 +358,7 @@ Resources:
     DependsOn: VPCStack
     Type: AWS::CloudFormation::Stack
     Properties:
-      TemplateURL: https://${QSS3BucketName}.s3.amazonaws.com/${QSS3KeyPrefix}templates/ribbon-sbc.yaml
+      TemplateURL: !Sub "https://${QSS3BucketName}.s3.amazonaws.com/${QSS3KeyPrefix}templates/ribbon-sbc.yaml"
       Parameters:
         QSS3BucketName: !Ref QSS3BucketName
         QSS3KeyPrefix: !Ref QSS3KeyPrefix
