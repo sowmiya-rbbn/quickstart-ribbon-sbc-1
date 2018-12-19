@@ -1,0 +1,1538 @@
+AWSTemplateFormatVersion: 2010-09-09
+Description: >-
+  AWS CloudFormation Template to setup and deploy vSBC HA instances and 2 PKTART
+  instances to test vSBC. This template creates required vpc, subnet and other
+  routing elements required IAM role to performce IP movement betweenn two vSBC
+  instances.
+Metadata:
+  'AWS::CloudFormation::Interface':
+    ParameterGroups:
+      - Label:
+          default: AWS Quick Start Configuration
+        Parameters:
+          - QSS3BucketName
+          - QSS3KeyPrefix
+      - Label:
+          default: Instance Configuration
+        Parameters:
+          - KeyPairName
+          - SBCInstanceType
+          - AsteriskInstanceType
+      - Label:
+          default: Network Configuration
+        Parameters:
+          - SBCInternalVoipCIDR
+          - SBCExternalVoipCIDR
+          - SBCAvailabilityZone
+      - Label:
+          default: >-
+            Optional: SBC configuration. For default configuration no need to
+            change these values.
+        Parameters:
+          - SBCPersonalityType
+          - SBCActiveInstanceName
+          - SBCPassiveInstanceName
+          - SBCSystemName
+          - Tenancy
+          - PlacementId
+          - SBCVolumeType
+          - SBCVolumeIOPS
+          - SBCVolumeSize
+          - SortHfeEip
+  'AWS::CloudFormation::Designer':
+    0ea047b2-d0ba-4321-bef0-79b4100c4fef:
+      size:
+        width: 60
+        height: 60
+      position:
+        x: 60
+        'y': 90
+      z: 1
+      embeds: []
+    6ea7ce8b-1eb9-42df-98a8-2d29e39a9989:
+      size:
+        width: 60
+        height: 60
+      position:
+        x: 180
+        'y': 90
+      z: 1
+      embeds: []
+      isassociatedwith:
+        - 0ea047b2-d0ba-4321-bef0-79b4100c4fef
+    cf7c4810-d37a-4bc3-a24d-5cdebe8b219b:
+      size:
+        width: 60
+        height: 60
+      position:
+        x: 60
+        'y': 210
+      z: 1
+      embeds: []
+    66e263aa-7fe7-44b2-8e04-d23a9c31e657:
+      source:
+        id: cf7c4810-d37a-4bc3-a24d-5cdebe8b219b
+      target:
+        id: 6ea7ce8b-1eb9-42df-98a8-2d29e39a9989
+      z: 1
+    bc16cfa4-9651-4762-b41c-a016a0e99c90:
+      size:
+        width: 60
+        height: 60
+      position:
+        x: 180
+        'y': 210
+      z: 1
+      embeds: []
+      isassociatedwith:
+        - 6ea7ce8b-1eb9-42df-98a8-2d29e39a9989
+    6bb41ba0-ae35-49d6-9274-8cd3ac86cd75:
+      size:
+        width: 60
+        height: 60
+      position:
+        x: 300
+        'y': 90
+      z: 1
+      embeds: []
+    59c0b781-2d7d-4562-b40d-63325c62a64e:
+      size:
+        width: 60
+        height: 60
+      position:
+        x: 300
+        'y': 210
+      z: 1
+      embeds: []
+      isassociatedwith:
+        - 6bb41ba0-ae35-49d6-9274-8cd3ac86cd75
+    196c27e1-826d-404f-810d-58b8a6c67147:
+      size:
+        width: 60
+        height: 60
+      position:
+        x: 60
+        'y': 330
+      z: 1
+      embeds: []
+    7707fbe1-4cf7-4e81-acbb-1bb6e7e88105:
+      size:
+        width: 60
+        height: 60
+      position:
+        x: 180
+        'y': 330
+      z: 1
+      embeds: []
+      isassociatedwith:
+        - 196c27e1-826d-404f-810d-58b8a6c67147
+    f2335523-2938-4eb7-bfda-a7894f2c1308:
+      size:
+        width: 60
+        height: 60
+      position:
+        x: 300
+        'y': 330
+      z: 1
+      embeds: []
+    f75c7965-0cd3-4864-ac5a-4ec610305d66:
+      size:
+        width: 60
+        height: 60
+      position:
+        x: 420
+        'y': 90
+      z: 1
+      embeds: []
+    977084b9-c5cd-49a1-b2ae-ce0c0f664f9e:
+      size:
+        width: 60
+        height: 60
+      position:
+        x: 420
+        'y': 210
+      z: 1
+      embeds: []
+    87b7f8fb-80c1-4f94-b0c4-6ac2bc737114:
+      size:
+        width: 60
+        height: 60
+      position:
+        x: 420
+        'y': 330
+      z: 1
+      embeds: []
+    c9895292-796a-4255-835e-e76ce55e0768:
+      size:
+        width: 60
+        height: 60
+      position:
+        x: 60
+        'y': 450
+      z: 1
+      embeds: []
+    14bd4006-3421-4a30-a346-71c04d2a7972:
+      size:
+        width: 60
+        height: 60
+      position:
+        x: 180
+        'y': 450
+      z: 1
+      embeds: []
+    e4d50da5-2b7a-42ca-9588-6149b34df0ff:
+      size:
+        width: 60
+        height: 60
+      position:
+        x: 300
+        'y': 450
+      z: 1
+      embeds: []
+    f5dcac51-1f47-400b-9b32-4979025cf3ac:
+      size:
+        width: 60
+        height: 60
+      position:
+        x: 420
+        'y': 450
+      z: 1
+      embeds: []
+    94323260-4c54-458e-9c83-3a9760791b85:
+      size:
+        width: 60
+        height: 60
+      position:
+        x: 540
+        'y': 90
+      z: 1
+      embeds: []
+    7335356a-8872-42f6-af8b-0b8bfd51b3de:
+      size:
+        width: 60
+        height: 60
+      position:
+        x: 540
+        'y': 210
+      z: 1
+      embeds: []
+    bf0311ee-3c6d-44ff-979f-3ca9c2d9a5e3:
+      size:
+        width: 60
+        height: 60
+      position:
+        x: 540
+        'y': 330
+      z: 1
+      embeds: []
+      isassociatedwith:
+        - 14bd4006-3421-4a30-a346-71c04d2a7972
+    7d3ad52d-977c-4d99-a2b3-ad600527aef9:
+      source:
+        id: f75c7965-0cd3-4864-ac5a-4ec610305d66
+      target:
+        id: bf0311ee-3c6d-44ff-979f-3ca9c2d9a5e3
+      z: 1
+    db1aabf5-5374-4b44-a516-80be62b53cfd:
+      size:
+        width: 60
+        height: 60
+      position:
+        x: 540
+        'y': 450
+      z: 1
+      embeds: []
+      isassociatedwith:
+        - 94323260-4c54-458e-9c83-3a9760791b85
+    c779bc46-e10a-493f-9bc7-dfa280c82adf:
+      size:
+        width: 60
+        height: 60
+      position:
+        x: 60
+        'y': 570
+      z: 1
+      embeds: []
+      isassociatedwith:
+        - 7335356a-8872-42f6-af8b-0b8bfd51b3de
+    d8279997-2f6b-4674-8f47-86f3d3330ef4:
+      source:
+        id: 87b7f8fb-80c1-4f94-b0c4-6ac2bc737114
+      target:
+        id: c779bc46-e10a-493f-9bc7-dfa280c82adf
+      z: 1
+    b9ab4c9f-8ba6-4c13-9b4d-0ffb35c8b235:
+      source:
+        id: 977084b9-c5cd-49a1-b2ae-ce0c0f664f9e
+      target:
+        id: c779bc46-e10a-493f-9bc7-dfa280c82adf
+      z: 1
+    2ecb0427-f72f-4e27-83de-d09259a4bd7c:
+      size:
+        width: 60
+        height: 60
+      position:
+        x: 180
+        'y': 570
+      z: 1
+      embeds: []
+      isassociatedwith:
+        - f5dcac51-1f47-400b-9b32-4979025cf3ac
+    3e23f85e-2574-4abd-9331-2640f42046be:
+      size:
+        width: 60
+        height: 60
+      position:
+        x: 300
+        'y': 570
+      z: 1
+      embeds: []
+      isassociatedwith:
+        - e4d50da5-2b7a-42ca-9588-6149b34df0ff
+    9fec2bc5-57bd-4232-9297-ebff2dacb10a:
+      source:
+        id: f2335523-2938-4eb7-bfda-a7894f2c1308
+      target:
+        id: 3e23f85e-2574-4abd-9331-2640f42046be
+      z: 1
+    dd712d29-aa03-4f7b-a447-1ad519a55b27:
+      size:
+        width: 60
+        height: 60
+      position:
+        x: 420
+        'y': 570
+      z: 1
+      embeds: []
+      isassociatedwith:
+        - 94323260-4c54-458e-9c83-3a9760791b85
+    866bd4bf-c73e-42f6-ad15-ac24ad8a5d25:
+      size:
+        width: 60
+        height: 60
+      position:
+        x: 540
+        'y': 570
+      z: 1
+      embeds: []
+      isassociatedwith:
+        - 94323260-4c54-458e-9c83-3a9760791b85
+    a751e3a6-3de8-4047-9998-517a121ee72a:
+      size:
+        width: 60
+        height: 60
+      position:
+        x: 660
+        'y': 90
+      z: 1
+      embeds: []
+      isassociatedwith:
+        - 3e23f85e-2574-4abd-9331-2640f42046be
+        - 2ecb0427-f72f-4e27-83de-d09259a4bd7c
+        - dd712d29-aa03-4f7b-a447-1ad519a55b27
+        - 866bd4bf-c73e-42f6-ad15-ac24ad8a5d25
+    997aa45e-42a5-47ed-9370-f22e2be187d8:
+      size:
+        width: 60
+        height: 60
+      position:
+        x: 660
+        'y': 210
+      z: 1
+      embeds: []
+      isassociatedwith:
+        - f5dcac51-1f47-400b-9b32-4979025cf3ac
+    2e8570a7-7c45-46f1-8b8e-eb3ef73775b7:
+      size:
+        width: 60
+        height: 60
+      position:
+        x: 660
+        'y': 330
+      z: 1
+      embeds: []
+      isassociatedwith:
+        - e4d50da5-2b7a-42ca-9588-6149b34df0ff
+    6d0bfd4e-f0e8-492d-a27a-af3adc47390a:
+      source:
+        id: c9895292-796a-4255-835e-e76ce55e0768
+      target:
+        id: 2e8570a7-7c45-46f1-8b8e-eb3ef73775b7
+      z: 1
+    6ce93df3-d124-42b0-8a22-3d41071e23b4:
+      size:
+        width: 60
+        height: 60
+      position:
+        x: 660
+        'y': 450
+      z: 1
+      embeds: []
+      isassociatedwith:
+        - 94323260-4c54-458e-9c83-3a9760791b85
+    e028cb91-17e8-4f69-b40f-3578fb5dea29:
+      size:
+        width: 60
+        height: 60
+      position:
+        x: 660
+        'y': 570
+      z: 1
+      embeds: []
+      isassociatedwith:
+        - c779bc46-e10a-493f-9bc7-dfa280c82adf
+        - bf0311ee-3c6d-44ff-979f-3ca9c2d9a5e3
+        - db1aabf5-5374-4b44-a516-80be62b53cfd
+    b04cf70f-6d89-4f44-afbe-6595c7a2234a:
+      size:
+        width: 60
+        height: 60
+      position:
+        x: 60
+        'y': 690
+      z: 1
+      embeds: []
+      isassociatedwith:
+        - 94323260-4c54-458e-9c83-3a9760791b85
+    1e2b9fa1-3af8-446d-80b6-ceff18a345e4:
+      size:
+        width: 60
+        height: 60
+      position:
+        x: 180
+        'y': 690
+      z: 1
+      embeds: []
+      isassociatedwith:
+        - 2e8570a7-7c45-46f1-8b8e-eb3ef73775b7
+        - 997aa45e-42a5-47ed-9370-f22e2be187d8
+        - 6ce93df3-d124-42b0-8a22-3d41071e23b4
+        - b04cf70f-6d89-4f44-afbe-6595c7a2234a
+    996ee4fe-3cf4-443e-949e-d1be75b5efc0:
+      size:
+        width: 60
+        height: 60
+      position:
+        x: 300
+        'y': 690
+      z: 1
+      embeds: []
+    958c0f79-c53d-4a54-9709-b13573160d27:
+      size:
+        width: 60
+        height: 60
+      position:
+        x: -60
+        'y': 160
+      z: 1
+      embeds: []
+      isassociatedwith:
+        - d42ca6d1-5adb-4dfc-b10e-2452d981fa0e
+    d42ca6d1-5adb-4dfc-b10e-2452d981fa0e:
+      size:
+        width: 60
+        height: 60
+      position:
+        x: -60
+        'y': 270
+      z: 1
+      embeds: []
+Parameters:
+  KeyPairName:
+    Description: >-
+      Name of an existing EC2 KeyPair to enable SSH access to various EC2
+      instances
+    Type: 'AWS::EC2::KeyPair::KeyName'
+    ConstraintDescription: must be the name of an existing EC2 KeyPair.
+  VPCID:
+    Description: ID of your existing VPC for deployment
+    Type: 'AWS::EC2::VPC::Id'
+  SBCExternalVoipCIDR:
+    Description: CIDR used within the SBC External Voip (public facing) subnet.
+    Type: String
+    MinLength: '1'
+    Default: 10.74.20.0/24
+    AllowedPattern: '(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})/(\d{1,2})'
+    ConstraintDescription: Must be a valid IP CIDR range of the form x.x.x.x/x and subnet of VPC.
+  SBCInternalVoipCIDR:
+    Description: >-
+      CIDR used within the SBC Internal Voip (private) subnet. served by Mangler
+      instance.
+    Type: String
+    MinLength: '1'
+    Default: 10.74.20.0/24
+    AllowedPattern: '(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})/(\d{1,2})'
+    ConstraintDescription: Must be a valid IP CIDR range of the form x.x.x.x/x and subnet of VPC.
+  HFEManagementNeedsEIP:
+    Description: Enable EIP on the management interface of the HFE instance(s)?
+    Type: String
+    Default: 'Yes'
+    AllowedValues:
+      - 'Yes'
+      - 'No'
+  ASTManagementNeedsEIP:
+    Description: Enable EIP on the management interface of the ASTinstance(s)?
+    Type: String
+    Default: 'Yes'
+    AllowedValues:
+      - 'Yes'
+      - 'No'
+  HFEManagementEIPAccessCIDR:
+    Description: The CIDR range used to access the HFE Management EIP.
+    Type: String
+    Default: 127.0.0.1/32
+    AllowedPattern: '(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})/(\d{1,2})'
+    ConstraintDescription: Must be a valid IP CIDR range of the form x.x.x.x/x
+  SBCExVoipSubnet:
+    Type: String
+  SBCManagementSubnet:
+    Type: String
+  SBCHASubnet:
+    Type: String
+  HFEPublicSubnet:
+    Type: String
+  HFEPrivateSubnet:
+    Type: String
+  SBCAvailabilityZone:
+    Description: 'Enter Availability Zone for SBC, New subnets for SBC will be created here.'
+    Type: 'AWS::EC2::AvailabilityZone::Name'
+  SBCInstanceType:
+    Description: Instance type for the SBC Mangler.
+    Type: String
+    Default: m5.xlarge
+    AllowedValues:
+      - m4.xlarge
+      - m5.xlarge
+      - c3.2xlarge
+      - c3.4xlarge
+      - c3.8xlarge
+      - c4.2xlarge
+      - c4.4xlarge
+      - c4.8xlarge
+      - c5.2xlarge
+      - c5.4xlarge
+      - c5.8xlarge
+    ConstraintDescription: Must be a valid EC2 instance type.
+  AsteriskInstanceType:
+    Description: Instance type for the Asterisk Instance.
+    Type: String
+    Default: m5.xlarge
+    AllowedValues:
+      - m4.xlarge
+      - m5.xlarge
+      - c3.2xlarge
+      - c3.4xlarge
+      - c3.8xlarge
+      - c4.2xlarge
+      - c4.4xlarge
+      - c4.8xlarge
+      - c5.2xlarge
+      - c5.4xlarge
+      - c5.8xlarge
+    ConstraintDescription: Must be a valid EC2 instance type.
+  SBCPersonalityType:
+    Description: >-
+      SBC Personality Type. Currently only supports 'isbc' (Integrated).
+      Distributed is currently not supported.
+    Type: String
+    Default: isbc
+    AllowedValues:
+      - isbc
+    ConstraintDescription: Must be a valid SBC Personality type.
+  SBCActiveInstanceName:
+    Description: CE name of the active instance
+    Type: String
+    Default: vsbc1
+    MaxLength: '63'
+    AllowedPattern: '^[A-Za-z]{1}[-A-Za-z0-9.]*[A-Za-z0-9]{1}$'
+    ConstraintDescription: >-
+      Enter valid ceName(instance name).  Regex:
+      ^[A-Za-z]{1}[-A-Za-z0-9.]*[A-Za-z0-9]{1}$
+  SBCPassiveInstanceName:
+    Description: CE name of the standby instance
+    Type: String
+    Default: vsbc2
+    MaxLength: '63'
+    AllowedPattern: '^[A-Za-z]{1}[-A-Za-z0-9.]*[A-Za-z0-9]{1}$'
+    ConstraintDescription: >-
+      Enter valid ceName(instance name).  Regex:
+      ^[A-Za-z]{1}[-A-Za-z0-9.]*[A-Za-z0-9]{1}$
+  SBCSystemName:
+    Description: System Name
+    Type: String
+    Default: vsbcSystem
+    MaxLength: '26'
+    AllowedPattern: '^[A-Za-z]{1}[-A-Za-z0-9]*[A-Za-z0-9]{1}$'
+    ConstraintDescription: 'Enter valid system name.  Regex: ^[A-Za-z]{1}[-A-Za-z0-9]*[A-Za-z0-9]{1}$ '
+  SSHAccessCIDR:
+    Description: IP CIDR from where you could SSH into SBC and PKTART instances
+    Type: String
+    MinLength: '9'
+    MaxLength: '18'
+    Default: 0.0.0.0/0
+    AllowedPattern: '(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})/(\d{1,2})'
+    ConstraintDescription: must be a valid CIDR range of the form x.x.x.x/x.
+  Tenancy:
+    Description: Tenancy attribute for SBC instances
+    Type: String
+    Default: default
+    AllowedValues:
+      - default
+      - dedicated
+  PlacementId:
+    Description: PlacementGroup to launch SBC instances(Optional)
+    Type: String
+    Default: ''
+  SBCVolumeType:
+    Description: Select Type of Volume for SBC
+    Type: String
+    Default: io1
+    AllowedValues:
+      - gp2
+      - io1
+  CreateVPCEndPoint:
+    Description: >-
+      Do you want to create VPC End-point to access API server? if you select no
+      then SBC will reach API server using EIP on mgt0 ports
+    Type: String
+    Default: 'yes'
+    AllowedValues:
+      - 'yes'
+      - 'no'
+  SBCVolumeIOPS:
+    Description: >-
+      Enter IOPS reservation for IO1 type EBS volume [<= 1950]. This value is
+      ignored for GP2 type volumes.
+    Type: Number
+    Default: '600'
+    MaxValue: '1950'
+  SBCVolumeSize:
+    Description: Enter size of disk in GiB. Minimum disk required is 65 GiB
+    Type: Number
+    Default: '65'
+    MinValue: '65'
+    MaxValue: '1000'
+  QSS3BucketName:
+    Type: String
+    Default: aws-quickstart-sm
+  QSS3KeyPrefix:
+    Type: String
+    Default: quickstart-ribbon-sbc
+  SortHfeEip: 
+    Description: Set True to enable sorting based on HFE EIP
+    Type: String
+    Default: 'True'
+    AllowedValues:
+      - 'True'
+      - 'False'
+Conditions:
+  EipOnPkt0: !Equals 
+    - true
+    - true
+  VolumeTypeIO1: !Equals 
+    - Ref: SBCVolumeType
+    - io1
+  CreateVPCEndPoint: !Equals 
+    - !Ref CreateVPCEndPoint
+    - 'yes'
+  EipForHFEManagementInterface: !Equals 
+    - !Ref HFEManagementNeedsEIP
+    - 'Yes'
+  NoVPCEndpointt: !Equals 
+    - !Ref CreateVPCEndPoint
+    - 'no'
+  EipForASTManagementInterface: !Equals 
+    - !Ref ASTManagementNeedsEIP
+    - 'Yes'
+Rules:
+  NameValidation:
+    Assertions:
+      - Assert:
+          'Fn::Not':
+            - 'Fn::Equals':
+                - !Ref SBCActiveInstanceName
+                - !Ref SBCPassiveInstanceName
+        AssertionDescription: SBCActiveInstanceName and SBCPassiveInstanceName must be unique
+      - Assert:
+          'Fn::Not':
+            - 'Fn::Equals':
+                - !Ref SBCActiveInstanceName
+                - !Ref SBCSystemName
+        AssertionDescription: SBCActiveInstanceName and SBCSystemName cannot be the same.
+      - Assert:
+          'Fn::Not':
+            - 'Fn::Equals':
+                - !Ref SBCPassiveInstanceName
+                - !Ref SBCSystemName
+        AssertionDescription: SBCPassiveInstanceName and SBCSystemName cannot be the same.
+Mappings:
+  AWSAMIRegionMap:
+    AMI:
+      RIBBONSBCAMI: sbc-V07.00.00S401-connexip-os_06.00.00-S401_1_amd64_07_06_18_17_58
+      RIBBONHFEAMI: ami-97785bed
+      RIBBONASTERISKAMI: ami-79a1b203
+    us-east-1:
+      RIBBONSBCAMI: ami-03314c0e1674339ce
+      RIBBONHFEAMI: ami-97785bed
+      RIBBONASTERISKAMI: ami-79a1b203
+    us-east-2:
+      RIBBONSBCAMI: ami-040489bb244cfbac8
+      RIBBONHFEAMI: <AMI_ID>
+      RIBBONASTERISKAMI: <AMI_ID>
+    us-west-1:
+      RIBBONSBCAMI: ami-0aaf1884917ca603b
+      RIBBONHFEAMI: <AMI_ID>
+      RIBBONASTERISKAMI: <AMI_ID>
+    us-west-2:
+      RIBBONSBCAMI: ami-08fab2a9d7088ba15
+      RIBBONHFEAMI: <AMI_ID>
+      RIBBONASTERISKAMI: <AMI_ID>
+    ca-central-1:
+      RIBBONSBCAMI: ami-0dfc13891ced16640
+      RIBBONHFEAMI: <AMI_ID>
+      RIBBONASTERISKAMI: <AMI_ID>
+    ap-south-1:
+      RIBBONSBCAMI: ami-0e80e378bf3340301
+      RIBBONHFEAMI: <AMI_ID>
+      RIBBONASTERISKAMI: <AMI_ID>
+    ap-northeast-1:
+      RIBBONSBCAMI: ami-0b998ba31f803a582
+      RIBBONHFEAMI: <AMI_ID>
+      RIBBONASTERISKAMI: <AMI_ID>
+    ap-northeast-2:
+      RIBBONSBCAMI: ami-0d5025bc94b5d40a
+      RIBBONHFEAMI: <AMI_ID>
+      RIBBONASTERISKAMI: <AMI_ID>
+    ap-southeast-1:
+      RIBBONSBCAMI: ami-0880a3f8389c85d3b
+      RIBBONHFEAMI: <AMI_ID>
+      RIBBONASTERISKAMI: <AMI_ID>
+    ap-southeast-2:
+      RIBBONSBCAMI: ami-0da24ac9dbc63c918
+      RIBBONHFEAMI: <AMI_ID>
+      RIBBONASTERISKAMI: <AMI_ID>
+    eu-central-1:
+      RIBBONSBCAMI: ami-0ba8b5524933c9d74
+      RIBBONHFEAMI: <AMI_ID>
+      RIBBONASTERISKAMI: <AMI_ID>
+    eu-west-1:
+      RIBBONSBCAMI: ami-0cd7cbbfb3ddc53d0
+      RIBBONHFEAMI: <AMI_ID>
+      RIBBONASTERISKAMI: <AMI_ID>
+    eu-west-2:
+      RIBBONSBCAMI: ami-0de70b55413388d40
+      RIBBONHFEAMI: <AMI_ID>
+      RIBBONASTERISKAMI: <AMI_ID>
+    eu-west-3:
+      RIBBONSBCAMI: ami-0c725161f776a4287
+      RIBBONHFEAMI: <AMI_ID>
+      RIBBONASTERISKAMI: <AMI_ID>
+    sa-east-1:
+      RIBBONSBCAMI: ami-02eb35cc2d652817e
+      RIBBONHFEAMI: <AMI_ID>
+      RIBBONASTERISKAMI: <AMI_ID>
+Resources:
+  SBCEndPoint:
+    Type: 'AWS::EC2::VPCEndpoint'
+    Condition: CreateVPCEndPoint
+    Properties:
+      VpcEndpointType: Interface
+      PrivateDnsEnabled: true
+      SubnetIds:
+        - !Ref SBCManagementSubnet
+      SecurityGroupIds:
+        - !Ref SBCManagementSG
+      ServiceName: !Sub 'com.amazonaws.${AWS::Region}.ec2'
+      VpcId: !Ref VPCID
+    Metadata:
+      'AWS::CloudFormation::Designer':
+        id: 996ee4fe-3cf4-443e-949e-d1be75b5efc0
+  SBCActiveExVoipIface:
+    Type: 'AWS::EC2::NetworkInterface'
+    Properties:
+      SubnetId: !Ref SBCExVoipSubnet
+      Description: !Sub '${SBCSystemName}-pkt1A_Ribbon'
+      GroupSet:
+        - !Ref SBCExternalVoipSG
+      SecondaryPrivateIpAddressCount: 1
+      Tags:
+        - Key: Name
+          Value: !Sub '${SBCSystemName}-pkt1A_Ribbon'
+    Metadata:
+      'AWS::CloudFormation::Designer':
+        id: b04cf70f-6d89-4f44-afbe-6595c7a2234a
+  SBCActiveInVoipIface:
+    Type: 'AWS::EC2::NetworkInterface'
+    Properties:
+      SubnetId: !Ref HFEPrivateSubnet
+      Description: !Sub '${SBCSystemName}-pkt0A_Ribbon'
+      GroupSet:
+        - !Ref SBCInternalVoipSG
+      SecondaryPrivateIpAddressCount: 1
+      SourceDestCheck: false
+      Tags:
+        - Key: Name
+          Value: !Sub '${SBCSystemName}-pkt0A_Ribbon'
+    Metadata:
+      'AWS::CloudFormation::Designer':
+        id: 6ce93df3-d124-42b0-8a22-3d41071e23b4
+  SBCActiveMgtIface:
+    Type: 'AWS::EC2::NetworkInterface'
+    Properties:
+      SubnetId: !Ref SBCManagementSubnet
+      Description: !Sub '${SBCSystemName}-mgt0A_Ribbon'
+      GroupSet:
+        - !Ref SBCManagementSG
+      SecondaryPrivateIpAddressCount: 1
+      SourceDestCheck: true
+      Tags:
+        - Key: Name
+          Value: !Sub '${SBCSystemName}-mgt0A_Ribbon'
+    Metadata:
+      'AWS::CloudFormation::Designer':
+        id: 2e8570a7-7c45-46f1-8b8e-eb3ef73775b7
+  SBCActiveHAIface:
+    Type: 'AWS::EC2::NetworkInterface'
+    Properties:
+      SubnetId: !Ref SBCHASubnet
+      Description: !Sub '${SBCSystemName}-ha0A_Ribbon'
+      GroupSet:
+        - !Ref SBCHASecurityGroup
+      SourceDestCheck: true
+      Tags:
+        - Key: Name
+          Value: !Sub '${SBCSystemName}-ha0A_Ribbon'
+    Metadata:
+      'AWS::CloudFormation::Designer':
+        id: 997aa45e-42a5-47ed-9370-f22e2be187d8
+  SBCPassiveExVoipIface:
+    Type: 'AWS::EC2::NetworkInterface'
+    Properties:
+      SubnetId: !Ref SBCExVoipSubnet
+      Description: !Sub '${SBCSystemName}-pkt1B_Ribbon'
+      GroupSet:
+        - !Ref SBCExternalVoipSG
+      Tags:
+        - Key: Name
+          Value: !Sub '${SBCSystemName}-pkt1B_Ribbon'
+    Metadata:
+      'AWS::CloudFormation::Designer':
+        id: 866bd4bf-c73e-42f6-ad15-ac24ad8a5d25
+  SBCPassiveInVoipIface:
+    Type: 'AWS::EC2::NetworkInterface'
+    Properties:
+      SubnetId: !Ref HFEPrivateSubnet
+      Description: !Sub '${SBCSystemName}-pkt0B_Ribbon'
+      GroupSet:
+        - !Ref SBCInternalVoipSG
+      SourceDestCheck: false
+      Tags:
+        - Key: Name
+          Value: !Sub '${SBCSystemName}-pkt0B_Ribbon'
+    Metadata:
+      'AWS::CloudFormation::Designer':
+        id: dd712d29-aa03-4f7b-a447-1ad519a55b27
+  SBCPassiveMgtIface:
+    Type: 'AWS::EC2::NetworkInterface'
+    Properties:
+      SubnetId: !Ref SBCManagementSubnet
+      Description: !Sub '${SBCSystemName}-mgt0B_Ribbon'
+      GroupSet:
+        - !Ref SBCManagementSG
+      SourceDestCheck: true
+      Tags:
+        - Key: Name
+          Value: !Sub '${SBCSystemName}-mgt0B_Ribbon'
+    Metadata:
+      'AWS::CloudFormation::Designer':
+        id: 3e23f85e-2574-4abd-9331-2640f42046be
+  SBCPassiveHAIface:
+    Type: 'AWS::EC2::NetworkInterface'
+    Properties:
+      SubnetId: !Ref SBCHASubnet
+      Description: !Sub '${SBCSystemName}-ha0B_Ribbon'
+      GroupSet:
+        - !Ref SBCHASecurityGroup
+      SourceDestCheck: true
+      Tags:
+        - Key: Name
+          Value: !Sub '${SBCSystemName}-ha0B_Ribbon'
+    Metadata:
+      'AWS::CloudFormation::Designer':
+        id: 2ecb0427-f72f-4e27-83de-d09259a4bd7c
+  HFEPublicInterface:
+    Type: 'AWS::EC2::NetworkInterface'
+    Properties:
+      SubnetId: !Ref HFEPublicSubnet
+      GroupSet:
+        - !Ref SBCExternalVoipSG
+      SecondaryPrivateIpAddressCount: 1
+      SourceDestCheck: true
+      Tags:
+        - Key: Name
+          Value: !Sub '${SBCSystemName} HFE Public Interface'
+    Metadata:
+      'AWS::CloudFormation::Designer':
+        id: c779bc46-e10a-493f-9bc7-dfa280c82adf
+  HFEPrivateInterface:
+    Type: 'AWS::EC2::NetworkInterface'
+    Properties:
+      SubnetId: !Ref HFEPrivateSubnet
+      GroupSet:
+        - !Ref SBCExternalVoipSG
+      SourceDestCheck: false
+      Tags:
+        - Key: Name
+          Value: !Sub '${SBCSystemName} HFE Private Interface'
+    Metadata:
+      'AWS::CloudFormation::Designer':
+        id: db1aabf5-5374-4b44-a516-80be62b53cfd
+  HFEManagementInterface:
+    Type: 'AWS::EC2::NetworkInterface'
+    Properties:
+      SubnetId: !Ref SBCManagementSubnet
+      GroupSet:
+        - !Ref HFEManagementSG
+      SourceDestCheck: true
+      Tags:
+        - Key: Name
+          Value: !Sub '${SBCSystemName} HFE Management Interface'
+    Metadata:
+      'AWS::CloudFormation::Designer':
+        id: bf0311ee-3c6d-44ff-979f-3ca9c2d9a5e3
+  SBCExternalVoipSG:
+    Type: 'AWS::EC2::SecurityGroup'
+    Properties:
+      GroupDescription: Security Group for SBC External Voip traffic. (Incoming calls)
+      VpcId: !Ref VPCID
+      SecurityGroupIngress:
+        - IpProtocol: udp
+          FromPort: 5060
+          ToPort: 5061
+          CidrIp: 0.0.0.0/0
+        - IpProtocol: tcp
+          FromPort: 5060
+          ToPort: 5061
+          CidrIp: 0.0.0.0/0
+      Tags:
+        - Key: Name
+          Value: !Sub '${SBCSystemName}-SecurityGroup4_Ribbon'
+    Metadata:
+      'AWS::CloudFormation::Designer':
+        id: 7335356a-8872-42f6-af8b-0b8bfd51b3de
+  SBCInternalVoipSG:
+    Type: 'AWS::EC2::SecurityGroup'
+    Properties:
+      GroupDescription: Security Group for SBC Internal Voip traffic. (Relay to internal infra)
+      VpcId: !Ref VPCID
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 5060
+          ToPort: 5061
+          CidrIp: !Ref SBCInternalVoipCIDR
+        - IpProtocol: udp
+          FromPort: 5060
+          ToPort: 5061
+          CidrIp: !Ref SBCInternalVoipCIDR
+      Tags:
+        - Key: Name
+          Value: !Sub '${SBCSystemName}-SecurityGroup3_Ribbon'
+    Metadata:
+      'AWS::CloudFormation::Designer':
+        id: 94323260-4c54-458e-9c83-3a9760791b85
+  SBCHASecurityGroup:
+    Type: 'AWS::EC2::SecurityGroup'
+    Properties:
+      GroupDescription: Security group for SBC HA interface traffic.
+      VpcId: !Ref VPCID
+      SecurityGroupIngress:
+        - IpProtocol: '-1'
+          FromPort: 0
+          ToPort: 65535
+          CidrIp: 0.0.0.0/0
+        - IpProtocol: '-1'
+          FromPort: 0
+          ToPort: 65535
+          CidrIp: !Ref SSHAccessCIDR
+      Tags:
+        - Key: Name
+          Value: !Sub '${SBCSystemName} HA Security Group'
+    Metadata:
+      'AWS::CloudFormation::Designer':
+        id: f5dcac51-1f47-400b-9b32-4979025cf3ac
+  SBCManagementSG:
+    Type: 'AWS::EC2::SecurityGroup'
+    Properties:
+      GroupDescription: Security group for Mgt SBC
+      VpcId: !Ref VPCID
+      SecurityGroupIngress:
+        - IpProtocol: '-1'
+          FromPort: 0
+          ToPort: 65535
+          CidrIp: 0.0.0.0/0
+        - IpProtocol: '-1'
+          FromPort: 0
+          ToPort: 65535
+          CidrIp: !Ref SSHAccessCIDR
+      Tags:
+        - Key: Name
+          Value: !Sub '${SBCSystemName}-SecurityGroup1_Ribbon'
+    Metadata:
+      'AWS::CloudFormation::Designer':
+        id: e4d50da5-2b7a-42ca-9588-6149b34df0ff
+  HFEManagementSG:
+    Type: 'AWS::EC2::SecurityGroup'
+    Properties:
+      GroupDescription: Security Group for HFE Management Traffic.
+      VpcId: !Ref VPCID
+      SecurityGroupIngress:
+        - IpProtocol: '-1'
+          FromPort: 0
+          ToPort: 65535
+          CidrIp: 0.0.0.0/0
+        - IpProtocol: '-1'
+          FromPort: 0
+          ToPort: 65535
+          CidrIp: !Ref SSHAccessCIDR
+      Tags:
+        - Key: Name
+          Value: !Sub 'HFE-Mgt-SecurityGroup_Ribbon'
+    Metadata:
+      'AWS::CloudFormation::Designer':
+        id: 14bd4006-3421-4a30-a346-71c04d2a7972
+  SBCActiveMgtEIP:
+    Type: 'AWS::EC2::EIP'
+    Condition: NoVPCEndpointt
+    Properties:
+      Domain: !Ref VPCID
+    Metadata:
+      'AWS::CloudFormation::Designer':
+        id: c9895292-796a-4255-835e-e76ce55e0768
+  HFEExVoipEIP:
+    Type: 'AWS::EC2::EIP'
+    Properties:
+      Domain: !Ref VPCID
+    Metadata:
+      'AWS::CloudFormation::Designer':
+        id: 87b7f8fb-80c1-4f94-b0c4-6ac2bc737114
+  HFEPublicEIP:
+    Type: 'AWS::EC2::EIP'
+    Properties:
+      Domain: !Ref VPCID
+    Metadata:
+      'AWS::CloudFormation::Designer':
+        id: 977084b9-c5cd-49a1-b2ae-ce0c0f664f9e
+  HFEManagementEIP:
+    Type: 'AWS::EC2::EIP'
+    Condition: EipForHFEManagementInterface
+    Properties:
+      Domain: !Ref VPCID
+    Metadata:
+      'AWS::CloudFormation::Designer':
+        id: f75c7965-0cd3-4864-ac5a-4ec610305d66
+  SBCPassiveMgtEIP:
+    Type: 'AWS::EC2::EIP'
+    Condition: NoVPCEndpointt
+    Properties:
+      Domain: !Ref VPCID
+    Metadata:
+      'AWS::CloudFormation::Designer':
+        id: f2335523-2938-4eb7-bfda-a7894f2c1308
+  HFEPublicEIPAssociation:
+    Type: 'AWS::EC2::EIPAssociation'
+    Properties:
+      AllocationId: !GetAtt HFEPublicEIP.AllocationId
+      NetworkInterfaceId: !Ref HFEPublicInterface
+      PrivateIpAddress: !Select 
+        - '0'
+        - !GetAtt HFEPublicInterface.SecondaryPrivateIpAddresses
+    Metadata:
+      'AWS::CloudFormation::Designer':
+        id: b9ab4c9f-8ba6-4c13-9b4d-0ffb35c8b235
+  HFEExVoipEIPAssociation:
+    Type: 'AWS::EC2::EIPAssociation'
+    Properties:
+      AllocationId: !GetAtt HFEExVoipEIP.AllocationId
+      NetworkInterfaceId: !Ref HFEPublicInterface
+    Metadata:
+      'AWS::CloudFormation::Designer':
+        id: d8279997-2f6b-4674-8f47-86f3d3330ef4
+  SBCPassiveMgtEIPAssociation:
+    Type: 'AWS::EC2::EIPAssociation'
+    Condition: NoVPCEndpointt
+    Properties:
+      AllocationId: !GetAtt SBCPassiveMgtEIP.AllocationId
+      NetworkInterfaceId: !Ref SBCPassiveMgtIface
+      PrivateIpAddress: !GetAtt SBCPassiveMgtIface.PrimaryPrivateIpAddress
+    Metadata:
+      'AWS::CloudFormation::Designer':
+        id: 9fec2bc5-57bd-4232-9297-ebff2dacb10a
+  HFEManagementEIPAssociation:
+    Type: 'AWS::EC2::EIPAssociation'
+    Condition: EipForHFEManagementInterface
+    Properties:
+      AllocationId: !GetAtt HFEManagementEIP.AllocationId
+      NetworkInterfaceId: !Ref HFEManagementInterface
+    Metadata:
+      'AWS::CloudFormation::Designer':
+        id: 7d3ad52d-977c-4d99-a2b3-ad600527aef9
+  SBCActiveMgtEIPAssocaition:
+    Type: 'AWS::EC2::EIPAssociation'
+    Condition: NoVPCEndpointt
+    Properties:
+      AllocationId: !GetAtt SBCActiveMgtEIP.AllocationId
+      NetworkInterfaceId: !Ref SBCActiveMgtIface
+      PrivateIpAddress: !GetAtt SBCActiveMgtIface.PrimaryPrivateIpAddress
+    Metadata:
+      'AWS::CloudFormation::Designer':
+        id: 6d0bfd4e-f0e8-492d-a27a-af3adc47390a
+  ASTManagementEIP:
+    Type: 'AWS::EC2::EIP'
+    Condition: EipForASTManagementInterface
+    Properties:
+      Domain: !Ref VPCID
+    Metadata:
+      'AWS::CloudFormation::Designer':
+        id: cf7c4810-d37a-4bc3-a24d-5cdebe8b219b
+  ASTManagementInterface:
+    Type: 'AWS::EC2::NetworkInterface'
+    Properties:
+      SubnetId: !Ref SBCManagementSubnet
+      GroupSet:
+        - !Ref ASTManagementSG
+      SourceDestCheck: true
+      Tags:
+        - Key: Name
+          Value: !Sub Asterisk Management Interface
+    Metadata:
+      'AWS::CloudFormation::Designer':
+        id: 6ea7ce8b-1eb9-42df-98a8-2d29e39a9989
+  ASTManagementSG:
+    Type: 'AWS::EC2::SecurityGroup'
+    Properties:
+      GroupDescription: Security Group for HFE Management Traffic.
+      VpcId: !Ref VPCID
+      SecurityGroupIngress:
+        - IpProtocol: '-1'
+          FromPort: 0
+          ToPort: 65535
+          CidrIp: 0.0.0.0/0
+        - IpProtocol: '-1'
+          FromPort: 0
+          ToPort: 65535
+          CidrIp: !Ref SSHAccessCIDR
+      Tags:
+        - Key: Name
+          Value: !Sub '${SBCSystemName} Asterisk management Security Group'
+    Metadata:
+      'AWS::CloudFormation::Designer':
+        id: 0ea047b2-d0ba-4321-bef0-79b4100c4fef
+  AsteriskMgmtEIPAssc:
+    Type: 'AWS::EC2::EIPAssociation'
+    Condition: EipForASTManagementInterface
+    Properties:
+      AllocationId: !GetAtt ASTManagementEIP.AllocationId
+      NetworkInterfaceId: !Ref ASTManagementInterface
+    Metadata:
+      'AWS::CloudFormation::Designer':
+        id: 66e263aa-7fe7-44b2-8e04-d23a9c31e657
+  ASTVoipInterface:
+    Type: 'AWS::EC2::NetworkInterface'
+    Properties:
+      SubnetId: !Ref SBCExVoipSubnet
+      Description: !Sub '${SBCSystemName}-AST_Ribbon'
+      GroupSet:
+        - !Ref ASTVoipInterfaceSG
+      SourceDestCheck: true
+      Tags:
+        - Key: Name
+          Value: !Sub Asterisk-voip_Ribbon
+    Metadata:
+      'AWS::CloudFormation::Designer':
+        id: 958c0f79-c53d-4a54-9709-b13573160d27
+  ASTVoipInterfaceSG:
+    Type: 'AWS::EC2::SecurityGroup'
+    Properties:
+      GroupDescription: Security Group for AST internal Voip traffic. (Incoming calls)
+      VpcId: !Ref VPCID
+      SecurityGroupIngress:
+        - IpProtocol: udp
+          FromPort: 5060
+          ToPort: 5061
+          CidrIp: !Ref SBCExternalVoipCIDR
+        - IpProtocol: tcp
+          FromPort: 5060
+          ToPort: 5061
+          CidrIp: !Ref SBCExternalVoipCIDR
+      Tags:
+        - Key: Name
+          Value: !Sub AsteriskVoip_Ribbon
+    Metadata:
+      'AWS::CloudFormation::Designer':
+        id: d42ca6d1-5adb-4dfc-b10e-2452d981fa0e
+  SBCInstanceRole:
+    Type: 'AWS::IAM::Role'
+    Properties:
+      RoleName: !Sub 'SBCInstanceRole1-${AWS::Region}'
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - ec2.amazonaws.com
+            Action:
+              - 'sts:AssumeRole'
+      Path: /
+      Policies:
+        - PolicyName: SBCInstancePermissions
+          PolicyDocument:
+            Version: 2012-10-17
+            Statement:
+              - Effect: Allow
+                Action:
+                  - 'ec2:AllocateAddress'
+                  - 'ec2:AssignPrivateIpAddresses'
+                  - 'ec2:AssociateAddress'
+                  - 'ec2:AttachNetworkInterface'
+                  - 'ec2:DisassociateAddress'
+                  - 'ec2:DescribeInstances'
+                  - 'ec2:DescribeAddresses'
+                  - 'ec2:DescribeNetworkInterfaces'
+                  - 'ec2:DescribeInstanceAttribute'
+                  - 'ec2:DescribeRegions'
+                  - 'ec2:ModifyInstanceAttribute'
+                  - 'ec2:DescribeSubnets'
+                Resource: '*'
+    Metadata:
+      'AWS::CloudFormation::Designer':
+        id: 196c27e1-826d-404f-810d-58b8a6c67147
+  HFEInstanceRole:
+    Type: 'AWS::IAM::Role'
+    Properties:
+      RoleName: !Sub 'HFEInstanceRole1-${AWS::Region}'
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - ec2.amazonaws.com
+            Action:
+              - 'sts:AssumeRole'
+      Path: /
+      Policies:
+        - PolicyName: AccessToS3Bucket
+          PolicyDocument:
+            Version: 2012-10-17
+            Statement:
+              - Effect: Allow
+                Action:
+                  - 'ec2:DescribeInstances'
+                  - 'ec2:DescribeAddresses'
+                  - 'ec2:DescribeNetworkInterfaces'
+                  - 'ec2:DescribeInstanceAttribute'
+                  - 'ec2:DescribeRegions'
+                  - 's3:Get*'
+                  - 's3:List*'
+                  - 'ec2:ModifyInstanceAttribute'
+                  - 'ec2:DescribeSubnets'
+                  - 'cloudwatch:PutMetricData'
+                  - 'events:PutRule'
+                Resource: '*'
+    Metadata:
+      'AWS::CloudFormation::Designer':
+        id: 6bb41ba0-ae35-49d6-9274-8cd3ac86cd75
+  SBCInstanceProfile:
+    Type: 'AWS::IAM::InstanceProfile'
+    Properties:
+      InstanceProfileName: !Sub 'SBCInstanceProfile1-${AWS::Region}'
+      Path: /
+      Roles:
+        - !Ref SBCInstanceRole
+    Metadata:
+      'AWS::CloudFormation::Designer':
+        id: 7707fbe1-4cf7-4e81-acbb-1bb6e7e88105
+  HFEInstanceProfile:
+    Type: 'AWS::IAM::InstanceProfile'
+    Properties:
+      InstanceProfileName: !Sub 'HFEInstanceProfile1-${AWS::Region}'
+      Path: /
+      Roles:
+        - !Ref HFEInstanceRole
+    Metadata:
+      'AWS::CloudFormation::Designer':
+        id: 59c0b781-2d7d-4562-b40d-63325c62a64e
+  SBCActiveInstance:
+    DependsOn: HFEPublicInterface
+    Type: 'AWS::EC2::Instance'
+    Properties:
+      ImageId: !FindInMap 
+        - AWSAMIRegionMap
+        - !Ref 'AWS::Region'
+        - RIBBONSBCAMI
+      IamInstanceProfile: !Ref SBCInstanceProfile
+      BlockDeviceMappings:
+        - DeviceName: /dev/sda1
+          Ebs:
+            VolumeType: !Ref SBCVolumeType
+            VolumeSize: !Ref SBCVolumeSize
+            Iops: !If 
+              - VolumeTypeIO1
+              - !Ref SBCVolumeIOPS
+              - !Ref 'AWS::NoValue'
+            DeleteOnTermination: true
+      InstanceType: !Ref SBCInstanceType
+      Tenancy: !Ref Tenancy
+      PlacementGroupName: !Ref PlacementId
+      EbsOptimized: true
+      KeyName: !Ref KeyPairName
+      NetworkInterfaces:
+        - NetworkInterfaceId: !Ref SBCActiveMgtIface
+          DeviceIndex: '0'
+        - NetworkInterfaceId: !Ref SBCActiveHAIface
+          DeviceIndex: '1'
+        - NetworkInterfaceId: !Ref SBCActiveInVoipIface
+          DeviceIndex: '2'
+        - NetworkInterfaceId: !Ref SBCActiveExVoipIface
+          DeviceIndex: '3'
+      Tags:
+        - Key: Name
+          Value: !Sub '${AWS::StackName}-1'
+      UserData:
+        'Fn::Base64':
+          'Fn::Sub':
+            - |
+              { "CERole"               : "ACTIVE",
+                "ReverseNatPkt0"       : "True",
+                "ReverseNatPkt1"       : "False",
+                "SortHfeEip"           : "${SortHfeEip}",
+                "IAM_ROLE"             : "${SBCInstanceRole}",
+                "ALT_Mgt0_00"          : "LOGICAL_MGMT_IP",
+                "ALT_Pkt0_00"          : "VIP1",
+                "ALT_Pkt1_00"          : "VIP2",
+                "ClusterIp"            : "${SBCPassiveHAIface.PrimaryPrivateIpAddress}",
+                "HFE"                  : "${HFEPub_SecondaryPrivIP}",
+                "SbcPersonalityType"   : "${SBCPersonalityType}",
+                "SbcMgmtMode"          : "centralized",
+                "TemplateName"         : "AWS_HA_template.json",
+                "TemplateVersion"      : "V07.00.00A011",
+                "CEName"               : "${SBCActiveInstanceName}",
+                "PeerCEName"           : "${SBCPassiveInstanceName}",
+                "PeerCEHa0IPv4Address" : "${SBCPassiveHAIface.PrimaryPrivateIpAddress}",
+                "SystemName"           : "${SBCSystemName}",
+                "ActiveRoleMgtId"      : "${SBCActiveMgtIface}",
+                "NodeName"             : "${AWS::StackName}"
+              }
+            - HFEPub_SecondaryPrivIP: !Select 
+                - 0
+                - !GetAtt HFEPublicInterface.SecondaryPrivateIpAddresses
+    Metadata:
+      'AWS::CloudFormation::Designer':
+        id: 1e2b9fa1-3af8-446d-80b6-ceff18a345e4
+  SBCPassiveInstance:
+    Type: 'AWS::EC2::Instance'
+    DependsOn: HFEPublicInterface
+    Properties:
+      ImageId: !FindInMap 
+        - AWSAMIRegionMap
+        - !Ref 'AWS::Region'
+        - RIBBONSBCAMI
+      BlockDeviceMappings:
+        - DeviceName: /dev/sda1
+          Ebs:
+            VolumeType: !Ref SBCVolumeType
+            VolumeSize: !Ref SBCVolumeSize
+            Iops: !If 
+              - VolumeTypeIO1
+              - !Ref SBCVolumeIOPS
+              - !Ref 'AWS::NoValue'
+            DeleteOnTermination: true
+      IamInstanceProfile: !Ref SBCInstanceProfile
+      InstanceType: !Ref SBCInstanceType
+      Tenancy: !Ref Tenancy
+      PlacementGroupName: !Ref PlacementId
+      EbsOptimized: true
+      KeyName: !Ref KeyPairName
+      NetworkInterfaces:
+        - NetworkInterfaceId: !Ref SBCPassiveMgtIface
+          DeviceIndex: '0'
+        - NetworkInterfaceId: !Ref SBCPassiveHAIface
+          DeviceIndex: '1'
+        - NetworkInterfaceId: !Ref SBCPassiveInVoipIface
+          DeviceIndex: '2'
+        - NetworkInterfaceId: !Ref SBCPassiveExVoipIface
+          DeviceIndex: '3'
+      Tags:
+        - Key: Name
+          Value: !Sub '${AWS::StackName}-2'
+      UserData:
+        'Fn::Base64':
+          'Fn::Sub':
+            - |
+              { "CERole"               : "STANDBY",
+                "ReverseNatPkt0"       : "True",
+                "ReverseNatPkt1"       : "False",
+                "SortHfeEip"           : "${SortHfeEip}",
+                "IAM_ROLE"             : "${SBCInstanceRole}",
+                "ALT_Mgt0_00"          : "LOGICAL_MGMT_IP",
+                "ALT_Mgt0_00"          : "LOGICAL_MGMT_IP",
+                "ALT_Pkt0_00"          : "VIP1",
+                "ALT_Pkt1_00"          : "VIP2",
+                "ClusterIp"            : "${SBCActiveHAIface.PrimaryPrivateIpAddress}",
+                "HFE"                  : "${HFEPub_SecondaryPrivIP}",
+                "SbcPersonalityType"   : "${SBCPersonalityType}",
+                "SbcMgmtMode"          : "centralized",
+                "TemplateName"         : "AWS_HA_template.json",
+                "TemplateVersion"      : "V07.00.00A011",
+                "CEName"               : "${SBCPassiveInstanceName}",
+                "PeerCEName"           : "${SBCActiveInstanceName}",
+                "PeerCEHa0IPv4Address" : "${SBCActiveHAIface.PrimaryPrivateIpAddress}",
+                "SystemName"           : "${SBCSystemName}",
+                "ActiveRoleMgtId"      : "${SBCActiveMgtIface}",
+                "NodeName"             : "${AWS::StackName}"
+              }
+            - HFEPub_SecondaryPrivIP: !Select 
+                - 0
+                - !GetAtt HFEPublicInterface.SecondaryPrivateIpAddresses
+    Metadata:
+      'AWS::CloudFormation::Designer':
+        id: a751e3a6-3de8-4047-9998-517a121ee72a
+  HFEInstance:
+    Type: 'AWS::EC2::Instance'
+    Properties:
+      ImageId: !FindInMap 
+        - AWSAMIRegionMap
+        - !Ref 'AWS::Region'
+        - RIBBONHFEAMI
+      BlockDeviceMappings:
+        - DeviceName: /dev/xvda
+          Ebs:
+            VolumeType: gp2
+            VolumeSize: 20
+            DeleteOnTermination: false
+      IamInstanceProfile: !Ref HFEInstanceProfile
+      InstanceType: !Ref SBCInstanceType
+      Tenancy: !Ref Tenancy
+      PlacementGroupName: !Ref PlacementId
+      EbsOptimized: true
+      KeyName: !Ref KeyPairName
+      NetworkInterfaces:
+        - NetworkInterfaceId: !Ref HFEPublicInterface
+          DeviceIndex: '0'
+        - NetworkInterfaceId: !Ref HFEManagementInterface
+          DeviceIndex: '1'
+        - NetworkInterfaceId: !Ref HFEPrivateInterface
+          DeviceIndex: '2'
+      Tags:
+        - Key: Name
+          Value: HFE Instance
+      UserData:
+        'Fn::Base64':
+          'Fn::Sub':
+            - >
+              #!/bin/bash
+
+              HFE_DIR="/home/ec2-user/HFE/"
+
+              HFE_FILE="$HFE_DIR/HFE.sh"
+
+              LOG_FILE="$HFE_DIR/cloud-init-nat.log"
+
+              NAT_VAR="$HFE_DIR/natVars.input"
+
+              function timestamp(){
+                date +"%Y-%m-%d %T"
+              }
+
+              mkdir -p ${!HFE_DIR};
+
+              aws s3 cp s3://${QSS3BucketName}/${QSS3KeyPrefix}/scripts/HFE.sh
+              ${!HFE_FILE}
+
+              if [ $? -ne 0 ]; then
+                /bin/echo $(timestamp) "Error:Could not copy HFE script from S3 bucket."  >> ${!LOG_FILE}
+              else
+                /bin/echo $(timestamp) "Copied HFE script from S3 bucket."  >> ${!LOG_FILE}
+              fi;
+
+              /bin/echo "SBC_SECONDARY_IP=${SBC_SECONDARY_IP}" >> ${!NAT_VAR}
+
+              /bin/echo "REMOTE_SSH_MACHINE_IP=${REMOTE_SSH_MACHINE_IP}" >> ${!NAT_VAR}
+
+              /bin/echo "SORT_HFE_EIP=${SortHfeEip}" >> ${!NAT_VAR}
+
+              /bin/echo $(!timestamp) "Copied natVars.input" >> ${!LOG_FILE}
+
+              sudo chmod 744 ${!HFE_FILE}
+
+              sudo /bin/bash ${!HFE_FILE} setup
+
+              /bin/echo "Configured using HFE script ${!HFE_FILE}" >>
+              ${!LOG_FILE}
+
+              /bin/echo $(timestamp) " =========================   Done   
+              ==========================================" >> ${!LOG_FILE}
+            - SBC_SECONDARY_IP: !Select 
+                - 0
+                - !GetAtt SBCActiveInVoipIface.SecondaryPrivateIpAddresses
+              REMOTE_SSH_MACHINE_IP: !If 
+                - EipForHFEManagementInterface
+                - !Ref HFEManagementEIPAccessCIDR
+                - ''
+    Metadata:
+      'AWS::CloudFormation::Designer':
+        id: e028cb91-17e8-4f69-b40f-3578fb5dea29
+  AsteriskInstance:
+    Type: 'AWS::EC2::Instance'
+    Properties:
+      ImageId: !FindInMap 
+        - AWSAMIRegionMap
+        - !Ref 'AWS::Region'
+        - RIBBONASTERISKAMI
+      BlockDeviceMappings:
+        - DeviceName: /dev/xvda
+          Ebs:
+            VolumeType: gp2
+            VolumeSize: 20
+            DeleteOnTermination: false
+      InstanceType: !Ref AsteriskInstanceType
+      EbsOptimized: true
+      KeyName: !Ref KeyPairName
+      NetworkInterfaces:
+        - NetworkInterfaceId: !Ref ASTManagementInterface
+          DeviceIndex: '0'
+        - NetworkInterfaceId: !Ref ASTVoipInterface
+          DeviceIndex: '1'
+      Tags:
+        - Key: Name
+          Value: Ribbon SBC Asterisk Instance
+    Metadata:
+      'AWS::CloudFormation::Designer':
+        id: bc16cfa4-9651-4762-b41c-a016a0e99c90
+Outputs:
+  InstanceIdActive:
+    Value: !Ref SBCActiveInstance
+  DefaultCliAdminPassword:
+    Description: >-
+      It is eth0 interface-id of instance which has assigned active role in the
+      template. This is used as default CLI admin password 
+    Value: !Ref SBCActiveMgtIface
+  Mgt0InterfaceIDActive:
+    Value: !Ref SBCActiveMgtIface
+  HA0InterfaceIDActive:
+    Value: !Ref SBCActiveHAIface
+  Pkt0InterfaceIDActive:
+    Value: !Ref SBCActiveInVoipIface
+  Pkt1InterfaceIDActive:
+    Value: !Ref SBCActiveExVoipIface
+  InstanceIdStandby:
+    Value: !Ref SBCPassiveInstance
+  Mgt0InterfaceIDStandby:
+    Value: !Ref SBCPassiveMgtIface
+  HA0InterfaceIDStandby:
+    Value: !Ref SBCPassiveHAIface
+  Pkt0InterfaceIDStandby:
+    Value: !Ref SBCPassiveInVoipIface
+  Pkt1InterfaceIDStandby:
+    Value: !Ref SBCPassiveExVoipIface
