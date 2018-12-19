@@ -7,20 +7,20 @@
 # All Rights Reserved.
 # Confidential and Proprietary.
 #
-# HFN.sh
+# HFE.sh
 #
 # Lokesh Ranadive
 # 4/1/2018
 #
 # Module Description:
-# Script to enable HFN(HA forwarding node) instance as frontend for public facing
+# Script to enable HFE(High-Availability Front End) instance as frontend for public facing 
 # PKT port of SBC.
 # The script will perform the following steps when called from cloud-init (setup function):
 # 1) Save old iptables rules : preConfigure
 # 2) Enalbe IP Forwarding :configureNATRules
 # 3) Read Secondary IPs of SBC, IP of machine for which we need route table
 # entry(for ssh connection). Route for REMOTE_SSH_MACHINE_IP is set so that user
-# can connect HFN instance over eth1 : readConfig.
+# can connect HFE instance over eth1 : readConfig.
 # Route entry for all SIPs of SBC(pkt0) are set to route packets towards SBC via
 # eth2
 # 4) Setup DNAT for incoming traffic over eth0 (public facing EIPs for SBC's pkt
@@ -28,25 +28,25 @@
 # 5) Setup SNAT for traffic coming from SBC and forward it to public
 # end-points over eth0 (EIPs) : configureNATRules
 # 6) Configure route for IP of machine read in step #3(REMOTE_SSH_MACHINE_IP) : configureMgmtNAT
-# 7) Log applied iptables configuration and route: showCurrentConfig
+# 7) Log applied iptables configuration and route: showCurrentConfig 
 #
 #
 # For debugging-
-# Call HFN.sh with cleanup switch. e.g sh HFN.sh cleanup:
+# Call HFE.sh with cleanup switch. e.g sh HFE.sh cleanup:
 # 1) Remove all routes set to forward SBC SIPs(pkt0)
-# 2) Save iptable entries
+# 2) Save iptable entries 
 # 3) Flush iptables
-# This option is useful to debug connectivity of end-point with HFN, after
+# This option is useful to debug connectivity of end-point with HFE, after
 # calling this no packet is forwarded to SBC, user can ping all EIPs on eth0 to
-# make sure connectivity between end-point and HFN is   working fine.
-# Once this is done user MUST reboot HFN node to restore all forwarding rules
+# make sure connectivity between end-point and HFE is working fine.
+# Once this is done user MUST reboot HFE node to restore all forwarding rules
 # and routes.
+# 
 #
-#
-# NOTE: This script is run by cloud-init in HFN instance.
+# NOTE: This script is run by cloud-init in HFE instance.
 #
 # This script should be uploaded to S3 bucket and
-# AWS_HFN_HA_template_auto_subnet.json configures HFN instance to
+# AWS_HFE_HA_template_auto_subnet.json configures HFE instance to
 # get this script from S3 bucket and run with cloud-init.
 #
 #
@@ -54,11 +54,12 @@
 
 
 ## This version is changed to current release build by build process.
-TemplateVersion="TEMPLATE_VERSION_UNKNOWN"
-HFNRoot="/home/ec2-user/HFN"
-varFile="$HFNRoot/natVars.input"
-logFile="$HFNRoot/HFN.log"
-oldRules="$HFNRoot/iptables.rules.prev"
+TemplateVersion="V07.00.00S404"
+HFERoot="/home/ec2-user/HFE"
+varFile="$HFERoot/natVars.input"
+logFile="$HFERoot/HFE.log"
+cloudWatchFile="$HFERoot/cloudWatch.sh"
+oldRules="$HFERoot/iptables.rules.prev"
 
 PROG=${0##*/}
 
@@ -78,10 +79,10 @@ timestamp()
 
 doneMessage()
 {
-    echo $(timestamp) " =========================    DONE HFN.sh     =========================================="
+    echo $(timestamp) " =========================    DONE HFE.sh     =========================================="
     echo $(timestamp) ""
     echo $(timestamp) ""
-    exit
+    exit 
 }
 
 errorAndExit()
@@ -117,7 +118,7 @@ getRegion()
     if [[ -z "$availZone" ]];then
         errorAndExit "Failed to get availability-zone."
     fi
-
+    
     region="${availZone::-1}"
     echo "$region"
 }
@@ -125,13 +126,13 @@ getRegion()
 getSWePkt0CIDR()
 {
     local region=""
-
+    
     # Get region.
     region=$(getRegion)
     if [[ -z "$region" ]];then
         errorAndExit "Failed to get region."
     fi
-
+   
     # Get subnet-id for SECONDARY_IP_OF_SBC.
     sbcPkt0SubnetId=`aws ec2 describe-network-interfaces --filters "Name=addresses.private-ip-address,Values=$SBC_SECONDARY_IP" --region $region | grep SubnetId | awk -F ":" '{print $2}' | awk -F "\"" '{print $2}'`
     if [[ -z "$sbcPkt0SubnetId" ]];then
@@ -147,7 +148,7 @@ getSWePkt0CIDR()
     echo "$sbcPkt0CIDR"
 }
 
-# route command is depreciated.
+
 routeCleanUp()
 {
     echo $(timestamp) " Route clean up for SWe Pkt0 secondary IPs and remote machine's public IP."
@@ -157,7 +158,7 @@ routeCleanUp()
     if [[ -z "$sbcPkt0CIDR" ]];then
         errorAndExit " Failed to get SWe Pkt0 CIDR."
     fi
-
+  
     ip route | grep -E "$sbcPkt0CIDR.*$ETH2_GW.*eth2"
     if [ "$?" = "0" ]; then
         #route del -net <CIDR> gw <GW_OF_ETH2> dev eth2
@@ -173,7 +174,7 @@ routeCleanUp()
 
     ip route | grep -E "$REMOTE_SSH_MACHINE_IP.*$ETH1_GW.*eth1"
     if [ "$?" = "0" ]; then
-        #route del <PUBLIC_IP_OF_MACHINE_USED_TO_MANAGE_HFN> gw <GW_OF_ETH0> dev eth1
+        #route del <PUBLIC_IP_OF_MACHINE_USED_TO_MANAGE_HFE> gw <GW_OF_ETH0> dev eth1
         route del $REMOTE_SSH_MACHINE_IP gw $ETH1_GW dev eth1
         if [ "$?" = "0" ]; then
             echo $(timestamp) " Route deleted for remote machine's public IP($REMOTE_SSH_MACHINE_IP) to reach from eth1"
@@ -185,15 +186,72 @@ routeCleanUp()
     fi
 }
 
+prepareHFEInstance()
+{
+    ### Configure ip_forward and dump code for HFE healthcheck using CloudWatch
+    ### This should be called before echo is redirected to log file.
+
+    echo > $cloudWatchFile
+
+    echo "#!/bin/bash" >> $cloudWatchFile
+    echo "counter=0 ">> $cloudWatchFile
+    echo "instanceId=\`wget -q -O - http://169.254.169.254/latest/meta-data/instance-id\` ">> $cloudWatchFile
+    echo "availZone=\`curl -s http://169.254.169.254/latest/meta-data/placement/availability-zone\` " >> $cloudWatchFile
+
+    echo " " >> $cloudWatchFile
+    echo " " >> $cloudWatchFile
+
+    echo "if [[ -z \"\$availZone\" ]];then" >> $cloudWatchFile
+    echo "logger  \"prepareHFEInstance: Error: Failed to get Availability Zone.  This instance can not send CloudWatch events.\"">> $cloudWatchFile
+    echo "fi" >> $cloudWatchFile
+    
+    echo " " >> $cloudWatchFile
+    echo " " >> $cloudWatchFile
+
+    echo "region=\"\${availZone::-1}\" " >> $cloudWatchFile
+
+    echo " " >> $cloudWatchFile
+    echo "logger  \"prepareHFEInstance: Sending HFE state up notification.  $instanceId\" ">> $cloudWatchFile
+    echo "while true ">> $cloudWatchFile
+    echo "do ">> $cloudWatchFile
+
+    echo " " >> $cloudWatchFile
+    echo "    ### Update timestamp every 10 seconds" >> $cloudWatchFile
+    echo "    remainder=\$(( counter % 5 ))" >>$cloudWatchFile
+    echo "    if [ \$remainder -eq 0 ]" >> $cloudWatchFile
+    echo "        then">> $cloudWatchFile
+    echo "        echo "\$\(date +\'%d/%m/%Y %H:%M:%S:%3N\'\)" >.cloudWatch " >> $cloudWatchFile
+    echo "    fi" >> $cloudWatchFile
+
+    echo " " >> $cloudWatchFile
+    echo "    counter=\$((counter+1)) ">> $cloudWatchFile
+
+    echo " " >> $cloudWatchFile
+    echo "    if [ \$counter -eq 100000 ]" >> $cloudWatchFile
+    echo "        then">> $cloudWatchFile
+    echo "        logger \"prepareHFEInstance: reset counter\" ">> $cloudWatchFile
+    echo "        counter=0" >> $cloudWatchFile
+    echo "    fi" >> $cloudWatchFile
+
+    echo "    ### Send keep alive signal" >> $cloudWatchFile
+
+    echo "    aws cloudwatch put-metric-data --region \$region  --metric-name HFEState --dimensions InstanceID=\$instanceId --namespace HFE --value 1 --storage-resolution 1 " >> $cloudWatchFile
+    echo "    sleep 2 " >> $cloudWatchFile
+    echo "done" >> $cloudWatchFile
+
+    ### Enable ip forwarding
+    echo 1 >  /proc/sys/net/ipv4/ip_forward
+
+}
 
 preConfigure()
 {
     ### Redirect all echo $(timestamp) to file after writing ip_forward
     exec >> $logFile 2>&1
-    echo $(timestamp) " ==========================   Starting HFN.sh  ============================"
+    echo $(timestamp) " ==========================   Starting HFE.sh  ============================"
     echo $(timestamp) " Enabled IP forwarding"
     echo $(timestamp) " This script will setup DNAT, SNAT and IP forwarding."
-    echo $(timestamp) " Save old rules in $HFNRoot/firewall.rules"
+    echo $(timestamp) " Save old rules in $HFERoot/firewall.rules"
     saveAndClearOldRules
 }
 
@@ -244,13 +302,13 @@ installConntrack()
 configureNATRules()
 {
     echo $(timestamp) " ==========================   Section 1 ============================"
-    echo $(timestamp) " Endpoint -> EIP of HFN instance (eth0) -> eth2 -> VPC router -> SBC"
-    echo $(timestamp) " This setting enables HFN instance to forward all packets received on eth0[EIP] to SBC's(current active) secondary IP."
+    echo $(timestamp) " Endpoint -> EIP of HFE instance (eth0) -> eth2 -> VPC router -> SBC"
+    echo $(timestamp) " This setting enables HFE instance to forward all packets received on eth0[EIP] to SBC's(current active) secondary IP."
     echo $(timestamp) " These packets are sent out on eth2 interface and routed via private VPC's default routing table rule"
     echo $(timestamp) " ==================================================================="
     echo $(timestamp) ""
     echo $(timestamp) ""
-
+    
     local sbcPkt0CIDR=""
 
     iptables -A FORWARD -i eth0 -o eth2 -j ACCEPT
@@ -259,20 +317,20 @@ configureNATRules()
     else
         errorAndExit "Failed to set forward ACCEPT rule for all packets coming on EIP(eth0)"
     fi
-
-    # Get number of secondary IP assigned on HFN eth0 interface.
-    secIpOnHfnEth0Count="${#secIpOnHfnEth0SortArr[@]}"
+    
+    # Get number of secondary IP assigned on HFE eth0 interface.
+    secIpOnHfeEth0Count="${#secIpOnHfeEth0SortArr[@]}"
 
     # Get number of secondary IP assigned on SBC Pkt0 interface.
     secIpOnSWePkt0Count="${#secIpOnSWePkt0SortArr[@]}"
 
-    addNumRoute=$(( secIpOnHfnEth0Count < secIpOnSWePkt0Count ? secIpOnHfnEth0Count : secIpOnSWePkt0Count ))
+    addNumRoute=$(( secIpOnHfeEth0Count < secIpOnSWePkt0Count ? secIpOnHfeEth0Count : secIpOnSWePkt0Count ))
     # Get SBC Pkt0 CIDR.
     sbcPkt0CIDR=$(getSWePkt0CIDR)
     if [[ -z "$sbcPkt0CIDR" ]];then
         errorAndExit "Failed to get SWe Pkt0 CIDR."
     fi
-
+   
     ip route | grep -E "$sbcPkt0CIDR.*$ETH2_GW.*eth2"
     if [ "$?" = "0" ]; then
         echo $(timestamp) " Route is already available to reach SBC Pkt0 CIDR  $sbcPkt0CIDR from eth2"
@@ -285,15 +343,15 @@ configureNATRules()
             errorAndExit "Failed to set route to reach SBC CIDR  $sbcPkt0CIDR from eth2"
         fi
     fi
-
+        
     for (( idx=0; idx<$addNumRoute; idx++ ))
     do
         #iptables -t nat -A PREROUTING  -i eth0 -d <DESTINATION_IP> -j DNAT --to <SECONDARY_IP_OF_SBC>
-        iptables -t nat -A PREROUTING  -i eth0 -d ${secIpOnHfnEth0SortArr[$idx]} -j DNAT --to ${secIpOnSWePkt0SortArr[$idx]}
+        iptables -t nat -A PREROUTING  -i eth0 -d ${secIpOnHfeEth0SortArr[$idx]} -j DNAT --to ${secIpOnSWePkt0SortArr[$idx]}
         if [ "$?" = "0" ]; then
-            echo $(timestamp) " Set up proper DNAT for destination IP ${secIpOnHfnEth0SortArr[$idx]} to offset ${secIpOnSWePkt0SortArr[$idx]} "
+            echo $(timestamp) " Set up proper DNAT for destination IP ${secIpOnHfeEth0SortArr[$idx]} to offset ${secIpOnSWePkt0SortArr[$idx]} "
         else
-            errorAndExit "Failed to set DNAT rule for destination IP ${secIpOnHfnEth0SortArr[$idx]} to offset ${secIpOnSWePkt0SortArr[$idx]}."
+            errorAndExit "Failed to set DNAT rule for destination IP ${secIpOnHfeEth0SortArr[$idx]} to offset ${secIpOnSWePkt0SortArr[$idx]}."
         fi
     done
 
@@ -317,15 +375,15 @@ configureNATRules()
 
 
     echo $(timestamp) " ==========================   Section 2 ============================"
-    echo $(timestamp) " This configuration is needed for calls originated by SBC on public IP (using EIP of HFN)"
-    echo $(timestamp) " SBC -> routing table -> eth1 (HFN instance) -> DNAT -> eth0 -> EIP "
-    echo $(timestamp) " This setting enables HFN instance to forward all packets received on eth2 from SBC's(current active) secondary IP."
+    echo $(timestamp) " This configuration is needed for calls originated by SBC on public IP (using EIP of HFE)"
+    echo $(timestamp) " SBC -> routing table -> eth1 (HFE instance) -> DNAT -> eth0 -> EIP "
+    echo $(timestamp) " This setting enables HFE instance to forward all packets received on eth2 from SBC's(current active) secondary IP."
     echo $(timestamp) " These packets are sent out on eth0 interface as default route is set for this interface and routed via default rule of routing table"
-    echo $(timestamp) " Private subnet should use rules like following to route all packets to HFN instance-"
+    echo $(timestamp) " Private subnet should use rules like following to route all packets to HFE instance-"
     echo $(timestamp) "
 
 
-    #### Use routing table to route packets from pkt0 to reach eth2 of HFN instance
+    #### Use routing table to route packets from pkt0 to reach eth2 of HFE instance
 
     Route Table:
     rtb-XXXXXXXXXXXXXXXX | PRIVATE_SUBNET_NAT_ROUTING_TABLE
@@ -345,11 +403,11 @@ configureNATRules()
 
     for (( idx=0; idx<$addNumRoute; idx++ ))
     do
-        iptables -t nat -I POSTROUTING -o eth0 -s ${secIpOnSWePkt0SortArr[$idx]} -j SNAT --to ${secIpOnHfnEth0SortArr[$idx]}
+        iptables -t nat -I POSTROUTING -o eth0 -s ${secIpOnSWePkt0SortArr[$idx]} -j SNAT --to ${secIpOnHfeEth0SortArr[$idx]}  
         if [ "$?" = "0" ]; then
-            echo $(timestamp) " Set up POSTROUTING rule (source IP ${secIpOnSWePkt0SortArr[$idx]}, to offset ${secIpOnHfnEth0SortArr[$idx]}) for packet sent on eth0 "
+            echo $(timestamp) " Set up POSTROUTING rule (source IP ${secIpOnSWePkt0SortArr[$idx]}, to offset ${secIpOnHfeEth0SortArr[$idx]}) for packet sent on eth0 "
         else
-            errorAndExit "Failed to set POSTROUTING rule (source IP ${secIpOnSWePkt0SortArr[$idx]}, to offset ${secIpOnHfnEth0SortArr[$idx]}) for packet sent on eth0"
+            errorAndExit "Failed to set POSTROUTING rule (source IP ${secIpOnSWePkt0SortArr[$idx]}, to offset ${secIpOnHfeEth0SortArr[$idx]}) for packet sent on eth0"
         fi
     done
 
@@ -368,17 +426,17 @@ configureMgmtNAT()
     if [ -z "${REMOTE_SSH_MACHINE_IP}" ]; then
         echo $(timestamp) " No IP is given for REMOTE_SSH_MACHINE_IP field, no route is set for managing this instance over eth1."
     else
-        echo $(timestamp) " eth1 is used to manage this HFN instance, we can login using private IP to manage HFN machine without setting default route"
+        echo $(timestamp) " eth1 is used to manage this HFE instance, we can login using private IP to manage HFE machine without setting default route"
         echo $(timestamp) " default route points to eth0 which will be used to interface all traffic for SBC"
 
         ip route | grep -E "$REMOTE_SSH_MACHINE_IP.*$ETH1_GW.*eth1"
         if [ "$?" = "0" ]; then
-            echo $(timestamp) " Route is already available for remote machine's public IP($REMOTE_SSH_MACHINE_IP), from this IP you can SSH to HFN over EIP(eth1)"
+            echo $(timestamp) " Route is already available for remote machine's public IP($REMOTE_SSH_MACHINE_IP), from this IP you can SSH to HFE over EIP(eth1)"
         else
-            #route add <PUBLIC_IP_OF_MACHINE_USED_TO_MANAGE_HFN> gw <GW_OF_ETH0> dev eth1
+            #route add <PUBLIC_IP_OF_MACHINE_USED_TO_MANAGE_HFE> gw <GW_OF_ETH0> dev eth1
             route add $REMOTE_SSH_MACHINE_IP gw $ETH1_GW dev eth1
             if [ "$?" = "0" ]; then
-                echo $(timestamp) " Route added for remote machine's public IP($REMOTE_SSH_MACHINE_IP), from this IP you can SSH to HFN over EIP(eth1)"
+                echo $(timestamp) " Route added for remote machine's public IP($REMOTE_SSH_MACHINE_IP), from this IP you can SSH to HFE over EIP(eth1)"
             else
                 errorAndExit "Failed to add route for ($REMOTE_SSH_MACHINE_IP)"
             fi
@@ -429,20 +487,38 @@ installWireshark()
         echo $(timestamp) " Wireshark is not installed. Installing it."
         yum -y install wireshark
     fi
+
+}
+
+stopHealthCheck()
+{
+    echo $(timestamp) " ==========================   Cleanup: kill health check ============================"
+    echo $(timestamp) " Stop health check. "
+    sudo pkill -f $cloudWatchFile
+}
+
+startHealthCheck()
+{
+    echo $(timestamp) " ==========================   Section 5 ============================"
+    echo $(timestamp) " Start health check. Logs are appended in syslog. Check .cloudWatch file for last health check message sent out from this machine. "
+    ### First kill other instance of cloudWatch health check script.
+    stopHealthCheck
+    nohup sh $cloudWatchFile &  2>&1
     doneMessage
 }
 
-getHfnEth0AndSWePkt0SipArray()
+
+getHfeEth0AndSWePkt0SipArray()
 {
     # Get region.
     local region=""
-
+    
     # Get region.
     region=$(getRegion)
     if [[ -z "$region" ]];then
         errorAndExit "Failed to get region."
     fi
-
+   
     # Get primary ip assigned on SWE PKT0 interface.
     priIpOnSWePkt0=`aws ec2 describe-network-interfaces --filters "Name=addresses.private-ip-address,Values=$SBC_SECONDARY_IP" --region $region | grep -E "PrivateIpAddress" | tail -1 | awk -F ":" '{print $2}' | awk -F "\"" '{print $2}'`
     if [[ -z "$priIpOnSWePkt0" ]];then
@@ -461,7 +537,7 @@ getHfnEth0AndSWePkt0SipArray()
 
     for ip in $secIpOnSWePkt0List;
     do
-        echo $ip >> $tmpSipSWePkt0File
+        echo $ip >> $tmpSipSWePkt0File     
     done
     secIpOnSWePkt0SortList=`sort -n -t . -k1,1 -k2,2 -k 3,3 -k4,4 $tmpSipSWePkt0File`
     echo $(timestamp) "List of secondary IP assigned on SWe Pkt0 in sorted order: $secIpOnSWePkt0SortList"
@@ -471,69 +547,95 @@ getHfnEth0AndSWePkt0SipArray()
         errorAndExit "Array of Secondary IP on SWe Pkt0 is empty."
     fi
 
-    # Get primary ip assigned on HFN public interface(eth0).
-    priIpOnHfnEth0=`ip addr show dev eth0 | grep -v secondary | grep inet | grep -v inet6 | awk '{print $2}' | awk -F"/" '{print $1}'`
-    if [[ -z "$priIpOnHfnEth0" ]];then
-        errorAndExit "Failed to get primary Ip assigned on HFN eth0 interface."
+    # Get primary ip assigned on HFE public interface(eth0).
+    priIpOnHfeEth0=`ip addr show dev eth0 | grep -v secondary | grep inet | grep -v inet6 | awk '{print $2}' | awk -F"/" '{print $1}'`
+    if [[ -z "$priIpOnHfeEth0" ]];then
+        errorAndExit "Failed to get primary Ip assigned on HFE eth0 interface."
     fi
 
-    # Get list of secondary ip assigned on HFN public interface(eth0).
-    secIpOnHfnEth0List=`aws ec2 describe-network-interfaces --filters "Name=addresses.private-ip-address,Values=$priIpOnHfnEth0" --region $region | grep -E "PrivateIpAddress" | grep -v $priIpOnHfnEth0 | awk -F ":" '{print $2}' | awk -F "\"" '{print $2}'`
-    if [[ -z "$secIpOnHfnEth0List" ]];then
-        errorAndExit "Failed to get list of secondary ip assigned on HFN eth0 interface."
+    # Get list of secondary ip assigned on HFE public interface(eth0).
+    secIpOnHfeEth0List=`aws ec2 describe-network-interfaces --filters "Name=addresses.private-ip-address,Values=$priIpOnHfeEth0" --region $region | grep -E "PrivateIpAddress" | grep -v $priIpOnHfeEth0 | awk -F ":" '{print $2}' | awk -F "\"" '{print $2}'`
+    if [[ -z "$secIpOnHfeEth0List" ]];then
+        errorAndExit "Failed to get list of secondary ip assigned on HFE eth0 interface."
     fi
 
-
-    # Sort list of secondary ip assigned on HFN Eth0 interface.
-    tmpSipHfnEth0File="/tmp/sipHfnEth0.txt"
-    echo " " > $tmpSipHfnEth0File
-
-    for ip in $secIpOnHfnEth0List;
-    do
-        echo $ip >> $tmpSipHfnEth0File
-    done
-    secIpOnHfnEth0SortList=`sort -n -t . -k1,1 -k2,2 -k 3,3 -k4,4 $tmpSipHfnEth0File`
-    echo $(timestamp) "List of secondary IP assigned on HFN eth0 in sorted order: $secIpOnHfnEth0SortList"
-
-    secIpOnHfnEth0SortArr=( $secIpOnHfnEth0SortList )
-    if [[ -z "$secIpOnHfnEth0SortArr" ]];then
-        errorAndExit "Array of Secondary IP on HFN eth0 is empty."
-    fi
-
-    # Get EIP associated on secondary ip of HFN public interface(eth0).
-    for ip in $secIpOnHfnEth0SortList;
+    # Get EIP associated on secondary ip of HFE public interface(eth0).
+    for ip in $secIpOnHfeEth0List;
     do
         eip=`aws ec2 describe-addresses --filters "Name=private-ip-address,Values=$ip" --region $region | grep PublicIp | awk -F ":" '{print $2}' | awk -F "\"" '{print $2}'`
         if [[ -z "$eip" ]];then
             errorAndExit "Failed to get EIP on secondary IP $ip"
         else
             echo $(timestamp) "EIP $eip is associated on secondary IP $ip"
+            hfeEipEth0List+=" $eip"
         fi
     done
+
+
+    if [ "$SORT_HFE_EIP" = "True" ]; then
+        # Sort list of EIP assigned on HFE Eth0 interface.
+        tmpEipHfeEth0File="/tmp/eipHfeEth0.txt"
+        echo " " > $tmpEipHfeEth0File     
+
+        for eip in $hfeEipEth0List;
+        do
+            echo $eip >> $tmpEipHfeEth0File     
+        done
+        eipOnHfeEth0SortList=`sort -n -t . -k1,1 -k2,2 -k 3,3 -k4,4 $tmpEipHfeEth0File`
+        echo $(timestamp) "List of EIP assigned on HFE eth0 in sorted order: $eipOnHfeEth0SortList"
+
+        # Create secondary IP list mapped with EIP on HFE eth0 interface.
+        for eip in $eipOnHfeEth0SortList;
+        do
+            sip=`aws ec2 describe-addresses --filters "Name=public-ip,Values=$eip" --region $region | grep PrivateIpAddress | awk -F ":" '{print $2}' | awk -F "\"" '{print $2}'`
+            if [[ -z "$sip" ]];then
+                errorAndExit "Failed to get secondary IP associated with EIP $eip"
+            fi
+            secIpOnHfeEth0SortList+=" $sip"
+        done
+    else
+        # Sort list of secondary ip assigned on HFE Eth0 interface.
+        tmpSipHfeEth0File="/tmp/sipHfeEth0.txt"
+        echo " " > $tmpSipHfeEth0File     
+
+        for ip in $secIpOnHfeEth0List;
+        do
+            echo $ip >> $tmpSipHfeEth0File     
+        done
+        secIpOnHfeEth0SortList=`sort -n -t . -k1,1 -k2,2 -k 3,3 -k4,4 $tmpSipHfeEth0File`
+        echo $(timestamp) "List of secondary IP assigned on HFE eth0 in sorted order: $secIpOnHfeEth0SortList"
+    fi
+
+    secIpOnHfeEth0SortArr=( $secIpOnHfeEth0SortList )
+    if [[ -z "$secIpOnHfeEth0SortArr" ]];then
+        errorAndExit "Array of Secondary IP on HFE eth0 is empty."
+    fi
 }
 
 main()
 {
-    #Do this before we redirect all echo messages to log file
-    echo 1 >  /proc/sys/net/ipv4/ip_forward
 
+    
     case $1 in
-        "setup")
+        "setup") 
+            prepareHFEInstance
             preConfigure
             readConfig
-            getHfnEth0AndSWePkt0SipArray
+            getHfeEth0AndSWePkt0SipArray
             configureNATRules
             configureMgmtNAT
             showCurrentConfig
             installWireshark
+            startHealthCheck
             ;;
         "cleanup")
+            stopHealthCheck
             preConfigure
             readConfig
             routeCleanUp
             doneMessage
             ;;
-        *)
+        *) 
             usage "Unrecognized switch"
             ;;
     esac
