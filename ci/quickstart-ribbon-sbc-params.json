@@ -9,11 +9,7 @@
     },
     {
         "ParameterKey": "SBCAvailabilityZone",
-        "ParameterValue":"$[taskcat_genaz_1]"
-    },
-    {
-        "ParameterKey": "AvailabilityZones",
-        "ParameterValue":"$[taskcat_genaz_2]"
+        "ParameterValue":"$[taskcat_getsingleaz_1]"
     },
     {
         "ParameterKey":"HFEManagementEIPAccessCIDR",

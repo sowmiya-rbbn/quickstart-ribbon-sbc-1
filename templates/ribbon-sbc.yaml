@@ -63,40 +63,23 @@ Parameters:
     AllowedPattern: (\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})/(\d{1,2})
     ConstraintDescription: Must be a valid IP CIDR range of the form x.x.x.x/x and
       subnet of VPC.
-  HFEManagementNeedsEIP:
-    Description: Enable EIP on the management interface of the HFE instance(s)?
-    Type: String
-    Default: 'Yes'
-    AllowedValues:
-      - 'Yes'
-      - 'No'
-  ASTManagementNeedsEIP:
-    Description: Enable EIP on the management interface of the ASTinstance(s)?
-    Type: String
-    Default: 'Yes'
-    AllowedValues:
-      - 'Yes'
-      - 'No'
-  HFEManagementEIPAccessCIDR:
-    Description: The CIDR range used to access the HFE Management EIP.
-    Type: String
-    Default: 127.0.0.1/32
-    AllowedPattern: (\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})/(\d{1,2})
-    ConstraintDescription: Must be a valid IP CIDR range of the form x.x.x.x/x
   SBCExVoipSubnet:
+    Type: String
+  SBCInVoipSubnet:
     Type: String
   SBCManagementSubnet:
     Type: String
   SBCHASubnet:
     Type: String
-  HFEPublicSubnet:
-    Type: String
-  HFEPrivateSubnet:
+  PublicSubnet:
     Type: String
   SBCAvailabilityZone:
     Description: Enter Availability Zone for SBC, New subnets for SBC will be created
       here.
     Type: AWS::EC2::AvailabilityZone::Name
+  BastionSecurityGroupID:
+    Description: SecurityGroup associated with a bastion instance.
+    Type: AWS::EC2::SecurityGroup::Id
   SBCInstanceType:
     Description: Instance type for the SBC Mangler.
     Type: String
@@ -176,10 +159,6 @@ Parameters:
     AllowedValues:
       - default
       - dedicated
-  # TODO: Removed due to VPC Template.
-  # - Is this something we should support?
-  # - Does the VPC Template handle this already?
-  # - Can we condition it?
   PlacementId:
     Description: PlacementGroup to launch SBC instances(Optional)
     Type: String
@@ -191,14 +170,6 @@ Parameters:
     AllowedValues:
       - gp2
       - io1
-  CreateVPCEndPoint:
-    Description: Do you want to create VPC End-point to access API server? if you
-      select no then SBC will reach API server using EIP on mgt0 ports
-    Type: String
-    Default: 'yes'
-    AllowedValues:
-      - 'yes'
-      - 'no'
   SBCVolumeIOPS:
     Description: Enter IOPS reservation for IO1 type EBS volume [<= 1950]. This value is ignored for GP2 type volumes.
     Type: Number
@@ -217,25 +188,9 @@ Parameters:
     Type: String
     Default: quickstart-ribbon-sbc/
 Conditions:
-  # FIXME: This condition is not used.
-  EipOnPkt0: !Equals
-    - true
-    - true
   VolumeTypeIO1: !Equals
     - !Ref 'SBCVolumeType'
     - io1
-  CreateVPCEndPoint: !Equals
-    - !Ref 'CreateVPCEndPoint'
-    - 'yes'
-  EipForHFEManagementInterface: !Equals
-    - !Ref 'HFEManagementNeedsEIP'
-    - 'Yes'
-  NoVPCEndpointt: !Equals
-    - !Ref 'CreateVPCEndPoint'
-    - 'no'
-  EipForASTManagementInterface: !Equals
-    - !Ref ASTManagementNeedsEIP
-    - 'Yes'
 Rules:
   NameValidation:
     Assertions:
@@ -261,68 +216,68 @@ Mappings:
   AWSAMIRegionMap:
     AMI:
       RIBBONSBCAMI: sbc-V07.00.00S401-connexip-os_06.00.00-S401_1_amd64_07_06_18_17_58
-      AMZNLINUXHVM: amzn-ami-hvm-xxxx-x86_64-gp2
+      AMZNLINUXHVM: amzn-ami-hvm-2018.03.0.20181129-x86_64-gp2
       RIBBONASTERISKAMI: blah
-    us-east-1:
-      RIBBONSBCAMI: ami-0a49b638bad956f96
-      AMZNLINUXHVM: ami-xxxx
-      RIBBONASTERISKAMI: ami-EXAMPLE
-    us-east-2:
-      RIBBONSBCAMI: ami-040489bb244cfbac8
-      AMZNLINUXHVM: ami-EXAMPLE
-      RIBBONASTERISKAMI: ami-EXAMPLE
-    us-west-1:
-      RIBBONSBCAMI: ami-0aaf1884917ca603b
-      AMZNLINUXHVM: ami-EXAMPLE
-      RIBBONASTERISKAMI: ami-EXAMPLE
-    us-west-2:
-      RIBBONSBCAMI: ami-08fab2a9d7088ba15
-      AMZNLINUXHVM: ami-EXAMPLE
-      RIBBONASTERISKAMI: ami-EXAMPLE
-    ca-central-1:
-      RIBBONSBCAMI: ami-0dfc13891ced16640
-      AMZNLINUXHVM: ami-EXAMPLE
-      RIBBONASTERISKAMI: ami-EXAMPLE
-    ap-south-1:
-      RIBBONSBCAMI: ami-0e80e378bf3340301
-      AMZNLINUXHVM: ami-EXAMPLE
-      RIBBONASTERISKAMI: ami-EXAMPLE
     ap-northeast-1:
+      AMZNLINUXHVM: ami-00a5245b4816c38e6
+      RIBBONASTERISKAMI: ami-EXAMPLE
       RIBBONSBCAMI: ami-0b998ba31f803a582
-      AMZNLINUXHVM: ami-EXAMPLE
-      RIBBONASTERISKAMI: ami-EXAMPLE
     ap-northeast-2:
+      AMZNLINUXHVM: ami-00dc207f8ba6dc919
+      RIBBONASTERISKAMI: ami-EXAMPLE
       RIBBONSBCAMI: ami-0d5025bc94b5d40a
-      AMZNLINUXHVM: ami-EXAMPLE
+    ap-south-1:
+      AMZNLINUXHVM: ami-0ad42f4f66f6c1cc9
       RIBBONASTERISKAMI: ami-EXAMPLE
+      RIBBONSBCAMI: ami-0e80e378bf3340301
     ap-southeast-1:
+      AMZNLINUXHVM: ami-05b3bcf7f311194b3
+      RIBBONASTERISKAMI: ami-EXAMPLE
       RIBBONSBCAMI: ami-0880a3f8389c85d3b
-      AMZNLINUXHVM: ami-EXAMPLE
-      RIBBONASTERISKAMI: ami-EXAMPLE
     ap-southeast-2:
+      AMZNLINUXHVM: ami-02fd0b06f06d93dfc
+      RIBBONASTERISKAMI: ami-EXAMPLE
       RIBBONSBCAMI: ami-0da24ac9dbc63c918
-      AMZNLINUXHVM: ami-EXAMPLE
+    ca-central-1:
+      AMZNLINUXHVM: ami-07423fb63ea0a0930
       RIBBONASTERISKAMI: ami-EXAMPLE
+      RIBBONSBCAMI: ami-0dfc13891ced16640
     eu-central-1:
+      AMZNLINUXHVM: ami-0cfbf4f6db41068ac
+      RIBBONASTERISKAMI: ami-EXAMPLE
       RIBBONSBCAMI: ami-0ba8b5524933c9d74
-      AMZNLINUXHVM: ami-EXAMPLE
-      RIBBONASTERISKAMI: ami-EXAMPLE
     eu-west-1:
+      AMZNLINUXHVM: ami-08935252a36e25f85
+      RIBBONASTERISKAMI: ami-EXAMPLE
       RIBBONSBCAMI: ami-0cd7cbbfb3ddc53d0
-      AMZNLINUXHVM: ami-EXAMPLE
-      RIBBONASTERISKAMI: ami-EXAMPLE
     eu-west-2:
+      AMZNLINUXHVM: ami-01419b804382064e4
+      RIBBONASTERISKAMI: ami-EXAMPLE
       RIBBONSBCAMI: ami-0de70b55413388d40
-      AMZNLINUXHVM: ami-EXAMPLE
-      RIBBONASTERISKAMI: ami-EXAMPLE
     eu-west-3:
+      AMZNLINUXHVM: ami-0dd7e7ed60da8fb83
+      RIBBONASTERISKAMI: ami-EXAMPLE
       RIBBONSBCAMI: ami-0c725161f776a4287
-      AMZNLINUXHVM: ami-EXAMPLE
-      RIBBONASTERISKAMI: ami-EXAMPLE
     sa-east-1:
-      RIBBONSBCAMI: ami-02eb35cc2d652817e
-      AMZNLINUXHVM: ami-EXAMPLE
+      AMZNLINUXHVM: ami-05145e0b28ad8e0b2
       RIBBONASTERISKAMI: ami-EXAMPLE
+      RIBBONSBCAMI: ami-02eb35cc2d652817e
+    us-east-1:
+      AMZNLINUXHVM: ami-0080e4c5bc078760e
+      RIBBONASTERISKAMI: ami-79a1b203
+      RIBBONSBCAMI: ami-0a49b638bad956f96
+    us-east-2:
+      AMZNLINUXHVM: ami-0cd3dfa4e37921605
+      RIBBONASTERISKAMI: ami-EXAMPLE
+      RIBBONSBCAMI: ami-040489bb244cfbac8
+    us-west-1:
+      AMZNLINUXHVM: ami-0ec6517f6edbf8044
+      RIBBONASTERISKAMI: ami-EXAMPLE
+      RIBBONSBCAMI: ami-0aaf1884917ca603b
+    us-west-2:
+      AMZNLINUXHVM: ami-01e24be29428c15b2
+      RIBBONASTERISKAMI: ami-EXAMPLE
+      RIBBONSBCAMI: ami-08fab2a9d7088ba15
 Resources:
   # Order:
   # - Resource Type
@@ -333,14 +288,13 @@ Resources:
   # VPC Endpoints
   SBCEndPoint:
     Type: AWS::EC2::VPCEndpoint
-    Condition: CreateVPCEndPoint
     Properties:
       VpcEndpointType: Interface
       PrivateDnsEnabled: true
       SubnetIds:
         - !Ref 'SBCManagementSubnet'
       SecurityGroupIds:
-        - !Ref 'SBCManagementSG'
+        - !Ref 'BastionSecurityGroupID'
       ServiceName: !Sub "com.amazonaws.${AWS::Region}.ec2"
       VpcId: !Ref 'VPCID'
   # Network Interfaces
@@ -358,7 +312,7 @@ Resources:
   SBCActiveInVoipIface:
     Type: AWS::EC2::NetworkInterface
     Properties:
-      SubnetId: !Ref 'HFEPrivateSubnet'
+      SubnetId: !Ref 'SBCInVoipSubnet'
       Description: !Sub "${SBCSystemName}-pkt0A_Ribbon"
       GroupSet:
         - !Ref 'SBCInternalVoipSG'
@@ -404,7 +358,7 @@ Resources:
   SBCPassiveInVoipIface:
     Type: AWS::EC2::NetworkInterface
     Properties:
-      SubnetId: !Ref 'HFEPrivateSubnet'
+      SubnetId: !Ref 'SBCInVoipSubnet'
       Description: !Sub "${SBCSystemName}-pkt0B_Ribbon"
       GroupSet:
         - !Ref 'SBCInternalVoipSG'
@@ -437,7 +391,7 @@ Resources:
   HFEPublicInterface:
     Type: AWS::EC2::NetworkInterface
     Properties:
-      SubnetId: !Ref 'HFEPublicSubnet'
+      SubnetId: !Ref 'PublicSubnet'
       GroupSet:
         - !Ref 'SBCExternalVoipSG'
       SecondaryPrivateIpAddressCount: 1
@@ -448,7 +402,7 @@ Resources:
   HFEPrivateInterface:
     Type: AWS::EC2::NetworkInterface
     Properties:
-      SubnetId: !Ref 'HFEPrivateSubnet'
+      SubnetId: !Ref 'SBCExVoipSubnet'
       GroupSet:
         - !Ref 'SBCInternalVoipSG'
       SourceDestCheck: false
@@ -460,7 +414,7 @@ Resources:
     Properties:
       SubnetId: !Ref 'SBCManagementSubnet'
       GroupSet:
-        - !Ref 'HFEManagementSG'
+        - !Ref 'SBCManagementSG'
       SourceDestCheck: true
       Tags:
         - Key: Name
@@ -512,7 +466,7 @@ Resources:
       GroupDescription: Security group for SBC HA interface traffic.
       VpcId: !Ref 'VPCID'
       SecurityGroupIngress:
-        - IpProtocol: '-1'
+        - IpProtocol: 'tcp'
           FromPort: 0
           ToPort: 65535
           CidrIp: '0.0.0.0/0'
@@ -528,100 +482,56 @@ Resources:
     Properties:
       GroupDescription: Security group for Mgt SBC
       VpcId: !Ref 'VPCID'
-      # These rules need refactoring.
       SecurityGroupIngress:
-        - IpProtocol: '-1'
-          FromPort: 0
-          ToPort: 65535
-          CidrIp: '0.0.0.0/0'
-        - IpProtocol: '-1'
-          FromPort: 0
-          ToPort: 65535
-          CidrIp: !Ref 'SSHAccessCIDR'
+        - IpProtocol: 'tcp'
+          FromPort: 22
+          ToPort: 22
+          SourceSecurityGroupId: !Ref BastionSecurityGroupID
       Tags:
         - Key: Name
-          Value: !Sub "${SBCSystemName}-SecurityGroup1_Ribbon"
-  HFEManagementSG:
-    Type: AWS::EC2::SecurityGroup
-    Properties:
-      GroupDescription: Security Group for HFE Management Traffic.
-      VpcId: !Ref 'VPCID'
-      SecurityGroupIngress:
-        - IpProtocol: '-1'
-          FromPort: 0
-          ToPort: 65535
-          CidrIp: '0.0.0.0/0'
-        - IpProtocol: '-1'
-          FromPort: 0
-          ToPort: 65535
-          CidrIp: !Ref 'SSHAccessCIDR'
-      Tags:
-        - Key: Name
-          Value: !Join
-            - '-'
-            - - !Ref SBCSystemName
-              - SecurityGroup4_Ribbon
+          Value: "SBC Management Security Group"
+#  HFEManagementSG:
+#    Type: AWS::EC2::SecurityGroup
+#    Properties:
+#      GroupDescription: Security Group for HFE Management Traffic.
+#      VpcId: !Ref 'VPCID'
+#      SecurityGroupIngress:
+#        - IpProtocol: '-1'
+#          FromPort: 0
+#          ToPort: 65535
+#          CidrIp: '0.0.0.0/0'
+#        - IpProtocol: '-1'
+#          FromPort: 0
+#          ToPort: 65535
+#          CidrIp: !Ref 'SSHAccessCIDR'
+#      Tags:
+#        - Key: Name
+#          Value: !Join
+#            - '-'
+#            - - !Ref SBCSystemName
+#              - SecurityGroup4_Ribbon
   # Elastic IPs
-  SBCActiveMgtEIP:
-    Type: AWS::EC2::EIP
-    Condition: NoVPCEndpointt
-    Properties:
-      Domain: !Ref 'VPCID'
   HFEExVoipEIP:
     Type: AWS::EC2::EIP
     Properties:
       Domain: !Ref 'VPCID'
-  HFEPublicEIP:
-    Type: AWS::EC2::EIP
-    Properties:
-      Domain: !Ref 'VPCID'
-  HFEManagementEIP:
-    Type: AWS::EC2::EIP
-    Condition: EipForHFEManagementInterface
-    Properties:
-      Domain: !Ref 'VPCID'
-
-  SBCPassiveMgtEIP:
-    Type: AWS::EC2::EIP
-    Condition: NoVPCEndpointt
-    Properties:
-      Domain: !Ref 'VPCID'
-  HFEPublicEIPAssociation:
-    Type: AWS::EC2::EIPAssociation
-    Properties:
-      AllocationId: !GetAtt 'HFEPublicEIP.AllocationId'
-      NetworkInterfaceId: !Ref 'HFEPublicInterface'
-      PrivateIpAddress: !Select
-        - '0'
-        - !GetAtt 'HFEPublicInterface.SecondaryPrivateIpAddresses'
+#  HFEPublicEIP:
+#    Type: AWS::EC2::EIP
+#    Properties:
+#      Domain: !Ref 'VPCID'
+#  HFEPublicEIPAssociation:
+#    Type: AWS::EC2::EIPAssociation
+#    Properties:
+#      AllocationId: !GetAtt 'HFEPublicEIP.AllocationId'
+#      NetworkInterfaceId: !Ref 'HFEPublicInterface'
+#      PrivateIpAddress: !Select
+#        - '0'
+#        - !GetAtt 'HFEPublicInterface.SecondaryPrivateIpAddresses'
   HFEExVoipEIPAssociation:
     Type: AWS::EC2::EIPAssociation
     Properties:
       AllocationId: !GetAtt 'HFEExVoipEIP.AllocationId'
       NetworkInterfaceId: !Ref 'HFEPublicInterface'
-  SBCPassiveMgtEIPAssociation:
-    Type: AWS::EC2::EIPAssociation
-    Condition: NoVPCEndpointt
-    Properties:
-      AllocationId: !GetAtt 'SBCPassiveMgtEIP.AllocationId'
-      NetworkInterfaceId: !Ref 'SBCPassiveMgtIface'
-      PrivateIpAddress: !GetAtt 'SBCPassiveMgtIface.PrimaryPrivateIpAddress'
-  HFEManagementEIPAssociation:
-    Type: AWS::EC2::EIPAssociation
-    Condition: EipForHFEManagementInterface
-    Properties:
-      AllocationId: !GetAtt 'HFEManagementEIP.AllocationId'
-      NetworkInterfaceId: !Ref 'HFEManagementInterface'
-  SBCActiveMgtEIPAssocaition:
-    Type: AWS::EC2::EIPAssociation
-    Condition: NoVPCEndpointt
-    Properties:
-      AllocationId: !GetAtt 'SBCActiveMgtEIP.AllocationId'
-      NetworkInterfaceId: !Ref 'SBCActiveMgtIface'
-      PrivateIpAddress: !Select
-        - '0'
-        - !GetAtt 'SBCActiveMgtIface.SecondaryPrivateIpAddresses'
-
   SBCInstanceRole:
     Type: AWS::IAM::Role
     Properties:
@@ -875,44 +785,40 @@ Resources:
               sudo /bin/bash ${!HFE_FILE} setup
               /bin/echo "Configured using HFE script ${!HFE_FILE}" >> ${!LOG_FILE}
               /bin/echo $(timestamp) " =========================   Done    ==========================================" >> ${!LOG_FILE}
-            - {SBC_SECONDARY_IP: !Select [0, !GetAtt SBCActiveInVoipIface.SecondaryPrivateIpAddresses], REMOTE_SSH_MACHINE_IP: !If [EipForHFEManagementInterface, !Ref HFEManagementEIPAccessCIDR, '']}
-#  SBCAsteriskInstance:
-#    Type: 'AWS::EC2::Instance'
-#    Properties:
-#      ImageId: !FindInMap
-#        - AWSAMIRegionMap
-#        - !Ref 'AWS::Region'
-#        - RIBBONASTERISKAMI
-#      BlockDeviceMappings:
-#        - DeviceName: /dev/xvda
-#          Ebs:
-#            VolumeType: gp2
-#            VolumeSize: 20
-#            DeleteOnTermination: false
-#      InstanceType: !Ref AsteriskInstanceType
-#      EbsOptimized: true
-#      KeyName: !Ref KeyPairName
-#      NetworkInterfaces:
-#        - NetworkInterfaceId: !Ref ASTManagementInterface
-#          DeviceIndex: '0'
-#      Tags:
-#        - Key: Name
-#          Value: Ribbon SBC Asterisk Instance
-#  ASTManagementEIP:
-#    Type: 'AWS::EC2::EIP'
-#    Condition: EipForASTManagementInterface
-#    Properties:
-#      Domain: !Ref VPCID
-#  ASTManagementInterface:
-#    Type: 'AWS::EC2::NetworkInterface'
-#    Properties:
-#      SubnetId: !Ref SBCManagementSubnet
-#      GroupSet:
-#        - !Ref ASTManagementSG
-#      SourceDestCheck: true
-#      Tags:
-#        - Key: Name
-#          Value: !Sub Asterisk Management Interface
+            - {SBC_SECONDARY_IP: !Select [0, !GetAtt SBCActiveInVoipIface.SecondaryPrivateIpAddresses], REMOTE_SSH_MACHINE_IP: ''}
+  SBCAsteriskInstance:
+    Type: 'AWS::EC2::Instance'
+    Properties:
+      ImageId: !FindInMap
+        - AWSAMIRegionMap
+        - !Ref 'AWS::Region'
+        - RIBBONASTERISKAMI
+      BlockDeviceMappings:
+        - DeviceName: /dev/xvda
+          Ebs:
+            VolumeType: gp2
+            VolumeSize: 20
+            DeleteOnTermination: false
+      InstanceType: !Ref AsteriskInstanceType
+      EbsOptimized: true
+      KeyName: !Ref KeyPairName
+      NetworkInterfaces:
+        - NetworkInterfaceId: !Ref ASTManagementInterface
+          DeviceIndex: '0'
+      Tags:
+        - Key: Name
+          Value: Ribbon SBC Asterisk Instance
+  ASTManagementInterface:
+    Type: 'AWS::EC2::NetworkInterface'
+    Properties:
+      SubnetId: !Ref SBCManagementSubnet
+      GroupSet:
+        - !Ref SBCManagementSG
+      SourceDestCheck: true
+      Tags:
+        - Key: Name
+          Value: Asterisk Management Interface
+  #TODO: Potentially replace with management SG?
 #  ASTManagementSG:
 #    Type: 'AWS::EC2::SecurityGroup'
 #    Properties:
@@ -933,12 +839,6 @@ Resources:
 #            - '-'
 #            - - !Ref SBCSystemName
 #              - SecurityGroup5_Ribbon
-#  AsteriskMgmtEIPAssc:
-#    Type: 'AWS::EC2::EIPAssociation'
-#    Condition: EipForASTManagementInterface
-#    Properties:
-#      AllocationId: !GetAtt ASTManagementEIP.AllocationId
-#      NetworkInterfaceId: !Ref ASTManagementInterface
 Outputs:
   InstanceIdActive:
     Value: !Ref 'SBCActiveInstance'

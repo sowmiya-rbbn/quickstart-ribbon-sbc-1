@@ -13,14 +13,19 @@ Metadata:
           - SBCInstanceType
           - KeyPairName
       - Label:
+          default: Bastion Configuration
+        Parameters:
+          - BastionAMIOS
+      - Label:
           default: Network Configuration
         Parameters:
           - VPCCIDR
+          - HFEPublicCIDR1
+          - HFEPublicCIDR2
           - ManagementSubnetCIDR
           - SBCHASubnetCIDR
           - SBCExVoipCIDR
           - SBCAvailabilityZone
-          - AvailabilityZones
       - Label:
           default: 'Optional: SBC configuration. For default configuration no need
             to change these values.'
@@ -39,6 +44,32 @@ Parameters:
       and Mangler instance '
     Type: AWS::EC2::KeyPair::KeyName
     ConstraintDescription: must be the name of an existing EC2 KeyPair.
+  BastionAMIOS:
+    Default: "Amazon-Linux-HVM"
+    AllowedValues:
+      - Amazon-Linux-HVM
+      - CentOS-7-HVM
+      - Ubuntu-Server-14.04-LTS-HVM
+      - Ubuntu-Server-16.04-LTS-HVM
+    Type: String
+    Description: "The Linux distribution for the AMI to be used for the bastion instances"
+  BastionInstanceType:
+    AllowedValues:
+      - t2.nano
+      - t2.micro
+      - t2.small
+      - t2.medium
+      - t2.large
+      - m3.large
+      - m3.xlarge
+      - m3.2xlarge
+      - m4.large
+      - m4.xlarge
+      - m4.2xlarge
+      - m4.4xlarge
+    Default: t2.micro
+    Description: "Amazon EC2 instance type for the bastion instances."
+    Type: String
   VPCCIDR:
     Description: VPC CIDR block for new VPC that will be used to create SBC and PKTART
       test tool.
@@ -46,12 +77,6 @@ Parameters:
     Default: 10.74.0.0/16
     AllowedPattern: '^((\d|[1-9]\d|1\d{2}|2[0-4]\d|25[0-5])\.){3}(\d|[1-9]\d|1\d{2}|2[0-4]\d|25[0-5])(\/(\d|[1-2]\d|3[0-2]))$'
     ConstraintDescription: Must be a valid IP CIDR range of the form x.x.x.x/x.
-  AvailabilityZones:
-    Description: >-
-      List of Availability Zones to use for the subnets in the VPC. Only two
-      Availability Zones are used for this deployment, and the logical order of
-      your selections is preserved.
-    Type: 'List<AWS::EC2::AvailabilityZone::Name>'
   SBCExVoipCIDR:
     Description: Enter a CIDR for pirvate subnet for SBC, this new subnet will be
       served by Mangler instance.
@@ -66,16 +91,25 @@ Parameters:
       served by Mangler instance.
     Type: String
     MinLength: '1'
-    Default: 10.74.20.0/24
+    Default: 10.74.11.0/24
     AllowedPattern: '^((\d|[1-9]\d|1\d{2}|2[0-4]\d|25[0-5])\.){3}(\d|[1-9]\d|1\d{2}|2[0-4]\d|25[0-5])(\/(\d|[1-2]\d|3[0-2]))$'
     ConstraintDescription: Must be a valid IP CIDR range of the form x.x.x.x/x and
       subnet of VPC.
-  HFEPublicCIDR:
+  HFEPublicCIDR1:
     Description: Enter a CIDR for private subnet for SBC, this new subnet will be
       served by Mangler instance.
     Type: String
     MinLength: '1'
-    Default: 10.74.30.0/24
+    Default: 10.74.12.0/24
+    AllowedPattern: '^((\d|[1-9]\d|1\d{2}|2[0-4]\d|25[0-5])\.){3}(\d|[1-9]\d|1\d{2}|2[0-4]\d|25[0-5])(\/(\d|[1-2]\d|3[0-2]))$'
+    ConstraintDescription: Must be a valid IP CIDR range of the form x.x.x.x/x and
+      subnet of VPC.
+  HFEPublicCIDR2:
+    Description: Enter a CIDR for private subnet for SBC, this new subnet will be
+      served by Mangler instance.
+    Type: String
+    MinLength: '1'
+    Default: 10.74.13.0/24
     AllowedPattern: '^((\d|[1-9]\d|1\d{2}|2[0-4]\d|25[0-5])\.){3}(\d|[1-9]\d|1\d{2}|2[0-4]\d|25[0-5])(\/(\d|[1-2]\d|3[0-2]))$'
     ConstraintDescription: Must be a valid IP CIDR range of the form x.x.x.x/x and
       subnet of VPC.
@@ -84,7 +118,7 @@ Parameters:
       served by Mangler instance.
     Type: String
     MinLength: '1'
-    Default: 10.74.40.0/24
+    Default: 10.74.14.0/24
     AllowedPattern: '^((\d|[1-9]\d|1\d{2}|2[0-4]\d|25[0-5])\.){3}(\d|[1-9]\d|1\d{2}|2[0-4]\d|25[0-5])(\/(\d|[1-2]\d|3[0-2]))$'
     ConstraintDescription: Must be a valid IP CIDR range of the form x.x.x.x/x and
       subnet of VPC.
@@ -92,7 +126,7 @@ Parameters:
     Description: CIDR used within the Management Subnet
     Type: String
     MinLength: '1'
-    Default: 10.74.50.0/24
+    Default: 10.74.15.0/24
     AllowedPattern: '^((\d|[1-9]\d|1\d{2}|2[0-4]\d|25[0-5])\.){3}(\d|[1-9]\d|1\d{2}|2[0-4]\d|25[0-5])(\/(\d|[1-2]\d|3[0-2]))$'
     ConstraintDescription: Must be a valid IP CIDR range of the form x.x.x.x/x and
       subnet of VPC.
@@ -100,7 +134,7 @@ Parameters:
     Description: CIDR used within the SBC High Availability subnet.
     Type: String
     MinLength: '1'
-    Default: 10.74.60.0/24
+    Default: 10.74.16.0/28
     AllowedPattern: '^((\d|[1-9]\d|1\d{2}|2[0-4]\d|25[0-5])\.){3}(\d|[1-9]\d|1\d{2}|2[0-4]\d|25[0-5])(\/(\d|[1-2]\d|3[0-2]))$'
     ConstraintDescription: Must be a valid IP CIDR range of the form x.x.x.x/x and
       subnet of VPC.
@@ -108,7 +142,7 @@ Parameters:
     Description: CIDR used within the SBC External Voip (public facing) subnet.
     Type: String
     MinLength: '1'
-    Default: 10.74.20.0/24
+    Default: 10.74.17.0/24
     AllowedPattern: '^((\d|[1-9]\d|1\d{2}|2[0-4]\d|25[0-5])\.){3}(\d|[1-9]\d|1\d{2}|2[0-4]\d|25[0-5])(\/(\d|[1-2]\d|3[0-2]))$'
     ConstraintDescription: Must be a valid IP CIDR range of the form x.x.x.x/x and
       subnet of VPC.
@@ -117,7 +151,7 @@ Parameters:
       served by Mangler instance.
     Type: String
     MinLength: '1'
-    Default: 10.74.20.0/24
+    Default: 10.74.18.0/24
     AllowedPattern: '^((\d|[1-9]\d|1\d{2}|2[0-4]\d|25[0-5])\.){3}(\d|[1-9]\d|1\d{2}|2[0-4]\d|25[0-5])(\/(\d|[1-2]\d|3[0-2]))$'
     ConstraintDescription: Must be a valid IP CIDR range of the form x.x.x.x/x and
       subnet of VPC.
@@ -125,7 +159,7 @@ Parameters:
     Description: CIDR used within the HFE Public Subnet.
     Type: String
     MinLength: '1'
-    Default: 10.74.50.0/24
+    Default: 10.74.19.0/24
     AllowedPattern: '^((\d|[1-9]\d|1\d{2}|2[0-4]\d|25[0-5])\.){3}(\d|[1-9]\d|1\d{2}|2[0-4]\d|25[0-5])(\/(\d|[1-2]\d|3[0-2]))$'
     ConstraintDescription: Must be a valid IP CIDR range of the form x.x.x.x/x and
       subnet of VPC.
@@ -133,10 +167,16 @@ Parameters:
     Description: CIDR used for the HFE Private Subnet.
     Type: String
     MinLength: '1'
-    Default: 10.74.60.0/24
+    Default: 10.74.20.0/24
     AllowedPattern: '^((\d|[1-9]\d|1\d{2}|2[0-4]\d|25[0-5])\.){3}(\d|[1-9]\d|1\d{2}|2[0-4]\d|25[0-5])(\/(\d|[1-2]\d|3[0-2]))$'
     ConstraintDescription: Must be a valid IP CIDR range of the form x.x.x.x/x and
       subnet of VPC.
+  RemoteAccessCIDR:
+    Description: CIDR used to access the bastion instance.
+    Type: String
+    Default: 0.0.0.0/0
+    AllowedPattern: '^((\d|[1-9]\d|1\d{2}|2[0-4]\d|25[0-5])\.){3}(\d|[1-9]\d|1\d{2}|2[0-4]\d|25[0-5])(\/(\d|[1-2]\d|3[0-2]))$'
+    ConstraintDescription: Must be a valid IP CIDR range of the form x.x.x.x/x.
   HFEManagementNeedsEIP:
     Description: Enable EIP on the management interface of the HFE instance(s)?
     Type: String
@@ -284,76 +324,81 @@ Resources:
     Type: AWS::CloudFormation::Stack
     Properties:
       TemplateURL:
-        Fn::Sub: "https://${QSS3BucketName}.s3.amazonaws.com/${QSS3KeyPrefix}submodules/quickstart-aws-vpc/templates/aws-vpc.template"
+        Fn::Sub: "https://${QSS3BucketName}.s3.amazonaws.com/${QSS3KeyPrefix}templates/ribbon-custom-vpc.yaml"
       Parameters:
-        AvailabilityZones:
-          Fn::Join:
-            - ','
-            - !Ref AvailabilityZones
-        KeyPairName: !Ref KeyPairName
-        PublicSubnet1CIDR: !Ref 'ManagementSubnetCIDR'
-        PublicSubnet2CIDR: !Ref 'SBCExVoipCIDR'
-        PublicSubnet3CIDR: !Ref 'HFEPublicCIDR'
+        AvailabilityZone: !Ref 'SBCAvailabilityZone'
+        PublicSubnet1CIDR: !Ref 'HFEPublicCIDR1'
+        PublicSubnet2CIDR:  !Ref 'HFEPublicCIDR2'
         PrivateSubnet1CIDR: !Ref 'SBCHASubnetCIDR'
-        PrivateSubnet2CIDR: !Ref 'SBCInVoipCIDR'
-        PrivateSubnet3CIDR: !Ref 'HFEPrivateCIDR'
-        NumberOfAZs: '1'
+        PrivateSubnet2CIDR: !Ref 'SBCExternalVoipCIDR'
+        PrivateSubnet3CIDR: !Ref 'SBCInternalVoipCIDR'
+        PrivateSubnet4CIDR: !Ref 'ManagementSubnetCIDR'
+        PublicSubnetTag1: 'Name=Quickstart-Ribbon-SBC'
+        PrivateSubnetTag1: 'Name=Quickstart-Ribbon-SBC'
         VPCCIDR: !Ref 'VPCCIDR'
-  SBCExVoipSubnet:
-    Type: AWS::EC2::Subnet
+  # Subnets:
+  # - Public Subnet (Bastion / HFE eth0) [x]
+  # - External VOIP
+  # - Internal VOIP
+  # - Management
+  # - HA [x]
+#  SBCInVoipSubnet:
+#    # Private Subnet
+#    Type: AWS::EC2::Subnet
+#    Properties:
+#      VpcId: !GetAtt
+#      - VPCStack
+#      - Outputs.VPCID
+#      CidrBlock: !Ref 'SBCInternalVoipCIDR'
+#      AvailabilityZone: !Ref 'SBCAvailabilityZone'
+#      Tags:
+#      - Key: Name
+#        Value: !Sub "${SBCSystemName}-External Voip (ExVoip) Subnet"
+#  SBCExVoipSubnet:
+#    # Private Subnet
+#    Type: AWS::EC2::Subnet
+#    Properties:
+#      VpcId: !GetAtt
+#        - VPCStack
+#        - Outputs.VPCID
+#      CidrBlock: !Ref 'SBCExternalVoipCIDR'
+#      AvailabilityZone: !Ref 'SBCAvailabilityZone'
+#      Tags:
+#        - Key: Name
+#          Value: !Sub "${SBCSystemName}-External Voip (ExVoip) Subnet"
+#  SBCManagementSubnet:
+#    # Private Subnet
+#    Type: AWS::EC2::Subnet
+#    Properties:
+#      VpcId: !GetAtt
+#        - VPCStack
+#        - Outputs.VPCID
+#      CidrBlock: !Ref 'ManagementSubnetCIDR'
+#      AvailabilityZone: !Ref 'SBCAvailabilityZone'
+#      Tags:
+#        - Key: Name
+#          Value: !Sub "${SBCSystemName}-Management Subnet"
+  BastionStack:
+    DependsOn: VPCStack
+    Type: AWS::CloudFormation::Stack
     Properties:
-      VpcId: !GetAtt
-        - VPCStack
-        - Outputs.VPCID
-      CidrBlock: !Ref 'PublicHFEPacketSubnetCIDR'
-      AvailabilityZone: !Ref 'SBCAvailabilityZone'
-      Tags:
-        - Key: Name
-          Value: !Sub "${SBCSystemName}-External Voip (ExVoip) Subnet"
-  SBCManagementSubnet:
-    Type: AWS::EC2::Subnet
-    Properties:
-      VpcId: !GetAtt
-        - VPCStack
-        - Outputs.VPCID
-      CidrBlock: !Ref 'ManagementSubnetCIDR'
-      AvailabilityZone: !Ref 'SBCAvailabilityZone'
-      Tags:
-        - Key: Name
-          Value: !Sub "${SBCSystemName}-Management Subnet"
-  SBCHASubnet:
-    Type: AWS::EC2::Subnet
-    Properties:
-      VpcId: !GetAtt
-        - VPCStack
-        - Outputs.VPCID
-      CidrBlock: !Ref 'SBCHASubnetCIDR'
-      AvailabilityZone: !Ref 'SBCAvailabilityZone'
-      Tags:
-        - Key: Name
-          Value: !Sub "${SBCSystemName}-HA Subnet"
-  HFEPublicSubnet:
-    Type: AWS::EC2::Subnet
-    Properties:
-      VpcId: !GetAtt
-        - VPCStack
-        - Outputs.VPCID
-      CidrBlock: !Ref 'PublicHFEPacketSubnetCIDR'
-      AvailabilityZone: !Ref 'SBCAvailabilityZone'
-      Tags:
-        - Key: Name
-          Value: !Sub "${SBCSystemName}-HFE Public Subnet"
-  HFEPrivateSubnet:
-    Type: AWS::EC2::Subnet
-    Properties:
-      VpcId: !GetAtt
-        - VPCStack
-        - Outputs.VPCID
-      CidrBlock: !Ref 'PrivateHFESubnetCIDR'
-      AvailabilityZone: !Ref 'SBCAvailabilityZone'
-      Tags:
-        - Key: Name
-          Value: !Sub "${SBCSystemName}-HFE Public Subnet"
+      TemplateURL: !Sub "https://${QSS3BucketName}.s3.amazonaws.com/${QSS3KeyPrefix}submodules/quickstart-linux-bastion/templates/linux-bastion.template"
+      Parameters:
+        BastionAMIOS: !Ref BastionAMIOS
+        BastionInstanceType: !Ref BastionInstanceType
+        KeyPairName: !Ref KeyPairName
+        PublicSubnet1ID: !GetAtt
+          - VPCStack
+          - Outputs.PublicSubnet1ID
+        QSS3BucketName: !Ref QSS3BucketName
+        QSS3KeyPrefix:  !Sub "${QSS3KeyPrefix}submodules/quickstart-linux-bastion/"
+        VPCID: !GetAtt
+          - VPCStack
+          - Outputs.VPCID
+        RemoteAccessCIDR: !Ref RemoteAccessCIDR
+        PublicSubnet2ID: !GetAtt
+          - VPCStack
+          - Outputs.PublicSubnet2ID
   SBCStack:
     DependsOn: VPCStack
     Type: AWS::CloudFormation::Stack
@@ -362,14 +407,26 @@ Resources:
       Parameters:
         QSS3BucketName: !Ref QSS3BucketName
         QSS3KeyPrefix: !Ref QSS3KeyPrefix
-        HFEPublicSubnet: !Ref HFEPublicSubnet
-        HFEPrivateSubnet: !Ref HFEPrivateSubnet
+        PublicSubnet: !GetAtt
+          - VPCStack
+          - Outputs.PublicSubnet1ID
         KeyPairName: !Ref KeyPairName
-        HFEManagementEIPAccessCIDR: !Ref HFEManagementEIPAccessCIDR
         SBCAvailabilityZone: !Ref SBCAvailabilityZone
-        SBCExVoipSubnet: !Ref SBCExVoipSubnet
-        SBCInternalVoipCIDR: !Ref SBCInternalVoipCIDR
-        SBCManagementSubnet: !Ref SBCManagementSubnet
+        BastionSecurityGroupID: !GetAtt
+          - BastionStack
+          - Outputs.BastionSecurityGroupID
+        SBCExVoipSubnet: !GetAtt
+          - VPCStack
+          - Outputs.PublicSubnet2ID
+        SBCInVoipSubnet: !GetAtt
+          - VPCStack
+          - Outputs.PrivateSubnet3ID
+        SBCManagementSubnet: !GetAtt
+          - VPCStack
+          - Outputs.PrivateSubnet4ID
+        SBCHASubnet: !GetAtt
+          - VPCStack
+          - Outputs.PrivateSubnet1ID
         SSHAccessCIDR: !Ref SSHAccessCIDR
         VPCID: !GetAtt
           - VPCStack
