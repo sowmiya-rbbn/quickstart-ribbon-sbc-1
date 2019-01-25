@@ -1,0 +1,21 @@
+--- 
+   
+- debug: 
+    msg: "{{ SBC_HOST_IP }}"
+
+- name: configure static Route  
+  uri:
+    url: "https://{{ SBC_HOST_IP }}/api/config/addressContext/ADDR_CONTEXT"
+    method: POST
+    user: "{{ SBC_EMA_USER }}"
+    password: "{{ SBC_EMA_PASSWD }}"
+    validate_certs: no
+    force_basic_auth: no
+    follow_redirects: all
+    body: "{{ lookup('file','../payload/staticRoute_4.json') }}"
+    body_format: json
+    return_content: yes
+    headers:
+      Content-Type: "application/vnd.yang.data+json"
+    status_code: 201
+    timeout: 10

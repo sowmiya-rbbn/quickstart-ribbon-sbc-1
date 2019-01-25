@@ -1,0 +1,53 @@
+---
+
+
+- hosts: localhost
+  connection: local
+  gather_facts: no
+  vars_files:
+    - vars/gen.yml
+    
+  tasks:
+    #Step 0:Change Password
+    - import_tasks: tasks/changePassword.yml
+    #Step 1:configure codecEntry
+    - import_tasks: tasks/CodecEntry.yml 
+    #Step 2:configure PacketServiceProfile 
+    - import_tasks: tasks/packetServiceProfile.yml
+    #Step 3:configure AddressContext and Zones Ingress and Egress 
+    - import_tasks: tasks/ADDR_CNTXT.yml 
+    - import_tasks: tasks/zone1.yml
+    - import_tasks: tasks/zone2.yml
+    #Step 4:configure IpInterfaceGroup  
+    - import_tasks: tasks/ipInterfacegroupIngress.yml
+    - import_tasks: tasks/ipInterfacegroupEgress.yml
+    #Step 5:configure IpInterface  
+    - import_tasks: tasks/ipInterface_IN.yml
+    - import_tasks: tasks/ipInterface_EG.yml
+    #Step 6:configure StaticRoute  
+    - import_tasks: tasks/staticRoute_1.yml
+    - import_tasks: tasks/staticRoute_2.yml
+    #Step 7:configure SipSigport
+    - import_tasks: tasks/sipSigPort_1.yml
+    - import_tasks: tasks/sipSigPort_2.yml
+    #Step 8:configure transparencyProfile
+    - import_tasks: tasks/tp1.yml
+    #Step 10:configureipsignalingProfile
+    - import_tasks: tasks/ipSignalingProfile.yml
+    #Step 10:configureipsignalingProfile
+    - import_tasks: tasks/elementRoutingPriority.yml
+    #Step 9:configure SIPTrunkGroup   
+    - import_tasks: tasks/sipTrunkGroup_1.yml
+    - import_tasks: tasks/sipTrunkGroup_2.yml
+    #Step 10:configure IPPeer
+    - import_tasks: tasks/ipPeer_2.yml
+    #Step 10:configure Route  
+    - import_tasks: tasks/routingLabel_1.yml
+    - import_tasks: tasks/routingLabelRoute_1.yml
+    - import_tasks: tasks/routingLabel_2.yml
+    - import_tasks: tasks/routingLabelRoute_2.yml
+    - import_tasks: tasks/route_1.yml
+    - import_tasks: tasks/route_2.yml
+    - import_tasks: tasks/route_3.yml
+    - import_tasks: tasks/route_4.yml
+    - import_tasks: tasks/route_5.yml

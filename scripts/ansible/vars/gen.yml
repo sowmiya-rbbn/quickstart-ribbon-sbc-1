@@ -1,0 +1,44 @@
+---
+
+SBC_HOST_IP: 35.170.28.189
+SBC_EMA_USER: admin
+SBC_EMA_PASSWD: Sonus@123
+SBC_ADDRCNTXT:
+  - Name: ADDR_CONTEXT
+SBC_EMA_PASSWD_DEFAULT: eni-0338cb316f501d2dd
+SBC_CodecEntry:
+  - Name: G711DSP
+    codec: g711
+    packetsize: 10
+SBC_ingressStaticRoute:
+  - destinationIpAddress: 0.0.0.0
+  - destinationPrefix: 0
+  - nextHop: 10.45.130.1
+SBC_ingressStaticRoute:
+  - destinationIpAddress: 0.0.0.0
+  - destinationPrefix: 0
+  - nextHop: 10.45.130.1
+SBC_ingressStaticRoute:
+  - destinationIpAddress: 0.0.0.0
+  - destinationPrefix: 0
+  - nextHop: 10.45.130.1
+SBC_EgressStaticRoute:
+  - destinationIpAddress: 0.0.0.0
+  - destinationPrefix: 0
+  - nextHop: 10.45.140.1
+SBC_EgressStaticRoute:
+  - destinationIpAddress: 0.0.0.0
+  - destinationPrefix: 0
+  - nextHop: 10.45.140.1
+SBC_EgressStaticRoute:
+  - destinationIpAddress: 0.0.0.0
+  - destinationPrefix: 0
+  - nextHop: 10.45.140.1
+ipPeeripAddress: 10.45.140.206
+ipPort: 5060
+SBC_ingressIpPrefix:
+  - ipAddress:  0.0.0.0
+  - prefixLength:  0
+SBC_egressIpPrefix:
+  - ipAddress:  10.45.140.0
+  - prefixLength:  24

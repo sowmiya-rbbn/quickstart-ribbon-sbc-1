@@ -1,0 +1,26 @@
+--- 
+   
+- debug: 
+    msg: "{{ SBC_HOST_IP }}"
+    msg: "{{ SBC_EMA_USER }}"
+    msg: "{{ SBC_EMA_PASSWD }}"
+
+- name: get ServerSyncStatus
+  uri:
+    url: "https://{{ SBC_HOST_IP }}/api/operational/system/syncStatus"
+    method: GET
+    headers:
+      Content-Type: "application/vnd.yang.data+json"
+      #Accept: "application/vnd.yang.data+json" 
+    user: "{{ SBC_EMA_USER }}"
+    password: "{{ SBC_EMA_PASSWD }}"
+    validate_certs: no
+    force_basic_auth: no
+    follow_redirects: all
+    return_content: yes
+    body_format: json
+    status_code: 200
+    timeout: 10
+  register: output
+
+- debug: var=output.content

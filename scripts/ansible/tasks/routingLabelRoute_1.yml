@@ -1,0 +1,21 @@
+--- 
+   
+- debug: 
+    msg: "{{ SBC_HOST_IP }}"
+
+- name: configure Routing Label Route 
+  uri:
+    url: "https://{{ SBC_HOST_IP }}/api/config/global/callRouting/routingLabel/VRF_RL_EG"
+    method: POST
+    user: "{{ SBC_EMA_USER }}"
+    password: "{{ SBC_EMA_PASSWD }}"
+    validate_certs: no
+    force_basic_auth: no
+    follow_redirects: all
+    body: "{{ lookup('file','../payload/routingLabelRoute_1.json') }}"
+    body_format: json
+    return_content: yes
+    headers:
+      Content-Type: "application/vnd.yang.data+json"
+    status_code: 201
+    timeout: 10

@@ -1,0 +1,23 @@
+--- 
+   
+- debug: 
+    msg: "{{ SBC_HOST_IP }}"
+    msg: "{{ SBC_EMA_USER }}"
+    msg: "{{ SBC_EMA_PASSWD }}"
+
+- name: configure ipSignaling profile 
+  uri:
+    url: "https://{{ SBC_HOST_IP }}/api/config/profiles/signaling/ipSignalingProfile/DEFAULT_SIP"
+    method: PUT
+    user: "{{ SBC_EMA_USER }}"
+    password: "{{ SBC_EMA_PASSWD }}"
+    validate_certs: no
+    force_basic_auth: no
+    follow_redirects: all
+    body: "{{ lookup('file','../payload/ipSignalingProfile.json') }}"
+    body_format: json
+    return_content: yes
+    headers:
+      Content-Type: "application/vnd.yang.data+json"
+    status_code: 204
+    timeout: 10

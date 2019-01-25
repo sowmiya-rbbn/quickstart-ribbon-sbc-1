@@ -1,0 +1,27 @@
+- hosts: localhost 
+  connection: local
+  gather_facts: no
+
+  vars:
+
+    sbc_auth_user: "admin"
+    sbc_auth_password: "Sonus@123"
+    sbc_rest_api_url: "https://10.6.40.140/api/config/profiles/media"
+    
+  tasks:
+    - name: configure codecEntry
+      uri:
+        url: "{{ sbc_rest_api_url }}"
+        method: POST
+        user: "{{ sbc_auth_user }}"
+        password: "{{ sbc_auth_password }}"
+        validate_certs: no
+        force_basic_auth: no
+        follow_redirects: all
+        body: "{{ lookup('file','../payload/CodecEntry.json') }}"
+        body_format: json
+        return_content: yes
+        headers:
+         Content-Type: "application/vnd.yang.data+json"
+        status_code: 201
+        timeout: 10
