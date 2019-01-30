@@ -44,6 +44,8 @@ Parameters:
       and Mangler instance '
     Type: AWS::EC2::KeyPair::KeyName
     ConstraintDescription: must be the name of an existing EC2 KeyPair.
+  SBCCLIPassword:
+    Type: String
   BastionAMIOS:
     Default: "Amazon-Linux-HVM"
     AllowedValues:
@@ -411,7 +413,6 @@ Resources:
           - VPCStack
           - Outputs.PublicSubnet1ID
         KeyPairName: !Ref KeyPairName
-        SBCAvailabilityZone: !Ref SBCAvailabilityZone
         BastionSecurityGroupID: !GetAtt
           - BastionStack
           - Outputs.BastionSecurityGroupID
@@ -431,3 +432,4 @@ Resources:
         VPCID: !GetAtt
           - VPCStack
           - Outputs.VPCID
+        SBCCLIPassword: !Ref SBCCLIPassword

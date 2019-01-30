@@ -1,0 +1,930 @@
+---
+AWSTemplateFormatVersion: '2010-09-09'
+Description: AWS CloudFormation Template to setup and deploy vSBC HA instances and
+  2 PKTART instances to test vSBC. This template creates required vpc, subnet and
+  other routing elements required IAM role to performce IP movement betweenn two vSBC
+  instances.
+Metadata:
+  AWS::CloudFormation::Interface:
+    ParameterGroups:
+      - Label:
+        default: AWS Quick Start Configuration
+      Parameters:
+        - QSS3BucketName
+        - QSS3KeyPrefix
+    - Label:
+        default: Instance Configuration
+      Parameters:
+        - KeyPairName
+        - SBCInstanceType
+        - AsteriskInstanceType
+    - Label:
+        default: Network Configuration
+      Parameters:
+        - SBCInternalVoipCIDR
+        - SBCExternalVoipCIDR
+    - Label:
+        default: 'Optional: SBC configuration. For default configuration no need to
+          change these values.'
+      Parameters:
+        - SBCPersonalityType
+        - SBCActiveInstanceName
+        - SBCPassiveInstanceName
+        - SBCSystemName
+        - Tenancy
+        - PlacementId
+        - SBCVolumeType
+        - SBCVolumeIOPS
+        - SBCVolumeSize
+Parameters:
+  KeyPairName:
+    Description: Name of an existing EC2 KeyPair to enable SSH access to various EC2
+      instances
+    Type: AWS::EC2::KeyPair::KeyName
+    ConstraintDescription: must be the name of an existing EC2 KeyPair.
+  VPCID:
+    Description: ID of your existing VPC for deployment
+    Type: AWS::EC2::VPC::Id
+  SBCExternalVoipCIDR:
+    Description: CIDR used within the SBC External Voip (public facing) subnet.
+    Type: String
+    MinLength: '1'
+    Default: 10.74.20.0/24
+    AllowedPattern: (\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})/(\d{1,2})
+    ConstraintDescription: Must be a valid IP CIDR range of the form x.x.x.x/x and
+      subnet of VPC.
+  SBCInternalVoipCIDR:
+    Description: CIDR used within the SBC Internal Voip (private) subnet. served by
+      Mangler instance.
+    Type: String
+    MinLength: '1'
+    Default: 10.74.20.0/24
+    AllowedPattern: (\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})/(\d{1,2})
+    ConstraintDescription: Must be a valid IP CIDR range of the form x.x.x.x/x and
+      subnet of VPC.
+  SBCExVoipSubnet:
+    Type: String
+  SBCInVoipSubnet:
+    Type: String
+  SBCManagementSubnet:
+    Type: String
+  SBCHASubnet:
+    Type: String
+  PublicSubnet:
+    Type: String
+  SBCCLIPassword:
+    Type: String
+  BastionSecurityGroupID:
+    Description: SecurityGroup associated with a bastion instance.
+    Type: AWS::EC2::SecurityGroup::Id
+  SBCInstanceType:
+    Description: Instance type for the SBC Mangler.
+    Type: String
+    Default: m5.xlarge
+    AllowedValues:
+      - m4.xlarge
+      - m5.xlarge
+      - c3.2xlarge
+      - c3.4xlarge
+      - c3.8xlarge
+      - c4.2xlarge
+      - c4.4xlarge
+      - c4.8xlarge
+      - c5.2xlarge
+      - c5.4xlarge
+      - c5.8xlarge
+    ConstraintDescription: Must be a valid EC2 instance type.
+  AsteriskInstanceType:
+    Description: Instance type for the Asterisk Instance.
+    Type: String
+    Default: m5.xlarge
+    AllowedValues:
+      - m4.xlarge
+      - m5.xlarge
+      - c3.2xlarge
+      - c3.4xlarge
+      - c3.8xlarge
+      - c4.2xlarge
+      - c4.4xlarge
+      - c4.8xlarge
+      - c5.2xlarge
+      - c5.4xlarge
+      - c5.8xlarge
+    ConstraintDescription: Must be a valid EC2 instance type.
+  SBCPersonalityType:
+    Description: SBC Personality Type. Currently only supports 'isbc' (Integrated).
+      Distributed is currently not supported.
+    Type: String
+    Default: isbc
+    AllowedValues:
+      - isbc
+    ConstraintDescription: Must be a valid SBC Personality type.
+  SBCActiveInstanceName:
+    Description: CE name of the active instance
+    Type: String
+    Default: vsbc1
+    MaxLength: '63'
+    AllowedPattern: ^[A-Za-z]{1}[-A-Za-z0-9.]*[A-Za-z0-9]{1}$
+    ConstraintDescription: 'Enter valid ceName(instance name).  Regex: ^[A-Za-z]{1}[-A-Za-z0-9.]*[A-Za-z0-9]{1}$'
+  SBCPassiveInstanceName:
+    Description: CE name of the standby instance
+    Type: String
+    Default: vsbc2
+    MaxLength: '63'
+    AllowedPattern: ^[A-Za-z]{1}[-A-Za-z0-9.]*[A-Za-z0-9]{1}$
+    ConstraintDescription: 'Enter valid ceName(instance name).  Regex: ^[A-Za-z]{1}[-A-Za-z0-9.]*[A-Za-z0-9]{1}$'
+  SBCSystemName:
+    Description: System Name
+    Type: String
+    Default: vsbcSystem
+    MaxLength: '26'
+    AllowedPattern: ^[A-Za-z]{1}[-A-Za-z0-9]*[A-Za-z0-9]{1}$
+    ConstraintDescription: 'Enter valid system name.  Regex: ^[A-Za-z]{1}[-A-Za-z0-9]*[A-Za-z0-9]{1}$ '
+  SSHAccessCIDR:
+    Description: IP CIDR from where you could SSH into SBC and PKTART instances
+    Type: String
+    MinLength: '9'
+    MaxLength: '18'
+    Default: 0.0.0.0/0
+    AllowedPattern: (\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})/(\d{1,2})
+    ConstraintDescription: must be a valid CIDR range of the form x.x.x.x/x.
+  Tenancy:
+    Description: Tenancy attribute for SBC instances
+    Type: String
+    Default: default
+    AllowedValues:
+      - default
+      - dedicated
+  PlacementId:
+    Description: PlacementGroup to launch SBC instances(Optional)
+    Type: String
+    Default: ''
+  SBCVolumeType:
+    Description: Select Type of Volume for SBC
+    Type: String
+    Default: io1
+    AllowedValues:
+      - gp2
+      - io1
+  SBCVolumeIOPS:
+    Description: Enter IOPS reservation for IO1 type EBS volume [<= 1950]. This value
+      is ignored for GP2 type volumes.
+    Type: Number
+    Default: '600'
+    MaxValue: '1950'
+  SBCVolumeSize:
+    Description: Enter size of disk in GiB. Minimum disk required is 65 GiB
+    Type: Number
+    Default: '65'
+    MinValue: '65'
+    MaxValue: '1000'
+  QSS3BucketName:
+    Type: String
+    Default: aws-quickstart
+  QSS3KeyPrefix:
+    Type: String
+    Default: quickstart-ribbon-sbc/
+Conditions:
+  VolumeTypeIO1:
+    !Equals
+    - !Ref SBCVolumeType
+    - io1
+Rules:
+  NameValidation:
+    Assertions:
+      - Assert:
+        Fn::Not:
+          - Fn::Equals:
+              - !Ref SBCActiveInstanceName
+              - !Ref SBCPassiveInstanceName
+      AssertionDescription: SBCActiveInstanceName and SBCPassiveInstanceName must
+        be unique
+      - Assert:
+        Fn::Not:
+          - Fn::Equals:
+              - !Ref SBCActiveInstanceName
+              - !Ref SBCSystemName
+      AssertionDescription: SBCActiveInstanceName and SBCSystemName cannot be the
+        same.
+      - Assert:
+        Fn::Not:
+          - Fn::Equals:
+              - !Ref SBCPassiveInstanceName
+              - !Ref SBCSystemName
+      AssertionDescription: SBCPassiveInstanceName and SBCSystemName cannot be the
+        same.
+Mappings:
+  AWSAMIRegionMap:
+    AMI:
+      RIBBONSBCAMI: sbc-V07.00.00S401-connexip-os_06.00.00-S401_1_amd64_07_06_18_17_58
+      AMZNLINUXHVM: amzn-ami-hvm-2018.03.0.20181129-x86_64-gp2
+      RIBBONASTERISKAMI: Asterisk- AWS Marketplace 27 Nov 2018 (14.6.0)-9fa53578-e190-40d0-823c-7998f5542773-ami-09a5e4cd15cff5ae1.4
+    ap-northeast-1:
+      AMZNLINUXHVM: ami-00a5245b4816c38e6
+      RIBBONASTERISKAMI: ami-05f34b2177f3f8e89
+      RIBBONSBCAMI: ami-0b998ba31f803a582
+    ap-northeast-2:
+      AMZNLINUXHVM: ami-00dc207f8ba6dc919
+      RIBBONASTERISKAMI: ami-09d53d1929ea224fe
+      RIBBONSBCAMI: ami-0d5025bc94b5d40a
+    ap-south-1:
+      AMZNLINUXHVM: ami-0ad42f4f66f6c1cc9
+      RIBBONASTERISKAMI: ami-0cfc61eda8efb1151
+      RIBBONSBCAMI: ami-0e80e378bf3340301
+    ap-southeast-1:
+      AMZNLINUXHVM: ami-05b3bcf7f311194b3
+      RIBBONASTERISKAMI: ami-035e2f283689c6578
+      RIBBONSBCAMI: ami-0880a3f8389c85d3b
+    ap-southeast-2:
+      AMZNLINUXHVM: ami-02fd0b06f06d93dfc
+      RIBBONASTERISKAMI: ami-0911e8626f66771f6
+      RIBBONSBCAMI: ami-0da24ac9dbc63c918
+    ca-central-1:
+      AMZNLINUXHVM: ami-07423fb63ea0a0930
+      RIBBONASTERISKAMI: ami-060d4685f0138643f
+      RIBBONSBCAMI: ami-0dfc13891ced16640
+    eu-central-1:
+      AMZNLINUXHVM: ami-0cfbf4f6db41068ac
+      RIBBONASTERISKAMI: ami-0cec8018864f9771f
+      RIBBONSBCAMI: ami-0ba8b5524933c9d74
+    eu-west-1:
+      AMZNLINUXHVM: ami-08935252a36e25f85
+      RIBBONASTERISKAMI: ami-0010292e72a97c24d
+      RIBBONSBCAMI: ami-0cd7cbbfb3ddc53d0
+    eu-west-2:
+      AMZNLINUXHVM: ami-01419b804382064e4
+      RIBBONASTERISKAMI: ami-063d47ce0138305a2
+      RIBBONSBCAMI: ami-0de70b55413388d40
+    eu-west-3:
+      AMZNLINUXHVM: ami-0dd7e7ed60da8fb83
+      RIBBONASTERISKAMI: ami-07669e6064b1c5ac4
+      RIBBONSBCAMI: ami-0c725161f776a4287
+    sa-east-1:
+      AMZNLINUXHVM: ami-05145e0b28ad8e0b2
+      RIBBONASTERISKAMI: ami-04cc29b4c53acb578
+      RIBBONSBCAMI: ami-02eb35cc2d652817e
+    us-east-1:
+      AMZNLINUXHVM: ami-0080e4c5bc078760e
+      RIBBONASTERISKAMI: ami-0794eb27f632b5e6f
+      RIBBONSBCAMI: ami-0a49b638bad956f96
+    us-east-2:
+      AMZNLINUXHVM: ami-0cd3dfa4e37921605
+      RIBBONASTERISKAMI: ami-0e86233694e1a7052
+      RIBBONSBCAMI: ami-040489bb244cfbac8
+    us-west-1:
+      AMZNLINUXHVM: ami-0ec6517f6edbf8044
+      RIBBONASTERISKAMI: ami-0419b88527dca2d84
+      RIBBONSBCAMI: ami-0aaf1884917ca603b
+    us-west-2:
+      AMZNLINUXHVM: ami-01e24be29428c15b2
+      RIBBONASTERISKAMI: ami-04ebfbc8c155ce151
+      RIBBONSBCAMI: ami-08fab2a9d7088ba15
+Resources:
+  SBCEndPoint:
+    Type: AWS::EC2::VPCEndpoint
+    Properties:
+      VpcEndpointType: Interface
+      PrivateDnsEnabled: true
+      SubnetIds:
+        - !Ref SBCManagementSubnet
+      SecurityGroupIds:
+        - !Ref BastionSecurityGroupID
+      ServiceName: !Sub com.amazonaws.${AWS::Region}.ec2
+      VpcId: !Ref VPCID
+  SBCActiveExVoipIface:
+    Type: AWS::EC2::NetworkInterface
+    Properties:
+      SubnetId: !Ref SBCExVoipSubnet
+      Description: !Sub ${SBCSystemName}-pkt1A_Ribbon
+      GroupSet:
+        - !Ref SBCInternalVoipSG
+      SecondaryPrivateIpAddressCount: 1
+      Tags:
+        - Key: Name
+          Value: !Sub ${SBCSystemName}-pkt1A_Ribbon
+  SBCActiveInVoipIface:
+    Type: AWS::EC2::NetworkInterface
+    Properties:
+      SubnetId: !Ref SBCInVoipSubnet
+      Description: !Sub ${SBCSystemName}-pkt0A_Ribbon
+      GroupSet:
+        - !Ref SBCInternalVoipSG
+      SecondaryPrivateIpAddressCount: 1
+      SourceDestCheck: false
+      Tags:
+        - Key: Name
+          Value: !Sub ${SBCSystemName}-pkt0A_Ribbon
+  SBCActiveMgtIface:
+    Type: AWS::EC2::NetworkInterface
+    Properties:
+      SubnetId: !Ref SBCManagementSubnet
+      Description: !Sub ${SBCSystemName}-mgt0A_Ribbon
+      GroupSet:
+        - !Ref SBCManagementSG
+        - !Ref SBCAPIAccessSG
+      SecondaryPrivateIpAddressCount: 1
+      SourceDestCheck: true
+      Tags:
+        - Key: Name
+          Value: !Sub ${SBCSystemName}-mgt0A_Ribbon
+  SBCActiveHAIface:
+    Type: AWS::EC2::NetworkInterface
+    Properties:
+      SubnetId: !Ref SBCHASubnet
+      Description: !Sub ${SBCSystemName}-ha0A_Ribbon
+      GroupSet:
+        - !Ref SBCHASecurityGroup
+      SourceDestCheck: true
+      Tags:
+        - Key: Name
+          Value: !Sub ${SBCSystemName}-ha0A_Ribbon
+  SBCPassiveExVoipIface:
+    Type: AWS::EC2::NetworkInterface
+    Properties:
+      SubnetId: !Ref SBCExVoipSubnet
+      Description: !Sub ${SBCSystemName}-pkt1B_Ribbon
+      GroupSet:
+        - !Ref SBCInternalVoipSG
+      Tags:
+        - Key: Name
+          Value: !Sub ${SBCSystemName}-pkt1B_Ribbon
+  SBCPassiveInVoipIface:
+    Type: AWS::EC2::NetworkInterface
+    Properties:
+      SubnetId: !Ref SBCInVoipSubnet
+      Description: !Sub ${SBCSystemName}-pkt0B_Ribbon
+      GroupSet:
+        - !Ref SBCInternalVoipSG
+      SourceDestCheck: false
+      Tags:
+        - Key: Name
+          Value: !Sub ${SBCSystemName}-pkt0B_Ribbon
+  SBCPassiveMgtIface:
+    Type: AWS::EC2::NetworkInterface
+    Properties:
+      SubnetId: !Ref SBCManagementSubnet
+      Description: !Sub ${SBCSystemName}-mgt0B_Ribbon
+      GroupSet:
+        - !Ref SBCManagementSG
+        - !Ref SBCAPIAccessSG
+      SourceDestCheck: true
+      Tags:
+        - Key: Name
+          Value: !Sub ${SBCSystemName}-mgt0B_Ribbon
+  SBCPassiveHAIface:
+    Type: AWS::EC2::NetworkInterface
+    Properties:
+      SubnetId: !Ref SBCHASubnet
+      Description: !Sub ${SBCSystemName}-ha0B_Ribbon
+      GroupSet:
+        - !Ref SBCHASecurityGroup
+      SourceDestCheck: true
+      Tags:
+        - Key: Name
+          Value: !Sub ${SBCSystemName}-ha0B_Ribbon
+  HFEPublicInterface:
+    Type: AWS::EC2::NetworkInterface
+    Properties:
+      SubnetId: !Ref PublicSubnet
+      GroupSet:
+        - !Ref SBCExternalVoipSG
+      SecondaryPrivateIpAddressCount: 1
+      SourceDestCheck: true
+      Tags:
+        - Key: Name
+          Value: !Sub ${SBCSystemName} HFE Public Interface
+  HFEPrivateInterface:
+    Type: AWS::EC2::NetworkInterface
+    Properties:
+      SubnetId: !Ref SBCExVoipSubnet
+      GroupSet:
+        - !Ref SBCInternalVoipSG
+      SourceDestCheck: false
+      Tags:
+        - Key: Name
+          Value: !Sub ${SBCSystemName} HFE Private Interface
+  HFEManagementInterface:
+    Type: AWS::EC2::NetworkInterface
+    Properties:
+      SubnetId: !Ref SBCManagementSubnet
+      GroupSet:
+        - !Ref SBCManagementSG
+      SourceDestCheck: true
+      Tags:
+        - Key: Name
+          Value: !Sub ${SBCSystemName} HFE Management Interface
+  SBCExternalVoipSG:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Security Group for SBC External Voip traffic. (Incoming calls)
+      VpcId: !Ref VPCID
+      SecurityGroupIngress:
+        - IpProtocol: udp
+          FromPort: 5060
+          ToPort: 5061
+          CidrIp: !Ref SBCExternalVoipCIDR
+        - IpProtocol: tcp
+          FromPort: 5060
+          ToPort: 5061
+          CidrIp: !Ref SBCExternalVoipCIDR
+      Tags:
+        - Key: Name
+          Value:
+            !Join
+            - '-'
+            - - !Ref SBCSystemName
+              - SecurityGroup5_Ribbon
+  SBCInternalVoipSG:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Security Group for SBC Internal Voip traffic. (Relay to internal
+        infra)
+      VpcId: !Ref VPCID
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 5060
+          ToPort: 5061
+          CidrIp: !Ref SBCInternalVoipCIDR
+        - IpProtocol: udp
+          FromPort: 5060
+          ToPort: 5061
+          CidrIp: !Ref SBCInternalVoipCIDR
+      Tags:
+        - Key: Name
+          Value:
+            !Join
+            - '-'
+            - - !Ref SBCSystemName
+              - SecurityGroup3_Ribbon
+  SBCHASecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Security group for SBC HA interface traffic.
+      VpcId: !Ref VPCID
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 0
+          ToPort: 65535
+          CidrIp: 0.0.0.0/0
+        - IpProtocol: '-1'
+          FromPort: 0
+          ToPort: 65535
+          CidrIp: !Ref SSHAccessCIDR
+      Tags:
+        - Key: Name
+          Value: !Sub ${SBCSystemName} HA Security Group
+  SBCManagementSG:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Security group for Mgt SBC
+      VpcId: !Ref VPCID
+        SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 22
+          ToPort: 22
+          SourceSecurityGroupId: !Ref BastionSecurityGroupID
+      Tags:
+        - Key: Name
+          Value: SBC Management Security Group
+  SBCAPIAccessSG:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: SG For API Access to the Active/Passive SBC Instances
+      VpcId: !Ref VPCID
+      SecurityGroupIngress:
+      - IpProtocol: tcp
+        FromPort: 80
+        ToPort: 80
+        SourceSecurityGroupId: !Ref BastionSecurityGroupID
+      - IpProtocol: tcp
+        FromPort: 443
+        ToPort: 443
+        SourceSecurityGroupId: !Ref BastionSecurityGroupID
+      Tags:
+      - Key: Name
+        Value: SBC API Access Security Group
+  HFEExVoipEIP:
+    Type: AWS::EC2::EIP
+    Properties:
+      Domain: !Ref VPCID
+  HFEExVoipEIPAssociation:
+    Type: AWS::EC2::EIPAssociation
+    Properties:
+      AllocationId: !GetAtt HFEExVoipEIP.AllocationId
+      NetworkInterfaceId: !Ref HFEPublicInterface
+  SBCInstanceRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+        - Effect: Allow
+          Principal:
+            Service:
+            - ec2.amazonaws.com
+          Action:
+          - sts:AssumeRole
+      Path: /
+      Policies:
+      - PolicyName: SBCInstancePermissions
+        PolicyDocument:
+          Version: '2012-10-17'
+          Statement:
+          - Effect: Allow
+            Action:
+            - ec2:AllocateAddress
+            - ec2:AssignPrivateIpAddresses
+            - ec2:AssociateAddress
+            - ec2:AttachNetworkInterface
+            - ec2:DisassociateAddress
+            - ec2:DescribeInstances
+            - ec2:DescribeAddresses
+            - ec2:DescribeNetworkInterfaces
+            - ec2:DescribeInstanceAttribute
+            - ec2:DescribeRegions
+            - ec2:ModifyInstanceAttribute
+            - ec2:DescribeSubnets
+            Resource: '*'
+  HFEInstanceRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+        - Effect: Allow
+          Principal:
+            Service:
+            - ec2.amazonaws.com
+          Action:
+          - sts:AssumeRole
+      Path: /
+      Policies:
+      - PolicyName: AccessToS3Bucket
+        PolicyDocument:
+          Version: '2012-10-17'
+          Statement:
+          - Effect: Allow
+            Action:
+            - s3:Get*
+            - s3:List*
+            Resource:
+            - arn:aws:s3:::${QSS3BucketName}
+            - arn:aws:s3:::${QSS3BucketName}/*
+  SBCInstanceProfile:
+    Type: AWS::IAM::InstanceProfile
+    Properties:
+      InstanceProfileName: !Sub SBCInstanceProfile-${AWS::Region}
+      Path: /
+      Roles:
+      - !Ref SBCInstanceRole
+  HFEInstanceProfile:
+    Type: AWS::IAM::InstanceProfile
+    Properties:
+      InstanceProfileName: !Sub HFEInstanceProfile-${AWS::Region}
+      Path: /
+      Roles:
+      - !Ref HFEInstanceRole
+  SBCActiveInstance:
+    DependsOn: HFEPublicInterface
+    Type: AWS::EC2::Instance
+    Properties:
+      ImageId:
+        !FindInMap
+        - AWSAMIRegionMap
+        - !Ref AWS::Region
+        - RIBBONSBCAMI
+      IamInstanceProfile: !Ref SBCInstanceProfile
+      BlockDeviceMappings:
+      - DeviceName: /dev/sda1
+        Ebs:
+          VolumeType: !Ref SBCVolumeType
+          VolumeSize: !Ref SBCVolumeSize
+          Iops:
+            !If
+            - VolumeTypeIO1
+            - !Ref SBCVolumeIOPS
+            - !Ref AWS::NoValue
+          DeleteOnTermination: true
+      InstanceType: !Ref SBCInstanceType
+      Tenancy: !Ref Tenancy
+      PlacementGroupName: !Ref PlacementId
+      EbsOptimized: true
+      KeyName: !Ref KeyPairName
+      NetworkInterfaces:
+      - NetworkInterfaceId: !Ref SBCActiveMgtIface
+        DeviceIndex: '0'
+      - NetworkInterfaceId: !Ref SBCActiveHAIface
+        DeviceIndex: '1'
+      - NetworkInterfaceId: !Ref SBCActiveInVoipIface
+        DeviceIndex: '2'
+      - NetworkInterfaceId: !Ref SBCActiveExVoipIface
+        DeviceIndex: '3'
+      Tags:
+      - Key: Name
+        Value: !Sub ${AWS::StackName}-1
+      UserData:
+        Fn::Base64:
+          Fn::Sub:
+          - |
+            { "CERole"               : "ACTIVE",
+              "ReverseNatPkt0"       : "True",
+              "ReverseNatPkt1"       : "False",
+              "IAM_ROLE"             : ${SBCInstanceRole},
+              "ALT_Mgt0_00"          : "LOGICAL_MGMT_IP",
+              "ALT_Pkt0_00"          : "VIP1",
+              "ALT_Pkt1_00"          : "VIP2",
+              "ClusterIp"            : "${SBCPassiveHAIface.PrimaryPrivateIpAddress}",
+              "HFE"                  : "${HFEPub_SecondaryPrivIP}",
+              "SbcPersonalityType"   : "${SBCPersonalityType}",
+              "SbcMgmtMode"          : "centralized",
+              "TemplateName"         : "AWS_HA_template.json",
+              "TemplateVersion"      : "V07.00.00A011",
+              "CEName"               : "${SBCActiveInstanceName}",
+              "PeerCEName"           : "${SBCPassiveInstanceName}",
+              "PeerCEHa0IPv4Address" : "${SBCPassiveHAIface.PrimaryPrivateIpAddress}",
+              "SystemName"           : "${SBCSystemName}",
+              "ActiveRoleMgtId"      : "${SBCActiveMgtIface}",
+              "NodeName"             : "${AWS::StackName}"
+            }
+          - HFEPub_SecondaryPrivIP:
+              !Select
+              - 0
+              - !GetAtt HFEPublicInterface.SecondaryPrivateIpAddresses
+  SBCPassiveInstance:
+    Type: AWS::EC2::Instance
+    DependsOn: HFEPublicInterface
+    Properties:
+      ImageId:
+        !FindInMap
+        - AWSAMIRegionMap
+        - !Ref AWS::Region
+        - RIBBONSBCAMI
+      BlockDeviceMappings:
+      - DeviceName: /dev/sda1
+        Ebs:
+          VolumeType: !Ref SBCVolumeType
+          VolumeSize: !Ref SBCVolumeSize
+          Iops:
+            !If
+            - VolumeTypeIO1
+            - !Ref SBCVolumeIOPS
+            - !Ref AWS::NoValue
+          DeleteOnTermination: true
+      IamInstanceProfile: !Ref SBCInstanceProfile
+      InstanceType: !Ref SBCInstanceType
+      Tenancy: !Ref Tenancy
+      PlacementGroupName: !Ref PlacementId
+      EbsOptimized: true
+      KeyName: !Ref KeyPairName
+      NetworkInterfaces:
+      - NetworkInterfaceId: !Ref SBCPassiveMgtIface
+        DeviceIndex: '0'
+      - NetworkInterfaceId: !Ref SBCPassiveHAIface
+        DeviceIndex: '1'
+      - NetworkInterfaceId: !Ref SBCPassiveInVoipIface
+        DeviceIndex: '2'
+      - NetworkInterfaceId: !Ref SBCPassiveExVoipIface
+        DeviceIndex: '3'
+      Tags:
+      - Key: Name
+        Value: !Sub ${AWS::StackName}-2
+      UserData:
+        Fn::Base64:
+          Fn::Sub:
+          - |
+            { "CERole"               : "ACTIVE",
+              "ReverseNatPkt0"       : "True",
+              "ReverseNatPkt1"       : "False",
+              "IAM_ROLE"             : ${SBCInstanceRole},
+              "ALT_Mgt0_00"          : "LOGICAL_MGMT_IP",
+              "ALT_Pkt0_00"          : "VIP1",
+              "ALT_Pkt1_00"          : "VIP2",
+              "ClusterIp"            : "${SBCPassiveHAIface.PrimaryPrivateIpAddress}",
+              "HFE"                  : "${HFEPub_SecondaryPrivIP}",
+              "SbcPersonalityType"   : "${SBCPersonalityType}",
+              "SbcMgmtMode"          : "centralized",
+              "TemplateName"         : "AWS_HA_template.json",
+              "TemplateVersion"      : "V07.00.00A011",
+              "CEName"               : "${SBCActiveInstanceName}",
+              "PeerCEName"           : "${SBCPassiveInstanceName}",
+              "PeerCEHa0IPv4Address" : "${SBCPassiveHAIface.PrimaryPrivateIpAddress}",
+              "SystemName"           : "${SBCSystemName}",
+              "ActiveRoleMgtId"      : "${SBCActiveMgtIface}",
+              "NodeName"             : "${AWS::StackName}"
+            }
+          - HFEPub_SecondaryPrivIP:
+              !Select
+              - 0
+              - !GetAtt HFEPublicInterface.SecondaryPrivateIpAddresses
+  HFEInstance:
+    Type: AWS::EC2::Instance
+    Properties:
+      ImageId:
+        !FindInMap
+        - AWSAMIRegionMap
+        - !Ref AWS::Region
+        - AMZNLINUXHVM
+      BlockDeviceMappings:
+      - DeviceName: /dev/xvda
+        Ebs:
+          VolumeType: gp2
+          VolumeSize: 20
+          DeleteOnTermination: false
+      IamInstanceProfile: !Ref HFEInstanceProfile
+      InstanceType: !Ref SBCInstanceType
+      Tenancy: !Ref Tenancy
+      PlacementGroupName: !Ref PlacementId
+      EbsOptimized: true
+      KeyName: !Ref KeyPairName
+      NetworkInterfaces:
+      - NetworkInterfaceId: !Ref HFEPublicInterface
+        DeviceIndex: '0'
+      - NetworkInterfaceId: !Ref HFEManagementInterface
+        DeviceIndex: '1'
+      - NetworkInterfaceId: !Ref HFEPrivateInterface
+        DeviceIndex: '2'
+      Tags:
+      - Key: Name
+        Value: HFE Instance
+      UserData:
+        Fn::Base64:
+          Fn::Sub:
+          - |
+            #!/bin/bash
+            HFE_DIR="/home/ec2-user/HFE/"
+            HFE_FILE="$HFE_DIR/HFE.sh"
+            LOG_FILE="$HFE_DIR/cloud-init-nat.log"
+            NAT_VAR="$HFE_DIR/natVars.input"
+            function timestamp(){
+              date +"%Y-%m-%d %T"
+            }
+            mkdir -p ${!HFE_DIR};
+            aws s3 cp s3://${QSS3BucketName}/${QSS3KeyPrefix}scripts/HFE.sh ${!HFE_FILE}
+            if [ $? -ne 0 ]; then
+              /bin/echo $(timestamp) "Error:Could not copy HFE script from S3 bucket."
+            else
+              /bin/echo $(timestamp) "Copied HFE script from S3 bucket."
+            fi;
+            /bin/echo "SBC_SECONDARY_IP=${SBC_SECONDARY_IP}" >> ${!NAT_VAR}
+            /bin/echo "REMOTE_SSH_MACHINE_IP=${REMOTE_SSH_MACHINE_IP}"
+            /bin/echo $(!timestamp) "Copied natVars.input" >> ${!LOG_FILE}
+            sudo chmod 744 ${!HFE_FILE}
+            sudo /bin/bash ${!HFE_FILE} setup
+            /bin/echo "Configured using HFE script ${!HFE_FILE}" >> ${!LOG_FILE}
+            /bin/echo $(timestamp) " =========================   Done    ==========================================" >> ${!LOG_FILE}
+          - SBC_SECONDARY_IP:
+              !Select
+              - 0
+              - !GetAtt SBCActiveInVoipIface.SecondaryPrivateIpAddresses
+            REMOTE_SSH_MACHINE_IP: ''
+  AnsibleConfigServer:
+    Type: AWS::EC2::Instance
+    Metadata:
+      AWS::CloudFormation::Init:
+        configSets:
+          provision:
+          - DownloadAnsiblePlaybooks
+          - PopulateInputsFile
+          - GenerateAnsibleVars
+          contact_ribbon_sbc_pi:
+          - MakeAPIRequests
+        DownloadAnsiblePlaybooks:
+          commands:
+            010_download_files:
+              command: '!Sub aws s3 cp s3://${QSS3BucketName}/${QSS3KeyPrefix}/scripts/ansible
+                /root/ansible'
+        PopulateInputsFile:
+          files:
+            /root/inputs.json:
+              content:
+                Fn::Sub:
+                - |
+                  {
+                    "SBC_IP": ${SBCManagementIP},
+                    "SBC_CLI_Password_Old": "${SBCManagementENI}"
+                    "SBC_CLI_Passwd": "${SBCCLIPassword}",
+                    "addressCtxt": [{
+                      "name": "ADDR_CONTEXT"
+                    }],
+                    "codecEntry": [{
+                      "name": "G711DSP",
+                      "code": "g711",
+                      "packetsize": "10"
+                    }],
+                    "ingressStaticRoute": [{
+                      "ingressdestinationIpAddress": "0.0.0.0",
+                      "ingressprefix": "0",
+                      "ingressnextHop": "10.45.130.1"
+                    }],
+                    "egressStaticRoute": [{
+                      "egressdestinationIpAddress": "0.0.0.0",
+                      "egressprefix": "0",
+                      "egressnextHop": "10.45.140.1"
+                    }],
+                    "ipPeeripAddress": "10.45.140.206",
+                    "ipPort": "5060",
+                    "ingressIpPrefix": [{
+                      "ipAddress": "0.0.0.0",
+                      "prefixLength": "0"
+                    }],
+                    "egressIpPrefix": [{
+                      "ipAddress": "10.45.140.0",
+                      "prefixLength": "24"
+                    }]
+                  }
+                - SBCCLIPassword: !Ref SBCCLIPassword
+                  SBCManagementIP: !GetAtt SBCActiveMgtIface.PrimaryPrivateIpAddress
+                  SBCManagementENI: !Ref SBCActiveMgtIface
+        GenerateAnsibleVars:
+          commands:
+            010_run_python_to_generate_ansible_vars:
+              command: python /root/ansible/scripts/configGen.py start /root/inputs.json
+        MakeAPIRequests:
+          commands:
+            010_invoke_api:
+              command: ansible-playbook /root/scripts/ansible/BasicConfig.yml -vvv
+    Properties:
+      ImageId:
+        !FindInMap
+        - AWSAMIRegionMap
+        - !Ref AWS::Region
+        - AMZNLINUXHVM
+      InstanceType: t2.micro
+      IamInstanceProfile: !Ref SetupRoleProfile
+      KeyName: !Ref KeyPairName
+      SecurityGroups:
+      - !Ref SBCManagementSG
+      NetworkInterfaces:
+      - NetworkInterfaceId: !Ref AnsibleConfigServerInterface
+        DeviceIndex: '0'
+      UserData:
+        !Base64
+          Fn::Sub: |
+            #!/bin/bash -x
+            yum install -y git
+            git clone https://github.com/aws-quickstart/quickstart-linux-utilities.git
+            export P=/quickstart-linux-utilities/quickstart-cfn-tools.source
+            source $P
+            qs_bootstrap_pip || qs_err "pip bootstrap failed "
+            qs_aws-cfn-bootstrap || qs_err "cfn bootstrap failed"
+            qs_enable_epel || qs_err "Adding the EPEL Repository failed"
+            pip install awscli  &> /var/log/userdata.awscli_install.log || qs_err " awscli install failed "
+            cfn-signal -e $(qs_status) --stack ${AWS::StackName} --resource AnsibleConfigServer --region ${AWS::Region}
+  AnsibleConfigServerInterface:
+    Type: AWS::EC2::NetworkInterface
+    Properties:
+      SubnetId: !Ref SBCManagementSubnet
+      SourceDestCheck: true
+  SetupRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Statement:
+        - Effect: Allow
+          Principal:
+            Service:
+            - ec2.amazonaws.com
+          Action:
+          - sts:AssumeRole
+      Path: /
+      Policies:
+      - PolicyName: aws-quick-start-s3-policy
+        PolicyDocument:
+          Version: '2012-10-17'
+          Statement:
+          - Action:
+            - s3:GetObject
+            Resource: !Sub arn:aws:s3:::${QSS3BucketName}/${QSS3KeyPrefix}*
+            Effect: Allow
+  SetupRoleProfile:
+    Type: AWS::IAM::InstanceProfile
+    Properties:
+      Path: /
+      Roles:
+      - !Ref SetupRole
+Outputs:
+  InstanceIdActive:
+    Value: !Ref SBCActiveInstance
+  DefaultCliAdminPassword:
+    Description: 'It is eth0 interface-id of instance which has assigned active role
+      in the template. This is used as default CLI admin password '
+    Value: !Ref SBCActiveMgtIface
+  Mgt0InterfaceIDActive:
+    Value: !Ref SBCActiveMgtIface
+  HA0InterfaceIDActive:
+    Value: !Ref SBCActiveHAIface
+  Pkt0InterfaceIDActive:
+    Value: !Ref SBCActiveInVoipIface
+  Pkt1InterfaceIDActive:
+    Value: !Ref SBCActiveExVoipIface
+  InstanceIdStandby:
+    Value: !Ref SBCPassiveInstance
+  Mgt0InterfaceIDStandby:
+    Value: !Ref SBCPassiveMgtIface
+  HA0InterfaceIDStandby:
+    Value: !Ref SBCPassiveHAIface
+  Pkt0InterfaceIDStandby:
+    Value: !Ref SBCPassiveInVoipIface
+  Pkt1InterfaceIDStandby:
+    Value: !Ref SBCPassiveExVoipIface
+...
