@@ -1,0 +1,14 @@
+{
+    "sonusIpInterface:ipInterface": [
+      {
+        "name": "LIF_IN",
+                "ceName":"vsbc1",
+                "portName":"pkt0",
+                "ipVarV4":"IF2.IPV4",
+                "prefixVarV4":"IF2.PrefixV4",
+                "ipPublicVarV4":"HFE_IF2.FIPV4",
+                "mode":"inService",
+                "state":"enabled"
+      }
+    ]
+}

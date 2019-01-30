@@ -1,0 +1,13 @@
+{
+    "sonusIpInterface:ipInterface": [
+      {
+        "name": "LIF_OUT",
+                "ceName":"vsbc1",
+                "portName":"pkt1",
+                "ipVarV4":"IF3.IPV4",
+                "prefixVarV4":"IF3.PrefixV4",
+                "mode":"inService",
+                "state":"enabled"
+      }
+    ]
+}

@@ -1,0 +1,14 @@
+{
+    "routingLabelRoute": [
+      {
+        "sequence": "0",
+                "routeType":"trunkGroup",
+                "trunkGroup":"EGRESS_TRGP",
+                "ipPeer":"EGRESS_PEER",
+                "proportion":"0",
+                "cost":"1000000",
+                "inService":"inService",
+                "testing":"normal"
+      }
+    ]
+}

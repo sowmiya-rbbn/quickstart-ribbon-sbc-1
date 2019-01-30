@@ -1,0 +1,18 @@
+{
+    "sonusRoute:route": [
+      {
+        "elementType": "trunkGroup",
+        "elementId1": "EGRESS_TRGP",
+        "elementId2": "VSBCSYSTEM",
+        "routingType": "standard",
+        "destinationNational": "Sonus_NULL",
+        "destinationCountry": "Sonus_NULL",
+        "callType": "all",
+        "digitType": "all",
+        "timeRangeProfile": "ALL",
+        "callParameterFilterProfile": "none",
+        "domainName": "Sonus_NULL",
+        "routingLabel":"VRF_RL_IN"
+      }
+    ]
+}

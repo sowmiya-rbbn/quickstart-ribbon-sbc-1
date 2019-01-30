@@ -1,0 +1,21 @@
+{
+    "sonusSipTransparencyProfile:transparencyProfile": [
+      {
+        "name": "AS_TP",
+        "state": "enabled",
+        "sipHeader": [
+          {
+            "headerName": "to"
+          },
+          {
+            "headerName": "from"
+          },
+          {
+            "headerName": "request-URI"
+          }
+        ]
+      }
+    ]
+  }
+}
+

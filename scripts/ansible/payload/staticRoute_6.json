@@ -1,0 +1,12 @@
+{
+    "sonusIpInterface:staticRoute": [
+        {
+            "ipInterfaceGroupName": "EGRESS_LIG", 
+            "destinationIpAddress": "10.100.40.0", 
+            "ipInterfaceName": "LIF_OUT", 
+            "nextHop": "10.45.140.1", 
+            "prefix": 24, 
+            "preference": "100"
+        }
+    ]
+}

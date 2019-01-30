@@ -1,0 +1,15 @@
+{
+    "sonusIpSignalingProfile:ipSignalingProfile": {
+       "name": "DEFAULT_SIP",
+       "commonIpAttributes": {
+           "flags": {
+               "disableHostTranslation": "enable"
+           },
+           "transparencyFlags": {
+              "fromHeader": "enable",
+              "requestURI": "enable",
+              "toHeader": "enable"
+           }
+       }
+    }
+}

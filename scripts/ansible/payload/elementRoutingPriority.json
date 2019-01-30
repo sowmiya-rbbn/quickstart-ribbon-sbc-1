@@ -1,0 +1,17 @@
+{
+  "sonusElemRoutingPriority:elementRoutingPriority": {
+    "name": "TGPRIO",
+    "entry": [
+      {
+        "callType": "nationalType",
+        "entityPriority": 1,
+        "entityType": "trunkGroup"
+      },
+      {
+        "callType": "userName",
+        "entityPriority": 1,
+        "entityType": "trunkGroup"
+      }
+    ]
+  }
+}

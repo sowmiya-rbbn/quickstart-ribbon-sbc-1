@@ -1,0 +1,13 @@
+{
+    "routingLabelRoute": [
+      {
+        "sequence": "0",
+                "routeType":"trunkGroup",
+                "trunkGroup":"INGRESS_TRGP",
+                "proportion":"0",
+                "cost":"1000000",
+                "inService":"inService",
+                "testing":"normal"
+      }
+    ]
+}

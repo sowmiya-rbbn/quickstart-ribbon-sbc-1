@@ -1,0 +1,35 @@
+{
+                "SBC_IP": "35.170.28.189",
+                "SBC_CLI_Passwd_Old": "eni-0338cb316f501d2dd",
+                "SBC_CLI_Passwd": "Sonus@123",
+		"addressCtxt": [{
+				"name": "ADDR_CONTEXT"
+		}],
+                "codecEntry": [{
+				"name": "G711DSP",
+				"code": "g711",
+				"packetsize": "10"
+		}],
+                "ingressStaticRoute": [{
+                                "ingressdestinationIpAddress": "0.0.0.0",
+                                "ingressprefix": "0",
+                                "ingressnextHop": "10.45.130.1"
+                }],
+                "egressStaticRoute": [{
+                                "egressdestinationIpAddress": "0.0.0.0",
+                                "egressprefix": "0",
+                                "egressnextHop": "10.45.140.1"
+                }],
+                "ipPeeripAddress": "10.45.140.206",
+                "ipPort": "5060",
+                "ingressIpPrefix": [{
+                                "ipAddress": "0.0.0.0",
+                                "prefixLength": "0"
+                }],
+                "egressIpPrefix": [{
+                                "ipAddress": "10.45.140.0",
+                                "prefixLength": "24"
+                }]
+
+}
+

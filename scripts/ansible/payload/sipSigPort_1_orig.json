@@ -1,0 +1,13 @@
+{
+    "sonusSipSigPort:sipSigPort": [
+      {
+        "index": 7,
+        "ipInterfaceGroupName": "INGRESS_LIG",
+        "portNumber": 5060,
+        "mode": "inService",
+        "state": "enabled",
+        "transportProtocolsAllowed": "sip-udp sip-tcp sip-tls-tcp sip-sctp",
+        "ipVarV4": "IF2.IPV4"
+      }
+    ]
+}

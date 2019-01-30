@@ -1,0 +1,1 @@
+{"sonusIpSignalingProfile:ipSignalingProfile": {"name": "DEFAULT_SIP","commonIpAttributes": {"relayFlags": {"statusCode4xx6xx": "enable"},"transparencyFlags": {"authcodeHeaders": "enable"}},"egressIpAttributes": {"flags": {"sameCallIdForRequiredAuthorization": "enable"}}}}

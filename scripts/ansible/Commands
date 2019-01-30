@@ -1,0 +1,5 @@
+#Import Config files from script directory
+./configGen.py start ../input.json
+#run the ansible playbooks
+ansible-playbook BasicConfig.yml -vvv 
+

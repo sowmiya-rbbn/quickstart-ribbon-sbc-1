@@ -1,0 +1,7 @@
+{
+    "sonusIpInterface:ipInterfaceGroup": [
+      {
+        "name": "INGRESS_LIG"
+      }
+    ]
+}

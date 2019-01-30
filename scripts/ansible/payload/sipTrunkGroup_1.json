@@ -1,0 +1,38 @@
+{
+    "sonusSipTrunkGroup:sipTrunkGroup": {
+        "name": "INGRESS_TRGP", 
+        "policy": {
+            "media": {
+                "packetServiceProfile": "PSP3"
+            }, 
+            "signaling": {
+                "ipSignalingProfile": "DEFAULT_SIP"
+            }, 
+            "callRouting": {
+                "elementRoutingPriority": "TGPRIO"
+            }
+        }, 
+        "media": {
+            "mediaIpInterfaceGroupName": "INGRESS_LIG"
+        }, 
+        "ingressIpPrefix": [
+            {
+                "ipAddress": "0.0.0.0", 
+                "prefixLength": "0"
+            }
+        ], 
+        "state": "enabled", 
+        "mode": "inService", 
+        "services": {
+            "natTraversal": {
+                "mediaNat": "enabled", 
+                "signalingNat": "enabled"
+            }
+        }, 
+        "signaling": {
+            "registration": {
+                "requireRegistration": "required"
+            }
+        }
+    }
+}

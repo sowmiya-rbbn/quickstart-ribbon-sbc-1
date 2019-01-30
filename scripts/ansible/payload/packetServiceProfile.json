@@ -1,0 +1,10 @@
+{
+    "sonusPacketServiceProfile:packetServiceProfile": [
+      {
+        "name": "PSP3",
+        "codec": {
+          "codecEntry1": "G711DSP"
+        }
+          }
+    ]
+}

@@ -18,5 +18,9 @@
     {
         "ParameterKey":"SSHAccessCIDR",
         "ParameterValue":"127.0.0.1/32"
+    },
+    {
+        "ParameterKey":"SBCCLIPassword",
+        "ParameterValue":"$[taskcat_genpass_16]"
     }
 ]

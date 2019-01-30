@@ -1,0 +1,30 @@
+{
+    "sonusSipTrunkGroup:sipTrunkGroup": {
+        "name": "EGRESS_TRGP", 
+        "media": {
+            "mediaIpInterfaceGroupName": "EGRESS_LIG"
+        }, 
+        "ingressIpPrefix": [
+            {
+                "ipAddress": "10.45.140.0", 
+                "prefixLength": "24"
+            }
+        ], 
+        "state": "enabled", 
+        "services": {
+            "transparencyProfile": "AS_TP"
+        }, 
+        "mode": "inService", 
+        "policy": {
+            "media": {
+                "packetServiceProfile": "PSP3"
+            }, 
+            "signaling": {
+                "ipSignalingProfile": "DEFAULT_SIP"
+            }, 
+            "callRouting": {
+                "elementRoutingPriority": "TGPRIO"
+            }
+        }
+    }
+}
