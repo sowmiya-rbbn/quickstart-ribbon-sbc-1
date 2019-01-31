@@ -326,7 +326,7 @@ Resources:
     Type: AWS::CloudFormation::Stack
     Properties:
       TemplateURL:
-        Fn::Sub: "https://${QSS3BucketName}.s3.amazonaws.com/${QSS3KeyPrefix}templates/ribbon-custom-vpc.yaml"
+        Fn::Sub: "https://${QSS3BucketName}.s3.amazonaws.com/${QSS3KeyPrefix}templates/ribbon-custom-vpc.template.yaml"
       Parameters:
         AvailabilityZone: !Ref 'SBCAvailabilityZone'
         PublicSubnet1CIDR: !Ref 'HFEPublicCIDR1'
