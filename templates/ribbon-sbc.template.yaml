@@ -192,24 +192,21 @@ Conditions:
 Rules:
   NameValidation:
     Assertions:
-      - Assert:
-        Fn::Not:
+      - Assert: !Not
           - Fn::Equals:
-          - !Ref SBCActiveInstanceName
+            - !Ref SBCActiveInstanceName
           - !Ref SBCPassiveInstanceName
         AssertionDescription: SBCActiveInstanceName and SBCPassiveInstanceName must
           be unique
-      - Assert:
-        Fn::Not:
+      - Assert: !Not
           - Fn::Equals:
-          - !Ref SBCActiveInstanceName
+            - !Ref SBCActiveInstanceName
           - !Ref SBCSystemName
         AssertionDescription: SBCActiveInstanceName and SBCSystemName cannot be the
           same.
-      - Assert:
-        Fn::Not:
+      - Assert: !Not
           - Fn::Equals:
-          - !Ref SBCPassiveInstanceName
+            - !Ref SBCPassiveInstanceName
           - !Ref SBCSystemName
         AssertionDescription: SBCPassiveInstanceName and SBCSystemName cannot be the
           same.
@@ -604,7 +601,7 @@ Resources:
               - VolumeTypeIO1
               - !Ref SBCVolumeIOPS
               - !Ref AWS::NoValue
-          DeleteOnTermination: true
+            DeleteOnTermination: true
       InstanceType: !Ref SBCInstanceType
       Tenancy: !Ref Tenancy
       PlacementGroupName: !Ref PlacementId
@@ -669,7 +666,7 @@ Resources:
               - VolumeTypeIO1
               - !Ref SBCVolumeIOPS
               - !Ref AWS::NoValue
-          DeleteOnTermination: true
+            DeleteOnTermination: true
       IamInstanceProfile: !Ref SBCInstanceProfile
       InstanceType: !Ref SBCInstanceType
       Tenancy: !Ref Tenancy
@@ -791,7 +788,7 @@ Resources:
         DownloadAnsiblePlaybooks:
           commands:
             010_download_files:
-              command: '!Sub aws s3 cp s3://${QSS3BucketName}/${QSS3KeyPrefix}/scripts/ansible
+              command: !Sub 'aws s3 cp s3://${QSS3BucketName}/${QSS3KeyPrefix}/scripts/ansible
                 /root/ansible'
         PopulateInputsFile:
           files:
