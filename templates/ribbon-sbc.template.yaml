@@ -849,8 +849,6 @@ Resources:
       InstanceType: t2.micro
       IamInstanceProfile: !Ref SetupRoleProfile
       KeyName: !Ref KeyPairName
-      SecurityGroups:
-        - !Ref SBCManagementSG
       NetworkInterfaces:
         - NetworkInterfaceId: !Ref AnsibleConfigServerInterface
           DeviceIndex: '0'
@@ -872,6 +870,8 @@ Resources:
     Properties:
       SubnetId: !Ref SBCManagementSubnet
       SourceDestCheck: true
+      GroupSet:
+        !Ref SBCManagementSG
   SetupRole:
     Type: AWS::IAM::Role
     Properties:
