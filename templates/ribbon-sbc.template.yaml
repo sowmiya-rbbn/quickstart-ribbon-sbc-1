@@ -899,6 +899,72 @@ Resources:
       Path: /
       Roles:
         - !Ref SetupRole
+  AsteriskInstance:
+    Type: 'AWS::EC2::Instance'
+    Properties:
+      ImageId: !FindInMap
+        - AWSAMIRegionMap
+        - !Ref 'AWS::Region'
+        - RIBBONASTERISKAMI
+      BlockDeviceMappings:
+        - DeviceName: /dev/xvda
+          Ebs:
+            VolumeType: gp2
+            VolumeSize: 20
+            DeleteOnTermination: false
+#      IamInstanceProfile: !Ref ASTInstanceProfile
+      InstanceType: !Ref AsteriskInstanceType
+      EbsOptimized: true
+      KeyName: !Ref KeyPairName
+      NetworkInterfaces:
+        - NetworkInterfaceId: !Ref ASTManagementInterface
+          DeviceIndex: '0'
+        - NetworkInterfaceId: !Ref ASTVoipInterface
+          DeviceIndex: '1'
+      Tags:
+        - Key: Name
+          Value: Ribbon SBC Asterisk Instance
+      UserData:
+        'Fn::Base64':
+          'Fn::Sub':
+            - >
+              #!/bin/bash
+              AST_DIR="/etc/asterisk"
+              SIP_FILE="$AST_DIR/sip.conf"
+              EXT_FILE="$AST_DIR/extensions.conf"
+              sudo aws s3 cp s3://${QSS3BucketName}/${QSS3KeyPrefix}scripts/sip.conf
+              ${!SIP_FILE}
+              if [ $? -ne 0 ]; then
+                /bin/echo "Error:Could not copy SIP script from S3 bucket."  >> log.txt
+              else
+                /bin/echo "Copied sip script from S3 bucket."  >> log.txt
+              fi;
+              sudo aws s3 cp s3://${QSS3BucketName}/${QSS3KeyPrefix}/scripts/extensions.conf
+              ${!EXT_FILE}
+              if [ $? -ne 0 ]; then
+                /bin/echo "Error:Could not copy ext script from S3 bucket."  >> log.txt
+              else
+                /bin/echo "Copied ext script from S3 bucket."  >> log.txt
+              fi;
+              sudo sed -i '0, /localnet/s/localnet.*/localnet=${AST_VOIP_IP}\/255.255.255.0/' /etc/asterisk/sip.conf
+              sudo chmod 644 ${!SIP_FILE}
+              sudo chmod 644 ${!EXT_FILE}
+              sudo asterisk -rx "reload"
+            - AST_VOIP_IP: !GetAtt ASTVoipInterface.PrimaryPrivateIpAddress
+  ASTManagementInterface:
+    Type: 'AWS::EC2::NetworkInterface'
+    Properties:
+      SubnetId: !Ref SBCManagementSubnet
+      GroupSet:
+        - !Ref SBCManagementSG
+      SourceDestCheck: true
+  ASTVoipInterface:
+    Type: 'AWS::EC2::NetworkInterface'
+    Properties:
+      SubnetId: !Ref SBCInVoipSubnet
+      GroupSet:
+        - !Ref SBCInternalVoipSG
+
 Outputs:
   InstanceIdActive:
     Value: !Ref SBCActiveInstance
