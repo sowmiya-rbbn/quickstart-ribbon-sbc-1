@@ -613,6 +613,11 @@ Resources:
     Properties:
       SubnetId: !Ref 'PublicSubnet1'
       RouteTableId: !Ref 'PublicSubnetRouteTable'
+  PublicSubnet2RouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref 'PublicSubnet2'
+      RouteTableId: !Ref 'PublicSubnetRouteTable'
   NAT1EIP:
     DependsOn: VPCGatewayAttachment
     Type: AWS::EC2::EIP
