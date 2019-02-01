@@ -195,19 +195,19 @@ Rules:
       - Assert: !Not
           - Fn::Equals:
             - !Ref SBCActiveInstanceName
-          - !Ref SBCPassiveInstanceName
+            - !Ref SBCPassiveInstanceName
         AssertionDescription: SBCActiveInstanceName and SBCPassiveInstanceName must
           be unique
       - Assert: !Not
           - Fn::Equals:
             - !Ref SBCActiveInstanceName
-          - !Ref SBCSystemName
+            - !Ref SBCSystemName
         AssertionDescription: SBCActiveInstanceName and SBCSystemName cannot be the
           same.
       - Assert: !Not
           - Fn::Equals:
             - !Ref SBCPassiveInstanceName
-          - !Ref SBCSystemName
+            - !Ref SBCSystemName
         AssertionDescription: SBCPassiveInstanceName and SBCSystemName cannot be the
           same.
 Mappings:
