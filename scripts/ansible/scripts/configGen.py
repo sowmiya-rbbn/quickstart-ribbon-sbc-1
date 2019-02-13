@@ -37,7 +37,7 @@ def readConfig(config):
         configData = json.loads(json.dumps(configDataJson))
 	#print configData
 	#Validation needs to be done if required. Basic validation is done here.
-	sbcIp = configData.get('SBC_IP','')
+	sbcIp = configData.get('SBC_MGT_IP','')
 	clipass = configData.get('SBC_CLI_Passwd','')
 	if sbcIp != '' or clipass != '':
 		conf.append('SBC_HOST_IP: ' + sbcIp)

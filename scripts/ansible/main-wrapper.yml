@@ -1,0 +1,72 @@
+---
+
+
+- hosts: localhost
+  connection: local
+  gather_facts: no
+  vars_files:
+    - vars/gen.yml
+    
+  tasks:
+    - name: check if active server is up
+      shell: curl -kisu "{{ SBC_EMA_USER }}:{{ SBC_EMA_PASSWD_DEFAULT }}" "https://{{ SBC_HOST_IP }}/api/"
+      register: output
+      until: output.stdout.find("200 OK") != -1
+      retries: 10
+      delay: 60
+
+    #Step 0:check syncstatus
+    - name: get ServerSyncStatus
+      uri:
+        url: "https://{{ SBC_HOST_IP }}/api/operational/system/syncStatus"
+        method: GET
+        headers:
+          #Content-Type: "application/vnd.yang.data+json"
+          Accept: "application/vnd.yang.collection+json"
+        user: "{{ SBC_EMA_USER }}"
+        password: "{{ SBC_EMA_PASSWD_DEFAULT }}"
+        validate_certs: no
+        force_basic_auth: no
+        follow_redirects: all
+        return_content: yes
+        body_format: json
+        status_code: 200
+        timeout: 20  
+      register: output
+      until: "'syncInProgress' not in output.content and 'unprotected' not in output.content"
+      retries: 10
+      delay: 30
+    
+    - name: get metadata
+      uri:
+        url: "https://{{ SBC_HOST_IP }}/api/operational/system/metaVariable"
+        method: GET
+        headers:
+          #Content-Type: "application/vnd.yang.data+json"
+          Accept: "application/vnd.yang.collection+json"
+        user: "{{ SBC_EMA_USER }}"
+        password: "{{ SBC_EMA_PASSWD_DEFAULT }}"
+        validate_certs: no
+        force_basic_auth: no
+        follow_redirects: all
+        return_content: yes
+        body_format: json
+        status_code: 200
+        timeout: 20
+      register: metaData
+    - command: sed -i '0,/"prefixLength".*/! {0,/"prefixLength".*/ s/"prefixLength".*/"prefixLength":"{{item.value}}"/}' input.json
+      when: item.name == 'IF3.PrefixV4'
+      with_items: "{{ metaData.json.collection['sonusOrcaSystem:metaVariable']}}"
+      register: prefix
+    - command: sed -i 's/"egressnextHop".*/"egressnextHop":"{{item.value}}"/g' input.json
+      when: item.name == 'IF3.GWV4'
+      with_items: "{{ metaData.json.collection['sonusOrcaSystem:metaVariable']}}"
+      register: ipaddr
+    - command: sed -i 's/"ingressnextHop".*/"ingressnextHop":"{{item.value}}"/g' input.json
+      when: item.name == 'IF2.GWV4'
+      with_items: "{{ metaData.json.collection['sonusOrcaSystem:metaVariable']}}"
+      register: ipaddr1
+    - shell: ./configGen.py start ../input.json
+      args:
+        chdir: scripts/
+    - import_tasks: tasklist.yml

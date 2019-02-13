@@ -1,13 +1,5 @@
----
-
-
-- hosts: localhost
-  connection: local
-  gather_facts: no
-  vars_files:
-    - vars/gen.yml
-    
-  tasks:
+---   
+ 
     #Step 0:Change Password
     - import_tasks: tasks/changePassword.yml
     #Step 1:configure codecEntry

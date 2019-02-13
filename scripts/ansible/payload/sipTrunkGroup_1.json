@@ -17,7 +17,7 @@
         }, 
         "ingressIpPrefix": [
             {
-                "ipAddress": "0.0.0.0", 
+                "ipAddress": "<PLACEHOLDER>",
                 "prefixLength": "0"
             }
         ], 
