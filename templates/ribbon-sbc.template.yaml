@@ -570,14 +570,12 @@ Resources:
   SBCInstanceProfile:
     Type: AWS::IAM::InstanceProfile
     Properties:
-      InstanceProfileName: !Sub SBCInstanceProfile-${AWS::Region}
       Path: /
       Roles:
         - !Ref SBCInstanceRole
   HFEInstanceProfile:
     Type: AWS::IAM::InstanceProfile
     Properties:
-      InstanceProfileName: !Sub HFEInstanceProfile-${AWS::Region}
       Path: /
       Roles:
         - !Ref HFEInstanceRole

@@ -192,7 +192,6 @@ Parameters:
     Default: '127.0.0.1/32'
     AllowedPattern: '^((\d|[1-9]\d|1\d{2}|2[0-4]\d|25[0-5])\.){3}(\d|[1-9]\d|1\d{2}|2[0-4]\d|25[0-5])(\/(\d|[1-2]\d|3[0-2]))$'
     ConstraintDescription: Must be a valid IP CIDR range of the form x.x.x.x/x
-  # TODO: Removed in leiu of VPC Template. come back to this.
   SBCAvailabilityZone:
     Description: Enter Availability Zone for SBC, New subnets for SBC will be created
       here.
