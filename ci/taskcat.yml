@@ -22,4 +22,4 @@ tests:
     parameter_input: quickstart-ribbon-sbc-params.json
     template_file: ribbon-sbc-master.template.yaml
     regions:
-      - us-east-2
+      - us-east-1

@@ -9,7 +9,7 @@
     
   tasks:
     - name: check if active server is up
-      shell: curl -kisu "{{ SBC_EMA_USER }}:{{ SBC_EMA_PASSWD_DEFAULT }}" "https://{{ SBC_HOST_IP }}/api/"
+      shell: curl -kisu "{{ SBC_EMA_USER }}:{{ SBC_EMA_PASSWD }}" "https://{{ SBC_HOST_IP }}/api/"
       register: output
       until: output.stdout.find("200 OK") != -1
       retries: 10
@@ -69,4 +69,4 @@
     - shell: ./configGen.py start ../input.json
       args:
         chdir: scripts/
-    - import_tasks: tasklist.yml
+    - import_tasks: tasklist.yaml
