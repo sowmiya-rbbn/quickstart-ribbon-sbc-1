@@ -178,6 +178,12 @@ Parameters:
     Default: '65'
     MinValue: '65'
     MaxValue: '1000'
+  CreateEC2InterfaceGateway:
+    Type: String
+    AllowedValues:
+      - "true"
+      - "false"
+    Default: "true"
   QSS3BucketName:
     Type: String
     Default: aws-quickstart
@@ -189,6 +195,10 @@ Conditions:
     !Equals
     - !Ref SBCVolumeType
     - io1
+  CreateInternalEC2Endpoint:
+    !Equals
+    - !Ref CreateEC2InterfaceGateway
+    - true
 Rules:
   NameValidation:
     Assertions:
@@ -278,6 +288,7 @@ Mappings:
       RIBBONSBCAMI: ami-08fab2a9d7088ba15
 Resources:
   SBCEndPoint:
+    Condition: CreateInternalEC2Endpoint
     Type: AWS::EC2::VPCEndpoint
     Properties:
       VpcEndpointType: Interface
@@ -490,16 +501,21 @@ Resources:
       VpcId: !Ref VPCID
       SecurityGroupIngress:
         - IpProtocol: tcp
-          FromPort: 80
-          ToPort: 80
-          SourceSecurityGroupId: !Ref BastionSecurityGroupID
-        - IpProtocol: tcp
           FromPort: 443
           ToPort: 443
           SourceSecurityGroupId: !Ref BastionSecurityGroupID
       Tags:
         - Key: Name
           Value: SBC API Access Security Group
+  SBCAPISGIngres443:
+    Type: AWS::EC2::SecurityGroupIngress
+    DependsOn: SBCAPIAccessSG
+    Properties:
+      IpProtocol: tcp
+      GroupId: !Ref SBCAPIAccessSG
+      FromPort: 443
+      ToPort: 443
+      SourceSecurityGroupId: !Ref SBCAPIAccessSG
   HFEExVoipEIP:
     Type: AWS::EC2::EIP
     Properties:
@@ -624,7 +640,7 @@ Resources:
               { "CERole"               : "ACTIVE",
                 "ReverseNatPkt0"       : "True",
                 "ReverseNatPkt1"       : "False",
-                "IAM_ROLE"             : ${SBCInstanceRole},
+                "IAM_ROLE"             : "${SBCInstanceRole}",
                 "ALT_Mgt0_00"          : "LOGICAL_MGMT_IP",
                 "ALT_Pkt0_00"          : "VIP1",
                 "ALT_Pkt1_00"          : "VIP2",
@@ -690,7 +706,7 @@ Resources:
               { "CERole"               : "ACTIVE",
                 "ReverseNatPkt0"       : "True",
                 "ReverseNatPkt1"       : "False",
-                "IAM_ROLE"             : ${SBCInstanceRole},
+                "IAM_ROLE"             : "${SBCInstanceRole}",
                 "ALT_Mgt0_00"          : "LOGICAL_MGMT_IP",
                 "ALT_Pkt0_00"          : "VIP1",
                 "ALT_Pkt1_00"          : "VIP2",
@@ -777,17 +793,27 @@ Resources:
     Metadata:
       AWS::CloudFormation::Init:
         configSets:
-          provision:
+          default:
+            - InstallAnsible
             - DownloadAnsiblePlaybooks
             - PopulateInputsFile
             - GenerateAnsibleVars
-          contact_ribbon_sbc_pi:
             - MakeAPIRequests
+        InstallAnsible:
+          commands:
+            010_install_ansible:
+              command: "yum --enablerepo=epel install ansible -y"
         DownloadAnsiblePlaybooks:
           commands:
             010_download_files:
-              command: !Sub 'aws s3 cp s3://${QSS3BucketName}/${QSS3KeyPrefix}/scripts/ansible
+              command: !Sub 'aws s3 cp --recursive s3://${QSS3BucketName}/${QSS3KeyPrefix}scripts/ansible
                 /root/ansible'
+            020_create_logfile:
+              command: 'touch /root/ansible/ConfigGen.log'
+            030_create_varsdir:
+              command: 'mkdir -p /root/ansible/vars'
+            031_create_varsfile:
+              command: 'touch /root/ansible/vars/gen.yml'
         PopulateInputsFile:
           files:
             /root/inputs.json:
@@ -795,8 +821,8 @@ Resources:
                 Fn::Sub:
                   - |
                     {
-                      "SBC_IP": ${SBCManagementIP},
-                      "SBC_CLI_Password_Old": "${SBCManagementENI}"
+                      "SBC_MGT_IP": "${SBCManagementIP}",
+                      "SBC_CLI_Password_Old": "${SBCManagementENI}",
                       "SBC_CLI_Passwd": "${SBCCLIPassword}",
                       "addressCtxt": [{
                         "name": "ADDR_CONTEXT"
@@ -837,7 +863,7 @@ Resources:
         MakeAPIRequests:
           commands:
             010_invoke_api:
-              command: ansible-playbook /root/scripts/ansible/main-wrapperg.yml -vvv
+              command: ansible-playbook /root/ansible/main-wrapper.yml -vvv
     Properties:
       ImageId:
         !FindInMap
@@ -854,15 +880,8 @@ Resources:
         !Base64
         Fn::Sub: |
           #!/bin/bash -x
-          yum install -y git
-          git clone https://github.com/aws-quickstart/quickstart-linux-utilities.git
-          export P=/quickstart-linux-utilities/quickstart-cfn-tools.source
-          source $P
-          qs_bootstrap_pip || qs_err "pip bootstrap failed "
-          qs_aws-cfn-bootstrap || qs_err "cfn bootstrap failed"
-          qs_enable_epel || qs_err "Adding the EPEL Repository failed"
-          pip install awscli  &> /var/log/userdata.awscli_install.log || qs_err " awscli install failed "
-          cfn-signal -e $(qs_status) --stack ${AWS::StackName} --resource AnsibleConfigServer --region ${AWS::Region}
+          /opt/aws/bin/cfn-init --stack ${AWS::StackName} --resource AnsibleConfigServer --region ${AWS::Region}
+          /opt/aws/bin/cfn-signal -e $? --stack ${AWS::StackName} --resource AnsibleConfigServer --region ${AWS::Region}
   AnsibleConfigServerInterface:
     Type: AWS::EC2::NetworkInterface
     Properties:
@@ -870,6 +889,7 @@ Resources:
       SourceDestCheck: true
       GroupSet:
         - !Ref SBCManagementSG
+        - !Ref SBCAPIAccessSG
   SetupRole:
     Type: AWS::IAM::Role
     Properties:
@@ -888,8 +908,11 @@ Resources:
             Version: '2012-10-17'
             Statement:
               - Action:
-                  - s3:GetObject
-                Resource: !Sub arn:aws:s3:::${QSS3BucketName}/${QSS3KeyPrefix}*
+                  - s3:List*
+                  - s3:Get*
+                Resource:
+                - !Sub arn:aws:s3:::${QSS3BucketName}/*
+                - !Sub arn:aws:s3:::${QSS3BucketName}
                 Effect: Allow
   SetupRoleProfile:
     Type: AWS::IAM::InstanceProfile
