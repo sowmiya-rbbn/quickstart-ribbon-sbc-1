@@ -2,7 +2,7 @@
     "sonusIpInterface:staticRoute": [
         {
             "ipInterfaceGroupName": "INGRESS_LIG", 
-            "nextHop": "<PLACEHOLDER>",
+            "destinationIpAddress": "<PLACEHOLDER>", 
             "ipInterfaceName": "LIF_IN", 
             "nextHop": "0.0.0.0", 
             "prefix": 32, 

@@ -8,17 +8,74 @@
     - vars/gen.yml
     
   tasks:
-    - name: check if active server is up
-      shell: curl -kisu "{{ SBC_EMA_USER }}:{{ SBC_EMA_PASSWD }}" "https://{{ SBC_HOST_IP }}/api/"
+    - name: Waits for port 22 of any IP to close active connections, don't start checking for 5 seconds
+      wait_for:
+        host: "{{ SBC_HOST_IP }}"
+        port: 22
+        delay: 10
+        active_connection_states: ESTABLISHED
+        timeout: 600
+      register: res
+      ignore_errors: true
+    - name: Waits for port 22 of any IP to close active connections, don't start checking for 10 seconds
+      wait_for:
+        host: "{{ SBC_HOST_IP_STANDBY }}"
+        port: 22
+        delay: 10
+        active_connection_states: ESTABLISHED
+        timeout: 60
+      register: res1
+      ignore_errors: true
+    - fail:
+        msg: "Active and standby did not come up after instantiation"
+      when: res.state is not defined and res1.state is not defined
+    - name: update input.json
+      lineinfile:
+        path: input.json
+        regexp: "\"CURRENT_ACTIVE\": .*"
+        line: "\"CURRENT_ACTIVE\": \"{{SBC_HOST_IP}}\","
+      become: true
+      become_user: root
+      when:  res.state is defined and res.state == "started"
+    - name: update input.json
+      lineinfile:
+        path: input.json
+        regexp: "\"CURRENT_ACTIVE\": .*"
+        line: "\"CURRENT_ACTIVE\": \"{{SBC_HOST_IP_STANDBY}}\","
+      become: true
+      become_user: root
+      when:  res1.state is defined and res1.state == "started"
+    - shell: ./configGen.py start ../input.json
+      args:
+        chdir: scripts/
+    - name: load vars
+      include_vars:
+        file: vars/gen.yml
+    - name: check if active server is up and sync complete
+      shell: ./confdcommand -i {{ ADMIN_KEY_FILE }} {{ CURRENT_ACTIVE }} "show status system syncStatus"
       register: output
-      until: output.stdout.find("200 OK") != -1
+      until: "'syncInProgress' not in output.stdout and 'unprotected' not in output.stdout"
       retries: 10
-      delay: 60
-
-    #Step 0:check syncstatus
+      delay: 30
+    - name: configure SBC password
+      shell: ./confdcommand -i {{ ADMIN_KEY_FILE }} {{ CURRENT_ACTIVE }} "config" "set oam localAuth user admin passwordLoginSupport enabled group Administrator" "commit" "quit" | grep 'Password' | awk '{print$5}'
+      register: output
+    - debug:
+        msg: "{{output.stdout}}"
+    - name: update input.json
+      lineinfile:
+        path: input.json
+        regexp: "\"SBC_CLI_Passwd_Old\": .*"
+        line: "\"SBC_CLI_Passwd_Old\": \"{{output.stdout}}\","
+    - shell: ./configGen.py start ../input.json
+      args:
+        chdir: scripts/
+    - name: load vars
+      include_vars:
+        file: vars/gen.yml
     - name: get ServerSyncStatus
       uri:
-        url: "https://{{ SBC_HOST_IP }}/api/operational/system/syncStatus"
+        url: "https://{{ CURRENT_ACTIVE }}/api/operational/system/syncStatus"
         method: GET
         headers:
           #Content-Type: "application/vnd.yang.data+json"
@@ -31,15 +88,14 @@
         return_content: yes
         body_format: json
         status_code: 200
-        timeout: 20  
+        timeout: 20
       register: output
       until: "'syncInProgress' not in output.content and 'unprotected' not in output.content"
-      retries: 10
+      retries: 1
       delay: 30
-    
     - name: get metadata
       uri:
-        url: "https://{{ SBC_HOST_IP }}/api/operational/system/metaVariable"
+        url: "https://{{ CURRENT_ACTIVE }}/api/operational/system/metaVariable"
         method: GET
         headers:
           #Content-Type: "application/vnd.yang.data+json"

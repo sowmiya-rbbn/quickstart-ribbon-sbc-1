@@ -4,7 +4,7 @@
             "ipInterfaceGroupName": "INGRESS_LIG", 
             "destinationIpAddress": "0.0.0.0", 
             "ipInterfaceName": "LIF_IN", 
-            "nextHop": "<PLACEHOLDER>",
+            "nextHop": "<PLACEHOLDER>", 
             "prefix": "0", 
             "preference": "100"
         }

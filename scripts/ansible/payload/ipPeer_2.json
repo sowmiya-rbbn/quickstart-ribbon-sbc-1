@@ -1,8 +1,8 @@
 {
     "sonusIpPeer:ipPeer": [
         {
-            "ipPort": "5060", 
-            "ipAddress": "<PLACEHOLDER>",
+            "ipPort": "5061", 
+            "ipAddress": "<PLACEHOLDER>", 
             "name": "EGRESS_PEER"
         }
     ]

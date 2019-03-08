@@ -1,0 +1,47 @@
+---
+
+SBC_HOST_IP: 52.38.205.82
+SBC_HOST_IP_STANDBY: 52.39.85.158
+SBC_EMA_USER: admin
+SBC_EMA_PASSWD: Sonus@123
+ADMIN_KEY_FILE: /home/ec2-user/keys/admin-key-pair-new-west-2.pem
+CURRENT_ACTIVE: 52.39.85.158
+SBC_ADDRCNTXT:
+  - Name: ADDR_CONTEXT
+SBC_EMA_PASSWD_DEFAULT: Nu5_GPsF
+SBC_CodecEntry:
+  - Name: G711DSP
+    codec: g711
+    packetsize: 20
+SBC_ingressStaticRoute:
+  - destinationIpAddress: 0.0.0.0
+  - destinationPrefix: 0
+  - nextHop: 172.28.169.1
+SBC_ingressStaticRoute:
+  - destinationIpAddress: 0.0.0.0
+  - destinationPrefix: 0
+  - nextHop: 172.28.169.1
+SBC_ingressStaticRoute:
+  - destinationIpAddress: 0.0.0.0
+  - destinationPrefix: 0
+  - nextHop: 172.28.169.1
+SBC_EgressStaticRoute:
+  - destinationIpAddress: 0.0.0.0
+  - destinationPrefix: 0
+  - nextHop: 172.28.170.1
+SBC_EgressStaticRoute:
+  - destinationIpAddress: 0.0.0.0
+  - destinationPrefix: 0
+  - nextHop: 172.28.170.1
+SBC_EgressStaticRoute:
+  - destinationIpAddress: 0.0.0.0
+  - destinationPrefix: 0
+  - nextHop: 172.28.170.1
+ipPeeripAddress: 172.28.170.213
+ipPort: 5061
+SBC_ingressIpPrefix:
+  - ipAddress:  0.0.0.0
+  - prefixLength:  0
+SBC_egressIpPrefix:
+  - ipAddress:  172.28.170.213
+  - prefixLength:  24

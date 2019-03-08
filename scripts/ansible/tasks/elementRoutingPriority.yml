@@ -7,7 +7,7 @@
 
 - name: configure elementRoutingPriority profile
   uri:
-    url: "https://{{ SBC_HOST_IP }}/api/config/profiles/callRouting/elementRoutingPriority"
+    url: "https://{{ CURRENT_ACTIVE }}/api/config/profiles/callRouting/elementRoutingPriority"
     method: PATCH
     user: "{{ SBC_EMA_USER }}"
     password: "{{ SBC_EMA_PASSWD }}"

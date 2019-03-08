@@ -39,10 +39,16 @@ def readConfig(config):
 	#Validation needs to be done if required. Basic validation is done here.
 	sbcIp = configData.get('SBC_MGT_IP','')
 	clipass = configData.get('SBC_CLI_Passwd','')
-	if sbcIp != '' or clipass != '':
+        adminKeyFile = configData.get('ADMIN_KEY_FILE','')
+        sbcIpStandby = configData.get('SBC_MGT_IP_STANDBY','')
+        currentActive = configData.get('CURRENT_ACTIVE','')
+	if sbcIp != '' or clipass != '' or adminKeyFile != '' or sbcIpStandby != '':
 		conf.append('SBC_HOST_IP: ' + sbcIp)
+                conf.append('SBC_HOST_IP_STANDBY: ' + sbcIpStandby)
 		conf.append('SBC_EMA_USER: admin')
 		conf.append('SBC_EMA_PASSWD: ' + clipass)
+                conf.append('ADMIN_KEY_FILE: ' + adminKeyFile)
+                conf.append('CURRENT_ACTIVE: ' + currentActive)
 		#Addr_ctxt
 		conf.append('SBC_ADDRCNTXT:')
 		addctx = configData.get('addressCtxt','')

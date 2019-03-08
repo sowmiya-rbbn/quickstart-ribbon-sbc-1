@@ -7,7 +7,7 @@
 
 - name: configure address context
   uri:
-    url: "https://{{ SBC_HOST_IP }}/api/config"
+    url: "https://{{ CURRENT_ACTIVE }}/api/config"
     method: POST
     user: "{{ SBC_EMA_USER }}"
     password: "{{ SBC_EMA_PASSWD }}"

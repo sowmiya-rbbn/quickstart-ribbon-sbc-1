@@ -7,7 +7,7 @@
 
 - name: configure transparency profile 
   uri:
-    url: "https://{{ SBC_HOST_IP }}/api/config/profiles/services"
+    url: "https://{{ CURRENT_ACTIVE }}/api/config/profiles/services"
     method: POST
     user: "{{ SBC_EMA_USER }}"
     password: "{{ SBC_EMA_PASSWD }}"

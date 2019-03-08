@@ -4,7 +4,7 @@
             "ipInterfaceGroupName": "EGRESS_LIG", 
             "destinationIpAddress": "0.0.0.0", 
             "ipInterfaceName": "LIF_OUT", 
-            "nextHop": "<PLACEHOLDER>",
+            "nextHop": "<PLACEHOLDER>", 
             "prefix": "0", 
             "preference": "101"
         }

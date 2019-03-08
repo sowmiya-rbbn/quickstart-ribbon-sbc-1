@@ -5,7 +5,7 @@
 
 - name: configure SIP Trunk Group Ingress  
   uri:
-    url: "https://{{ SBC_HOST_IP }}/api/config/addressContext/ADDR_CONTEXT/zone/ZONE7"
+    url: "https://{{ CURRENT_ACTIVE }}/api/config/addressContext/ADDR_CONTEXT/zone/ZONE7"
     method: POST
     user: "{{ SBC_EMA_USER }}"
     password: "{{ SBC_EMA_PASSWD }}"

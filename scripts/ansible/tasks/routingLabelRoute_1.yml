@@ -5,7 +5,7 @@
 
 - name: configure Routing Label Route 
   uri:
-    url: "https://{{ SBC_HOST_IP }}/api/config/global/callRouting/routingLabel/VRF_RL_EG"
+    url: "https://{{ CURRENT_ACTIVE }}/api/config/global/callRouting/routingLabel/VRF_RL_EG"
     method: POST
     user: "{{ SBC_EMA_USER }}"
     password: "{{ SBC_EMA_PASSWD }}"

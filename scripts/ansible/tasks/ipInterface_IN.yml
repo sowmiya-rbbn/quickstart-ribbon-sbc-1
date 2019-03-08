@@ -5,7 +5,7 @@
 
 - name: configure Ingress IpInterface 
   uri:
-    url: "https://{{ SBC_HOST_IP }}/api/config/addressContext/ADDR_CONTEXT/ipInterfaceGroup/INGRESS_LIG"
+    url: "https://{{ CURRENT_ACTIVE }}/api/config/addressContext/ADDR_CONTEXT/ipInterfaceGroup/INGRESS_LIG"
     method: POST
     user: "{{ SBC_EMA_USER }}"
     password: "{{ SBC_EMA_PASSWD }}"

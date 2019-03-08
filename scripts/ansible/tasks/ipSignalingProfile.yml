@@ -7,7 +7,7 @@
 
 - name: configure ipSignaling profile 
   uri:
-    url: "https://{{ SBC_HOST_IP }}/api/config/profiles/signaling/ipSignalingProfile/DEFAULT_SIP"
+    url: "https://{{ CURRENT_ACTIVE }}/api/config/profiles/signaling/ipSignalingProfile/DEFAULT_SIP"
     method: PUT
     user: "{{ SBC_EMA_USER }}"
     password: "{{ SBC_EMA_PASSWD }}"

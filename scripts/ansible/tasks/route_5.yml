@@ -5,7 +5,7 @@
 
 - name: configure Route 
   uri:
-    url: "https://{{ SBC_HOST_IP }}/api/config/global/callRouting"
+    url: "https://{{ CURRENT_ACTIVE }}/api/config/global/callRouting"
     method: POST
     user: "{{ SBC_EMA_USER }}"
     password: "{{ SBC_EMA_PASSWD }}"

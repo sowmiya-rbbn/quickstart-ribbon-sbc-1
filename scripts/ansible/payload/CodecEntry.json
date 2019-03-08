@@ -3,7 +3,7 @@
         {
             "codec": "g711", 
             "name": "G711DSP", 
-            "packetSizeG711": "10"
+            "packetSizeG711": "20"
         }
     ]
 }

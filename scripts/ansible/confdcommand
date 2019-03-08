@@ -1,0 +1,210 @@
+#!/usr/bin/expect --
+#strace 3
+#exp_internal 1
+
+# download Files from SSH Server
+# ==============================
+# Customizable things start here
+set password   "Sonus@123"
+set password1  "admin"
+# Timeout, in seconds, when first making the connection
+set inittimeout "15"
+
+    proc _elapsedTime { start end } {
+    # Procedure to measure the time elapsed.
+    # Arguments are two points in time measured in seconds.
+    # Use as follows:
+     
+    set total_seconds [expr $end - $start]
+    set _hours [expr int($total_seconds/3600)]
+    set _minutes [expr int(($total_seconds % 3600)/60)]
+    set _seconds [expr int(($total_seconds % 60))]
+    if {$_hours == 1} {set htxt hour} else {set htxt hours}
+    if {$_minutes == 1} {set mtxt minute} else {set mtxt minutes}
+    if {$_seconds == 1} {set stxt second} else {set stxt seconds}
+    if {$_hours == 0} {
+    if {$_minutes == 0} {
+    return "$_seconds $stxt"
+    } else {
+    return "$_minutes $mtxt $_seconds $stxt"
+    }
+    } else {
+    return "$_hours $htxt $_minutes $mtxt $_seconds $stxt"
+    }
+    }
+     
+# Timeout, in seconds, when actually uploading the file
+set conntimeout "600"
+
+# Location of the nonstandard ssh(1) program
+set sshprog "ssh"
+
+set portarg "22"
+set repeatcount 1
+set delay 1
+set timeit 0
+
+set needrepeat 1
+while { $needrepeat != 0 } {
+    # Customizable things end here
+    # ==============================
+    if { [lindex $argv 0] == "-p" } {
+        set portarg "[lindex $argv 1]"
+        set argv [lrange $argv 2 end]
+    }   elseif { [lindex $argv 0] == "-c" } {
+        set repeatcount "[lindex $argv 1]"
+        set argv [lrange $argv 2 end]
+    }   elseif { [lindex $argv 0] == "-d" } {
+        set delay "[lindex $argv 1]"
+        set argv [lrange $argv 2 end]
+    }   elseif { [lindex $argv 0] == "-t" } {
+        set timeit 1
+        set argv [lrange $argv 1 end]
+    }   elseif { [lindex $argv 0] == "-i" } {
+        set keyarg "-i"
+        set keyfile [lindex $argv 1]
+        set argv [lrange $argv 2 end]
+    }  else { 
+        set needrepeat 0
+    }
+}
+
+if {[llength $argv] < 2} {
+    puts "usage: $argv0 \[-i keyfile\] \[-p port\] \[-c repeatcount\] \[-d loopdelay\] \[-t\] hostname command"
+    exit 1
+}
+log_user 0
+# launch 
+for {set i 0} {$i < 10} {incr i} {
+set result [spawn $sshprog -v -o UserKnownHostsFile=/dev/null -o "StrictHostKeyChecking no"  $keyarg $keyfile  -p $portarg admin@[lindex $argv 0] ] 
+
+set timeout $inittimeout
+set isgood 0
+# nudge ssh along, answering "yes" and giving password
+set needrepeat 1
+set curpassword $password
+while { $needrepeat != 0 } {
+	set needrepeat 0
+	expect {
+                "Connection refused" {
+                        send_user "\nSBC not up yet. Trying in 60s\n"
+                        set needrepeat 0
+                }
+                "admin connected"
+	        {
+                        set isgood 1
+                }
+		"assword" {
+			send "$curpassword\r"
+                        set needrepeat 1
+                        set curpassword $password1
+		}
+                "to continue connecting" {
+			send "yes\r"
+			set needrepeat 1
+		}
+            
+		"re you sure you want" {
+			send "yes\r"
+			set needrepeat 1
+		}
+		timeout {
+			send_user "\nSBC not up yet. Trying in 60s\n"
+			set needrepeat 0
+		}
+
+	}
+}
+if { $isgood == 1 } {
+	break
+}
+sleep 60
+}
+if { $isgood != 1 } {
+        send_user "\nssh failed to establish connection!\n"
+        exit 1
+}
+
+set timeout $conntimeout
+set isgood 0
+set needrepeat 1
+while { $needrepeat != 0 } {
+    expect {
+        -re "Your last successful login was"
+        {
+        }
+        -re "Enter old password:"
+        {
+         send "$password1\r"
+        }
+        -re "nter new password:"
+        {
+         send "$password\r"
+        }
+        -re  "admin@"  {
+            set needrepeat 0
+        } 
+        timeout {
+            send_user "\ntimeout!\n"
+            exit 1
+        } eof {
+            exit 0
+        }
+    }
+}
+
+log_user 0
+send "set paginate false\r"
+expect "admin@" {}
+
+send "unhide debug\r"
+expect "Password" {}
+send "sonus1\r"
+expect "admin@" {}
+
+log_user 1
+
+for {set i 0} {$i < $repeatcount} {incr i} {
+    foreach command [lrange $argv 1 end] {
+        set timeout $conntimeout
+     set start [clock seconds]
+     set curtime [clock format [clock seconds] -format {%I:%M:%S %p}]
+     send_user "\n$curtime: Running command\n";
+
+        send "$command\r"
+        set needrepeat 1
+        while { $needrepeat != 0 } {
+            expect {
+                "admin@"  {
+                    set needrepeat 0
+                } 
+                timeout {
+                    send_user "\ntimeout!\n"
+                    exit 1
+                }
+                "Password:" {
+                    send "$command\r"
+                } eof {
+                    exit 0
+                }
+            }
+           
+ 
+            set end [clock seconds]
+            if { $timeit == 1 } {
+                set diff      [_elapsedTime $start $end]
+                set curtime [clock format [clock seconds] -format {%I:%M:%S %p}]
+                set flag ""
+                set total_seconds [expr $end - $start]
+                if { $total_seconds >= 2 } {
+                    set flag " response delayed" 
+                }
+
+                send_user "\n$curtime :elapsed time for $command: $diff $flag\n"
+            }
+         }
+    }
+    if { $i < [expr $repeatcount -1] } {
+        sleep $delay
+    }
+}
