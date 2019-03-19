@@ -29,45 +29,45 @@
     - fail:
         msg: "Active and standby did not come up after instantiation"
       when: res.state is not defined and res1.state is not defined
-    - name: update input.json
+    - name: update inputs.json
       lineinfile:
-        path: input.json
+        path: inputs.json
         regexp: "\"CURRENT_ACTIVE\": .*"
         line: "\"CURRENT_ACTIVE\": \"{{SBC_HOST_IP}}\","
       become: true
       become_user: root
       when:  res.state is defined and res.state == "started"
-    - name: update input.json
+    - name: update inputs.json
       lineinfile:
-        path: input.json
+        path: inputs.json
         regexp: "\"CURRENT_ACTIVE\": .*"
         line: "\"CURRENT_ACTIVE\": \"{{SBC_HOST_IP_STANDBY}}\","
       become: true
       become_user: root
       when:  res1.state is defined and res1.state == "started"
-    - shell: ./configGen.py start ../input.json
+    - shell: python ./configGen.py start ../inputs.json
       args:
         chdir: scripts/
     - name: load vars
       include_vars:
         file: vars/gen.yml
     - name: check if active server is up and sync complete
-      shell: ./confdcommand -i {{ ADMIN_KEY_FILE }} {{ CURRENT_ACTIVE }} "show status system syncStatus"
+      shell: expect ./confdcommand -i {{ ADMIN_KEY_FILE }} {{ CURRENT_ACTIVE }} "show status system syncStatus"
       register: output
       until: "'syncInProgress' not in output.stdout and 'unprotected' not in output.stdout"
       retries: 10
       delay: 30
     - name: configure SBC password
-      shell: ./confdcommand -i {{ ADMIN_KEY_FILE }} {{ CURRENT_ACTIVE }} "config" "set oam localAuth user admin passwordLoginSupport enabled group Administrator" "commit" "quit" | grep 'Password' | awk '{print$5}'
+      shell: expect ./confdcommand -i {{ ADMIN_KEY_FILE }} {{ CURRENT_ACTIVE }} "config" "set oam localAuth user admin passwordLoginSupport enabled group Administrator" "commit" "quit" | grep 'Password' | awk '{print$5}'
       register: output
     - debug:
         msg: "{{output.stdout}}"
-    - name: update input.json
+    - name: update inputs.json
       lineinfile:
-        path: input.json
+        path: inputs.json
         regexp: "\"SBC_CLI_Passwd_Old\": .*"
         line: "\"SBC_CLI_Passwd_Old\": \"{{output.stdout}}\","
-    - shell: ./configGen.py start ../input.json
+    - shell: python ./configGen.py start ../inputs.json
       args:
         chdir: scripts/
     - name: load vars
@@ -110,19 +110,19 @@
         status_code: 200
         timeout: 20
       register: metaData
-    - command: sed -i '0,/"prefixLength".*/! {0,/"prefixLength".*/ s/"prefixLength".*/"prefixLength":"{{item.value}}"/}' input.json
+    - command: sed -i '0,/"prefixLength".*/! {0,/"prefixLength".*/ s/"prefixLength".*/"prefixLength":"{{item.value}}"/}' inputs.json
       when: item.name == 'IF3.PrefixV4'
       with_items: "{{ metaData.json.collection['sonusOrcaSystem:metaVariable']}}"
       register: prefix
-    - command: sed -i 's/"egressnextHop".*/"egressnextHop":"{{item.value}}"/g' input.json
+    - command: sed -i 's/"egressnextHop".*/"egressnextHop":"{{item.value}}"/g' inputs.json
       when: item.name == 'IF3.GWV4'
       with_items: "{{ metaData.json.collection['sonusOrcaSystem:metaVariable']}}"
       register: ipaddr
-    - command: sed -i 's/"ingressnextHop".*/"ingressnextHop":"{{item.value}}"/g' input.json
+    - command: sed -i 's/"ingressnextHop".*/"ingressnextHop":"{{item.value}}"/g' inputs.json
       when: item.name == 'IF2.GWV4'
       with_items: "{{ metaData.json.collection['sonusOrcaSystem:metaVariable']}}"
       register: ipaddr1
-    - shell: ./configGen.py start ../input.json
+    - shell: python ./configGen.py start ../inputs.json
       args:
         chdir: scripts/
     - import_tasks: tasklist.yaml

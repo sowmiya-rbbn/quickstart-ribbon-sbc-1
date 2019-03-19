@@ -21,8 +21,8 @@ Metadata:
       - Label:
           default: Network Configuration
         Parameters:
-          - SBCCoreVoipCIDR
           - SBCAccessVoipCIDR
+          - SBCCoreVoipCIDR
       - Label:
           default: 'Optional: SBC configuration. For default configuration no need to
             change these values.'
@@ -299,21 +299,21 @@ Resources:
         - !Ref BastionSecurityGroupID
       ServiceName: !Sub com.amazonaws.${AWS::Region}.ec2
       VpcId: !Ref VPCID
-  SBCActiveExVoipIface:
+  SBCActiveAccessVoipIface:
     Type: AWS::EC2::NetworkInterface
     Properties:
-      SubnetId: !Ref SBCCoreVoipSubnet
+      SubnetId: !Ref SBCAccessVoipSubnet
       Description: !Sub ${SBCSystemName}-pkt1A_Ribbon
       GroupSet:
-        - !Ref SBCCoreVoipSG
+        - !Ref SBCAccessVoipSG
       SecondaryPrivateIpAddressCount: 1
       Tags:
         - Key: Name
           Value: !Sub ${SBCSystemName}-pkt1A_Ribbon
-  SBCActiveInVoipIface:
+  SBCActiveCoreVoipIface:
     Type: AWS::EC2::NetworkInterface
     Properties:
-      SubnetId: !Ref SBCAccessVoipSubnet
+      SubnetId: !Ref SBCCoreVoipSubnet
       Description: !Sub ${SBCSystemName}-pkt0A_Ribbon
       GroupSet:
         - !Ref SBCCoreVoipSG
@@ -346,20 +346,20 @@ Resources:
       Tags:
         - Key: Name
           Value: !Sub ${SBCSystemName}-ha0A_Ribbon
-  SBCPassiveExVoipIface:
-    Type: AWS::EC2::NetworkInterface
-    Properties:
-      SubnetId: !Ref SBCCoreVoipSubnet
-      Description: !Sub ${SBCSystemName}-pkt1B_Ribbon
-      GroupSet:
-        - !Ref SBCCoreVoipSG
-      Tags:
-        - Key: Name
-          Value: !Sub ${SBCSystemName}-pkt1B_Ribbon
-  SBCPassiveInVoipIface:
+  SBCPassiveAccessVoipIface:
     Type: AWS::EC2::NetworkInterface
     Properties:
       SubnetId: !Ref SBCAccessVoipSubnet
+      Description: !Sub ${SBCSystemName}-pkt1B_Ribbon
+      GroupSet:
+        - !Ref SBCAccessVoipSG
+      Tags:
+        - Key: Name
+          Value: !Sub ${SBCSystemName}-pkt1B_Ribbon
+  SBCPassiveCoreVoipIface:
+    Type: AWS::EC2::NetworkInterface
+    Properties:
+      SubnetId: !Ref SBCCoreVoipSubnet
       Description: !Sub ${SBCSystemName}-pkt0B_Ribbon
       GroupSet:
         - !Ref SBCCoreVoipSG
@@ -404,9 +404,9 @@ Resources:
   HFEPrivateInterface:
     Type: AWS::EC2::NetworkInterface
     Properties:
-      SubnetId: !Ref SBCCoreVoipSubnet
+      SubnetId: !Ref SBCAccessVoipSubnet
       GroupSet:
-        - !Ref SBCCoreVoipSG
+        - !Ref SBCAccessVoipSG
       SourceDestCheck: false
       Tags:
         - Key: Name
@@ -507,9 +507,24 @@ Resources:
       Tags:
         - Key: Name
           Value: SBC API Access Security Group
+  SBCManagementSGIngres22:
+    Type: AWS::EC2::SecurityGroupIngress
+    Properties:
+      IpProtocol: tcp
+      GroupId: !Ref SBCManagementSG
+      FromPort: 22
+      ToPort: 22
+      SourceSecurityGroupId: !Ref SBCManagementSG
+  SBCManagementSGIngres2024:
+    Type: AWS::EC2::SecurityGroupIngress
+    Properties:
+      IpProtocol: tcp
+      GroupId: !Ref SBCManagementSG
+      FromPort: 2024
+      ToPort: 2024
+      SourceSecurityGroupId: !Ref SBCManagementSG
   SBCAPISGIngres443:
     Type: AWS::EC2::SecurityGroupIngress
-    DependsOn: SBCAPIAccessSG
     Properties:
       IpProtocol: tcp
       GroupId: !Ref SBCAPIAccessSG
@@ -596,8 +611,34 @@ Resources:
       Roles:
         - !Ref HFEInstanceRole
   SBCActiveInstance:
-    DependsOn: HFEPublicInterface
+    Metadata:
+      AWS::CloudFormation::Init:
+        configSets:
+          default:
+            - GetPublicKey
+            - AddPublicKey
+        GetPublicKey:
+          files:
+            /root/.ssh/public.key:
+              content: !Sub |
+                #QuickStart Generated
+                ${GetRSA.PUB}
+              mode: '000400'
+              owner: root
+              group: root
+        AddPublicKey:
+          commands:
+            01_create_sshdir:
+              command: mkdir /home/admin/.ssh
+            02_change_perms:
+              command: chown admin:admin /home/admin/.ssh
+            03_append-publickey:
+              command: cat /root/.ssh/public.key >> /home/admin/.ssh/authorized_keys
     Type: AWS::EC2::Instance
+    CreationPolicy:
+      ResourceSignal:
+        Count: 1
+        Timeout: PT30M
     Properties:
       ImageId:
         !FindInMap
@@ -626,9 +667,9 @@ Resources:
           DeviceIndex: '0'
         - NetworkInterfaceId: !Ref SBCActiveHAIface
           DeviceIndex: '1'
-        - NetworkInterfaceId: !Ref SBCActiveInVoipIface
+        - NetworkInterfaceId: !Ref SBCActiveCoreVoipIface
           DeviceIndex: '2'
-        - NetworkInterfaceId: !Ref SBCActiveExVoipIface
+        - NetworkInterfaceId: !Ref SBCActiveAccessVoipIface
           DeviceIndex: '3'
       Tags:
         - Key: Name
@@ -637,34 +678,85 @@ Resources:
         Fn::Base64:
           Fn::Sub:
             - |
-              { "CERole"               : "ACTIVE",
-                "ReverseNatPkt0"       : "True",
-                "ReverseNatPkt1"       : "False",
-                "IAM_ROLE"             : "${SBCInstanceRole}",
-                "ALT_Mgt0_00"          : "LOGICAL_MGMT_IP",
-                "ALT_Pkt0_00"          : "VIP1",
-                "ALT_Pkt1_00"          : "VIP2",
-                "ClusterIp"            : "${SBCPassiveHAIface.PrimaryPrivateIpAddress}",
-                "HFE"                  : "${HFEPub_SecondaryPrivIP}",
-                "SbcPersonalityType"   : "${SBCPersonalityType}",
-                "SbcMgmtMode"          : "centralized",
-                "CEName"               : "${SBCActiveInstanceName}",
-                "PeerCEName"           : "${SBCPassiveInstanceName}",
-                "PeerCEHa0IPv4Address" : "${SBCPassiveHAIface.PrimaryPrivateIpAddress}",
-                "SystemName"           : "${SBCSystemName}",
-                "ActiveRoleMgtId"      : "${SBCActiveMgtIface}",
-                "NodeName"             : "${AWS::StackName}",
-                "AdminSshKey"          : "${AdminSshKey}",
-                "ThirdPartyCpuAlloc"   : "0",
-                "ThirdPartyMemAlloc"   : "0"
-              }
+              Content-Type: multipart/mixed; boundary="//"
+              MIME-Version: 1.0
+
+              --//
+              MIME-Version: 1.0
+              Content-Type: text/cloud-config; charset="us-ascii"
+              #cloud-config
+              write_files:
+                - path: /var/lib/cloud/instance/user-data-replacement.txt
+                  content: |
+                    { "CERole"               : "ACTIVE",
+                      "ReverseNatPkt0"       : "True",
+                      "ReverseNatPkt1"       : "False",
+                      "IAM_ROLE"             : "${SBCInstanceRole}",
+                      "ALT_Mgt0_00"          : "LOGICAL_MGMT_IP",
+                      "ALT_Pkt0_00"          : "VIP1",
+                      "ALT_Pkt1_00"          : "VIP2",
+                      "ClusterIp"            : "${SBCPassiveHAIface.PrimaryPrivateIpAddress}",
+                      "HFE"                  : "${HFEPub_SecondaryPrivIP}",
+                      "SbcPersonalityType"   : "${SBCPersonalityType}",
+                      "SbcMgmtMode"          : "centralized",
+                      "CEName"               : "${SBCActiveInstanceName}",
+                      "PeerCEName"           : "${SBCPassiveInstanceName}",
+                      "PeerCEHa0IPv4Address" : "${SBCPassiveHAIface.PrimaryPrivateIpAddress}",
+                      "SystemName"           : "${SBCSystemName}",
+                      "ActiveRoleMgtId"      : "${SBCActiveMgtIface}",
+                      "NodeName"             : "${AWS::StackName}",
+                      "ThirdPartyCpuAlloc"   : "0",
+                      "ThirdPartyMemAlloc"   : "0"
+                    }
+              --//
+              MIME-Version: 1.0
+              Content-Type: text/x-shellscript; charset="us-ascii"
+              #!/bin/bash -x
+              /opt/aws/bin/cfn-init --stack ${AWS::StackName} --resource SBCPassiveInstance --region ${AWS::Region}
+              INITEX=$?
+              cp /var/lib/cloud/instance/user-data-replacement.txt /var/lib/cloud/instance/user-data.txt
+              CPEX=$?
+              cloud-init single --name cc_sonusDataDump --frequency always
+              CLINITEX=$?
+              if [ "${!INITEX}${!CPEX}${!CLINITEX}" == "000" ]; then
+                EXC=0
+              else
+                EXC=1
+              fi
+              /opt/aws/bin/cfn-signal -e ${!EXC} --stack ${AWS::StackName} --resource SBCPassiveInstance --region ${AWS::Region}
             - HFEPub_SecondaryPrivIP:
                 !Select
                 - 0
                 - !GetAtt HFEPublicInterface.SecondaryPrivateIpAddresses
   SBCPassiveInstance:
+    Metadata:
+      AWS::CloudFormation::Init:
+        configSets:
+          default:
+            - GetPublicKey
+            - AddPublicKey
+        GetPublicKey:
+          files:
+            /root/.ssh/public.key:
+              content: !Sub |
+                #QuickStart Generated
+                ${GetRSA.PUB}
+              mode: '000400'
+              owner: root
+              group: root
+        AddPublicKey:
+          commands:
+            01_create_sshdir:
+              command: mkdir /home/admin/.ssh
+            02_change_perms:
+              command: chown admin:admin /home/admin/.ssh
+            03_append-publickey:
+              command: cat /root/.ssh/public.key >> /home/admin/.ssh/authorized_keys
     Type: AWS::EC2::Instance
-    DependsOn: HFEPublicInterface
+    CreationPolicy:
+      ResourceSignal:
+        Count: 1
+        Timeout: PT30M
     Properties:
       ImageId:
         !FindInMap
@@ -693,9 +785,9 @@ Resources:
           DeviceIndex: '0'
         - NetworkInterfaceId: !Ref SBCPassiveHAIface
           DeviceIndex: '1'
-        - NetworkInterfaceId: !Ref SBCPassiveInVoipIface
+        - NetworkInterfaceId: !Ref SBCPassiveCoreVoipIface
           DeviceIndex: '2'
-        - NetworkInterfaceId: !Ref SBCPassiveExVoipIface
+        - NetworkInterfaceId: !Ref SBCPassiveAccessVoipIface
           DeviceIndex: '3'
       Tags:
         - Key: Name
@@ -704,26 +796,52 @@ Resources:
         Fn::Base64:
           Fn::Sub:
             - |
-              { "CERole"               : "ACTIVE",
-                "ReverseNatPkt0"       : "True",
-                "ReverseNatPkt1"       : "False",
-                "IAM_ROLE"             : "${SBCInstanceRole}",
-                "ALT_Mgt0_00"          : "LOGICAL_MGMT_IP",
-                "ALT_Pkt0_00"          : "VIP1",
-                "ALT_Pkt1_00"          : "VIP2",
-                "ClusterIp"            : "${SBCPassiveHAIface.PrimaryPrivateIpAddress}",
-                "HFE"                  : "${HFEPub_SecondaryPrivIP}",
-                "SbcPersonalityType"   : "${SBCPersonalityType}",
-                "SbcMgmtMode"          : "centralized",
-                "CEName"               : "${SBCActiveInstanceName}",
-                "PeerCEName"           : "${SBCPassiveInstanceName}",
-                "PeerCEHa0IPv4Address" : "${SBCPassiveHAIface.PrimaryPrivateIpAddress}",
-                "SystemName"           : "${SBCSystemName}",
-                "ActiveRoleMgtId"      : "${SBCActiveMgtIface}",
-                "NodeName"             : "${AWS::StackName}"
-                "ThirdPartyCpuAlloc"   : "0",
-                "ThirdPartyMemAlloc"   : "0"
-              }
+              Content-Type: multipart/mixed; boundary="//"
+              MIME-Version: 1.0
+
+              --//
+              MIME-Version: 1.0
+              Content-Type: text/cloud-config; charset="us-ascii"
+              #cloud-config
+              write_files:
+                - path: /var/lib/cloud/instance/user-data-replacement.txt
+                  content: |
+                    { "CERole"               : "STANDBY",
+                      "ReverseNatPkt0"       : "True",
+                      "ReverseNatPkt1"       : "False",
+                      "IAM_ROLE"             : "${SBCInstanceRole}",
+                      "ALT_Mgt0_00"          : "LOGICAL_MGMT_IP",
+                      "ALT_Pkt0_00"          : "VIP1",
+                      "ALT_Pkt1_00"          : "VIP2",
+                      "ClusterIp"            : "${SBCPassiveHAIface.PrimaryPrivateIpAddress}",
+                      "HFE"                  : "${HFEPub_SecondaryPrivIP}",
+                      "SbcPersonalityType"   : "${SBCPersonalityType}",
+                      "SbcMgmtMode"          : "centralized",
+                      "CEName"               : "${SBCPassiveInstanceName}",
+                      "PeerCEName"           : "${SBCActiveInstanceName}",
+                      "PeerCEHa0IPv4Address" : "${SBCActiveHAIface.PrimaryPrivateIpAddress}",
+                      "SystemName"           : "${SBCSystemName}",
+                      "ActiveRoleMgtId"      : "${SBCActiveMgtIface}",
+                      "NodeName"             : "${AWS::StackName}"
+                      "ThirdPartyCpuAlloc"   : "0",
+                      "ThirdPartyMemAlloc"   : "0"
+                    }
+              --//
+              MIME-Version: 1.0
+              Content-Type: text/x-shellscript; charset="us-ascii"
+              #!/bin/bash -x
+              /opt/aws/bin/cfn-init --stack ${AWS::StackName} --resource SBCPassiveInstance --region ${AWS::Region}
+              INITEX=$?
+              cp /var/lib/cloud/instance/user-data-replacement.txt /var/lib/cloud/instance/user-data.txt
+              CPEX=$?
+              cloud-init single --name cc_sonusDataDump --frequency always
+              CLINITEX=$?
+              if [ "${!INITEX}${!CPEX}${!CLINITEX}" == "000" ]; then
+                EXC=0
+              else
+                EXC=1
+              fi
+              /opt/aws/bin/cfn-signal -e ${!EXC} --stack ${AWS::StackName} --resource SBCPassiveInstance --region ${AWS::Region}
             - HFEPub_SecondaryPrivIP:
                 !Select
                 - 0
@@ -787,49 +905,39 @@ Resources:
             - SBC_SECONDARY_IP:
                 !Select
                 - 0
-                - !GetAtt SBCActiveInVoipIface.SecondaryPrivateIpAddresses
+                - !GetAtt SBCActiveCoreVoipIface.SecondaryPrivateIpAddresses
               REMOTE_SSH_MACHINE_IP: ''
   AnsibleConfigServer:
     Type: AWS::EC2::Instance
+    CreationPolicy:
+      ResourceSignal:
+        Count: 1
+        Timeout: PT30M
     Metadata:
       AWS::CloudFormation::Init:
         configSets:
           default:
+            - SetPrivateKey
             - InstallAnsible
             - DownloadAnsiblePlaybooks
             - PopulateInputsFile
             - GenerateAnsibleVars
             - MakeAPIRequests
-            - GetPublicKey
-            - AddPublicKey
-            - SetPrivateKey
         SetPrivateKey:
           files:
-            /root/.ssh/id_rsa:
+            /root/.ssh/sbc_private.key:
               content: !Sub |
                 #QuickStart Generated
                 ${GetRSA.PEM}
               mode: '000400'
               owner: root
               group: root
-        GetPublicKey:
-          files:
-            /root/.ssh/public.key:
-              content: !Sub |
-                #QuickStart Generated
-                ${GetRSA.PUB}
-              mode: '000400'
-              owner: root
-              group: root
-        AddPublicKey:
-          commands:
-            append-publickey:
-              command: cat /root/.ssh/public.key >>/root/.ssh/authorized_keys
-              ignoreErrors: 'false'
         InstallAnsible:
           commands:
             010_install_ansible:
               command: "yum --enablerepo=epel install ansible -y"
+            020_install_expect:
+              command: "yum install expect -y"
         DownloadAnsiblePlaybooks:
           commands:
             010_download_files:
@@ -843,14 +951,17 @@ Resources:
               command: 'touch /root/ansible/vars/gen.yml'
         PopulateInputsFile:
           files:
-            /root/inputs.json:
+            /root/ansible/inputs.json:
               content:
                 Fn::Sub:
                   - |
                     {
                       "SBC_MGT_IP": "${SBCManagementIP}",
+                      "SBC_MGT_IP_STANDBY": "${SBCManagementIPSTANDBY}",
                       "SBC_CLI_Password_Old": "${SBCManagementENI}",
                       "SBC_CLI_Passwd": "${SBCCLIPassword}",
+                      "CURRENT_ACTIVE": "${SBCManagementIP}",
+                      "ADMIN_KEY_FILE":"/root/.ssh/sbc_private.key",
                       "addressCtxt": [{
                         "name": "ADDR_CONTEXT"
                       }],
@@ -869,7 +980,7 @@ Resources:
                         "egressprefix": "0",
                         "egressnextHop": "10.45.140.1"
                       }],
-                      "ipPeeripAddress": "10.45.140.206",
+                      "ipPeeripAddress": "${ASTVoipIP}",
                       "ipPort": "5060",
                       "ingressIpPrefix": [{
                         "ipAddress": "0.0.0.0",
@@ -877,16 +988,18 @@ Resources:
                       }],
                       "egressIpPrefix": [{
                         "ipAddress": "10.45.140.0",
-                        "prefixLength": "24"
+                        "prefixLength": "32"
                       }]
                     }
                   - SBCCLIPassword: !Ref SBCCLIPassword
                     SBCManagementIP: !GetAtt SBCActiveMgtIface.PrimaryPrivateIpAddress
+                    SBCManagementIPSTANDBY: !GetAtt SBCPassiveMgtIface.PrimaryPrivateIpAddress
                     SBCManagementENI: !Ref SBCActiveMgtIface
+                    ASTVoipIP: !GetAtt ASTVoipInterface.PrimaryPrivateIpAddress
         GenerateAnsibleVars:
           commands:
             010_run_python_to_generate_ansible_vars:
-              command: python /root/ansible/scripts/configGen.py start /root/inputs.json
+              command: python /root/ansible/scripts/configGen.py start /root/ansible/inputs.json
         MakeAPIRequests:
           commands:
             010_invoke_api:
@@ -960,6 +1073,7 @@ Resources:
             VolumeType: gp2
             VolumeSize: 20
             DeleteOnTermination: false
+      IamInstanceProfile: !Ref SetupRoleProfile
       InstanceType: !Ref AsteriskInstanceType
       EbsOptimized: true
       KeyName: !Ref KeyPairName
@@ -974,20 +1088,18 @@ Resources:
       UserData:
         'Fn::Base64':
           'Fn::Sub':
-            - >
+            - |
               #!/bin/bash
               AST_DIR="/etc/asterisk"
               SIP_FILE="$AST_DIR/sip.conf"
               EXT_FILE="$AST_DIR/extensions.conf"
-              sudo aws s3 cp s3://${QSS3BucketName}/${QSS3KeyPrefix}scripts/sip.conf
-              ${!SIP_FILE}
+              aws s3 cp s3://${QSS3BucketName}/${QSS3KeyPrefix}scripts/sip.conf ${!SIP_FILE}
               if [ $? -ne 0 ]; then
                 /bin/echo "Error:Could not copy SIP script from S3 bucket."  >> log.txt
               else
                 /bin/echo "Copied sip script from S3 bucket."  >> log.txt
               fi;
-              sudo aws s3 cp s3://${QSS3BucketName}/${QSS3KeyPrefix}/scripts/extensions.conf
-              ${!EXT_FILE}
+              aws s3 cp s3://${QSS3BucketName}/${QSS3KeyPrefix}/scripts/extensions.conf ${!EXT_FILE}
               if [ $? -ne 0 ]; then
                 /bin/echo "Error:Could not copy ext script from S3 bucket."  >> log.txt
               else
@@ -1008,7 +1120,7 @@ Resources:
   ASTVoipInterface:
     Type: 'AWS::EC2::NetworkInterface'
     Properties:
-      SubnetId: !Ref SBCAccessVoipSubnet
+      SubnetId: !Ref SBCCoreVoipSubnet
       GroupSet:
         - !Ref SBCCoreVoipSG
   LambdaZipsBucket:
@@ -1190,9 +1302,9 @@ Outputs:
   HA0InterfaceIDActive:
     Value: !Ref SBCActiveHAIface
   Pkt0InterfaceIDActive:
-    Value: !Ref SBCActiveInVoipIface
+    Value: !Ref SBCActiveCoreVoipIface
   Pkt1InterfaceIDActive:
-    Value: !Ref SBCActiveExVoipIface
+    Value: !Ref SBCActiveAccessVoipIface
   InstanceIdStandby:
     Value: !Ref SBCPassiveInstance
   Mgt0InterfaceIDStandby:
@@ -1200,7 +1312,8 @@ Outputs:
   HA0InterfaceIDStandby:
     Value: !Ref SBCPassiveHAIface
   Pkt0InterfaceIDStandby:
-    Value: !Ref SBCPassiveInVoipIface
+    Value: !Ref SBCPassiveCoreVoipIface
   Pkt1InterfaceIDStandby:
-    Value: !Ref SBCPassiveExVoipIface
+    Value: !Ref SBCPassiveAccessVoipIface
+#                 "AdminSshKey"          : "${AdminSshKey}",
 ...

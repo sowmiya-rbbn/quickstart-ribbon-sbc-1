@@ -24,7 +24,8 @@ Metadata:
           - HFEPublicCIDR2
           - ManagementSubnetCIDR
           - SBCHASubnetCIDR
-          - SBCExVoipCIDR
+          - SBCExternalVoipCIDR
+          - SBCInternalVoipCIDR
           - SBCAvailabilityZone
       - Label:
           default: 'Optional: SBC configuration. For default configuration no need
@@ -79,24 +80,6 @@ Parameters:
     Default: 10.74.0.0/16
     AllowedPattern: '^((\d|[1-9]\d|1\d{2}|2[0-4]\d|25[0-5])\.){3}(\d|[1-9]\d|1\d{2}|2[0-4]\d|25[0-5])(\/(\d|[1-2]\d|3[0-2]))$'
     ConstraintDescription: Must be a valid IP CIDR range of the form x.x.x.x/x.
-  SBCExVoipCIDR:
-    Description: Enter a CIDR for pirvate subnet for SBC, this new subnet will be
-      served by Mangler instance.
-    Type: String
-    MinLength: '1'
-    Default: 10.74.10.0/24
-    AllowedPattern: '^((\d|[1-9]\d|1\d{2}|2[0-4]\d|25[0-5])\.){3}(\d|[1-9]\d|1\d{2}|2[0-4]\d|25[0-5])(\/(\d|[1-2]\d|3[0-2]))$'
-    ConstraintDescription: Must be a valid IP CIDR range of the form x.x.x.x/x and
-      subnet of VPC.
-  SBCInVoipCIDR:
-    Description: Enter a CIDR for pirvate subnet for SBC, this new subnet will be
-      served by Mangler instance.
-    Type: String
-    MinLength: '1'
-    Default: 10.74.11.0/24
-    AllowedPattern: '^((\d|[1-9]\d|1\d{2}|2[0-4]\d|25[0-5])\.){3}(\d|[1-9]\d|1\d{2}|2[0-4]\d|25[0-5])(\/(\d|[1-2]\d|3[0-2]))$'
-    ConstraintDescription: Must be a valid IP CIDR range of the form x.x.x.x/x and
-      subnet of VPC.
   HFEPublicCIDR1:
     Description: Enter a CIDR for private subnet for SBC, this new subnet will be
       served by Mangler instance.
@@ -284,41 +267,45 @@ Parameters:
     Default: quickstart-ribbon-sbc/
 Conditions:
   # This condition is not used.
-  EipOnPkt0: !Equals
-    - 'true'
-    - 'true'
-  VolumeTypeIO1: !Equals
-    - !Ref 'SBCVolumeType'
-    - io1
-  CreateVPCEndPoint: !Equals
-    - !Ref 'CreateVPCEndPoint'
-    - 'yes'
-  EipForHFEManagementInterface: !Equals
-    - !Ref 'HFEManagementNeedsEIP'
-    - 'Yes'
-  noVPCEndPointForMgt: !Equals
-    - !Ref 'CreateVPCEndPoint'
-    - 'no'
+  # EipOnPkt0: !Equals
+  #  - 'true'
+  #  - 'true'
+  VolumeTypeIO1:
+    Fn::Equals:
+      - !Ref 'SBCVolumeType'
+      - io1
+  CreateVPCEndPoint:
+    Fn::Equals:
+      - !Ref 'CreateVPCEndPoint'
+      - 'yes'
+  EipForHFEManagementInterface:
+    Fn::Equals:
+      - !Ref 'HFEManagementNeedsEIP'
+      - 'Yes'
+  noVPCEndPointForMgt:
+    Fn::Equals:
+      - !Ref 'CreateVPCEndPoint'
+      - 'no'
 Rules:
   NameMismatch:
     Assertions:
       - Assert:
           Fn::Not:
-            - Fn::Equals:
-              - !Ref 'SBCActiveInstanceName'
-              - !Ref 'SBCPassiveInstanceName'
+          - Fn::Equals:
+            - !Ref 'SBCActiveInstanceName'
+            - !Ref 'SBCPassiveInstanceName'
         AssertionDescription: "SBCActiveInstanceName and SBCPassiveInstanceName must be unique"
       - Assert:
           Fn::Not:
-            - Fn::Equals:
-              - !Ref 'SBCActiveInstanceName'
-              - !Ref 'SBCSystemName'
+          - Fn::Equals:
+            - !Ref 'SBCActiveInstanceName'
+            - !Ref 'SBCSystemName'
         AssertionDescription: "SBCActiveInstanceName and SBCSystemName cannot be the same."
       - Assert:
           Fn::Not:
-            - Fn::Equals:
-              - !Ref 'SBCPassiveInstanceName'
-              - !Ref 'SBCSystemName'
+          - Fn::Equals:
+            - !Ref 'SBCPassiveInstanceName'
+            - !Ref 'SBCSystemName'
         AssertionDescription: "SBCPassiveInstanceName and SBCSystemName cannot be the same."
 Resources:
   VPCStack:
@@ -329,7 +316,7 @@ Resources:
       Parameters:
         AvailabilityZone: !Ref 'SBCAvailabilityZone'
         PublicSubnet1CIDR: !Ref 'HFEPublicCIDR1'
-        PublicSubnet2CIDR:  !Ref 'HFEPublicCIDR2'
+        PublicSubnet2CIDR: !Ref 'HFEPublicCIDR2'
         PrivateSubnet1CIDR: !Ref 'SBCHASubnetCIDR'
         PrivateSubnet2CIDR: !Ref 'SBCExternalVoipCIDR'
         PrivateSubnet3CIDR: !Ref 'SBCInternalVoipCIDR'
@@ -338,10 +325,9 @@ Resources:
         PrivateSubnetTag1: 'Name=Quickstart-Ribbon-SBC'
         VPCCIDR: !Ref 'VPCCIDR'
   BastionStack:
-    DependsOn: VPCStack
     Type: AWS::CloudFormation::Stack
     Properties:
-      TemplateURL: !Sub "https://${QSS3BucketName}.s3.amazonaws.com/${QSS3KeyPrefix}submodules/quickstart-linux-bastion/templates/linux-bastion.template"
+      TemplateURL: !Sub 'https://${QSS3BucketName}.s3.amazonaws.com/${QSS3KeyPrefix}submodules/quickstart-linux-bastion/templates/linux-bastion.template'
       Parameters:
         BastionAMIOS: !Ref BastionAMIOS
         BastionInstanceType: !Ref BastionInstanceType
@@ -350,7 +336,7 @@ Resources:
           - VPCStack
           - Outputs.PublicSubnet1ID
         QSS3BucketName: !Ref QSS3BucketName
-        QSS3KeyPrefix:  !Sub "${QSS3KeyPrefix}submodules/quickstart-linux-bastion/"
+        QSS3KeyPrefix: !Sub "${QSS3KeyPrefix}submodules/quickstart-linux-bastion/"
         VPCID: !GetAtt
           - VPCStack
           - Outputs.VPCID
@@ -359,7 +345,6 @@ Resources:
           - VPCStack
           - Outputs.PublicSubnet2ID
   SBCStack:
-    DependsOn: VPCStack
     Type: AWS::CloudFormation::Stack
     Properties:
       TemplateURL: !Sub "https://${QSS3BucketName}.s3.amazonaws.com/${QSS3KeyPrefix}templates/ribbon-sbc.template.yaml"
@@ -373,10 +358,10 @@ Resources:
         BastionSecurityGroupID: !GetAtt
           - BastionStack
           - Outputs.BastionSecurityGroupID
-        SBCExVoipSubnet: !GetAtt
+        SBCAccessVoipSubnet: !GetAtt
           - VPCStack
           - Outputs.PublicSubnet2ID
-        SBCInVoipSubnet: !GetAtt
+        SBCCoreVoipSubnet: !GetAtt
           - VPCStack
           - Outputs.PrivateSubnet3ID
         SBCManagementSubnet: !GetAtt
