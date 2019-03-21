@@ -615,6 +615,7 @@ Resources:
       AWS::CloudFormation::Init:
         configSets:
           default:
+            - CopyUserdata
             - GetPublicKey
             - AddPublicKey
         GetPublicKey:
@@ -634,6 +635,10 @@ Resources:
               command: chown admin:admin /home/admin/.ssh
             03_append-publickey:
               command: cat /root/.ssh/public.key >> /home/admin/.ssh/authorized_keys
+        CopyUserdata:
+          commands:
+            01_run_cloudinit_module:
+              command: /usr/bin/cloud-init single --name cc_sonusDataDump --frequency always
     Type: AWS::EC2::Instance
     CreationPolicy:
       ResourceSignal:
@@ -678,61 +683,40 @@ Resources:
         Fn::Base64:
           Fn::Sub:
             - |
-              Content-Type: multipart/mixed; boundary="//"
-              MIME-Version: 1.0
-
-              --//
-              MIME-Version: 1.0
-              Content-Type: text/cloud-config; charset="us-ascii"
-              #cloud-config
-              write_files:
-                - path: /var/lib/cloud/instance/user-data-replacement.txt
-                  content: |
-                    { "CERole"               : "ACTIVE",
-                      "ReverseNatPkt0"       : "True",
-                      "ReverseNatPkt1"       : "False",
-                      "IAM_ROLE"             : "${SBCInstanceRole}",
-                      "ALT_Mgt0_00"          : "LOGICAL_MGMT_IP",
-                      "ALT_Pkt0_00"          : "VIP1",
-                      "ALT_Pkt1_00"          : "VIP2",
-                      "ClusterIp"            : "${SBCPassiveHAIface.PrimaryPrivateIpAddress}",
-                      "HFE"                  : "${HFEPub_SecondaryPrivIP}",
-                      "SbcPersonalityType"   : "${SBCPersonalityType}",
-                      "SbcMgmtMode"          : "centralized",
-                      "CEName"               : "${SBCActiveInstanceName}",
-                      "PeerCEName"           : "${SBCPassiveInstanceName}",
-                      "PeerCEHa0IPv4Address" : "${SBCPassiveHAIface.PrimaryPrivateIpAddress}",
-                      "SystemName"           : "${SBCSystemName}",
-                      "ActiveRoleMgtId"      : "${SBCActiveMgtIface}",
-                      "NodeName"             : "${AWS::StackName}",
-                      "ThirdPartyCpuAlloc"   : "0",
-                      "ThirdPartyMemAlloc"   : "0"
-                    }
-              --//
-              MIME-Version: 1.0
-              Content-Type: text/x-shellscript; charset="us-ascii"
-              #!/bin/bash -x
-              /opt/aws/bin/cfn-init --stack ${AWS::StackName} --resource SBCPassiveInstance --region ${AWS::Region}
-              INITEX=$?
-              cp /var/lib/cloud/instance/user-data-replacement.txt /var/lib/cloud/instance/user-data.txt
-              CPEX=$?
-              cloud-init single --name cc_sonusDataDump --frequency always
-              CLINITEX=$?
-              if [ "${!INITEX}${!CPEX}${!CLINITEX}" == "000" ]; then
-                EXC=0
-              else
-                EXC=1
-              fi
-              /opt/aws/bin/cfn-signal -e ${!EXC} --stack ${AWS::StackName} --resource SBCPassiveInstance --region ${AWS::Region}
+              {
+                "CERole"               : "ACTIVE",
+                "ReverseNatPkt0"       : "True",
+                "ReverseNatPkt1"       : "False",
+                "IAM_ROLE"             : "${SBCInstanceRole}",
+                "ALT_Mgt0_00"          : "LOGICAL_MGMT_IP",
+                "ALT_Pkt0_00"          : "VIP1",
+                "ALT_Pkt1_00"          : "VIP2",
+                "ClusterIp"            : "${SBCPassiveHAIface.PrimaryPrivateIpAddress}",
+                "HFE"                  : "${HFEPub_SecondaryPrivIP}",
+                "SbcPersonalityType"   : "${SBCPersonalityType}",
+                "SbcMgmtMode"          : "centralized",
+                "CEName"               : "${SBCActiveInstanceName}",
+                "PeerCEName"           : "${SBCPassiveInstanceName}",
+                "PeerCEHa0IPv4Address" : "${SBCPassiveHAIface.PrimaryPrivateIpAddress}",
+                "SystemName"           : "${SBCSystemName}",
+                "ActiveRoleMgtId"      : "${SBCActiveMgtIface}",
+                "NodeName"             : "${AWS::StackName}",
+                "AdminSshKey"          : "${PUBLIC_KEY}",
+                "ThirdPartyCpuAlloc"   : "0",
+                "ThirdPartyMemAlloc"   : "0"
+              }
             - HFEPub_SecondaryPrivIP:
                 !Select
                 - 0
                 - !GetAtt HFEPublicInterface.SecondaryPrivateIpAddresses
+              PUBLIC_KEY:
+                !GetAtt GetRSA.PUB
   SBCPassiveInstance:
     Metadata:
       AWS::CloudFormation::Init:
         configSets:
           default:
+            - CopyUserdata
             - GetPublicKey
             - AddPublicKey
         GetPublicKey:
@@ -752,6 +736,10 @@ Resources:
               command: chown admin:admin /home/admin/.ssh
             03_append-publickey:
               command: cat /root/.ssh/public.key >> /home/admin/.ssh/authorized_keys
+        CopyUserdata:
+          commands:
+            01_run_cloudinit_module:
+              command: /usr/bin/cloud-init single --name cc_sonusDataDump --frequency always
     Type: AWS::EC2::Instance
     CreationPolicy:
       ResourceSignal:
@@ -796,56 +784,34 @@ Resources:
         Fn::Base64:
           Fn::Sub:
             - |
-              Content-Type: multipart/mixed; boundary="//"
-              MIME-Version: 1.0
-
-              --//
-              MIME-Version: 1.0
-              Content-Type: text/cloud-config; charset="us-ascii"
-              #cloud-config
-              write_files:
-                - path: /var/lib/cloud/instance/user-data-replacement.txt
-                  content: |
-                    { "CERole"               : "STANDBY",
-                      "ReverseNatPkt0"       : "True",
-                      "ReverseNatPkt1"       : "False",
-                      "IAM_ROLE"             : "${SBCInstanceRole}",
-                      "ALT_Mgt0_00"          : "LOGICAL_MGMT_IP",
-                      "ALT_Pkt0_00"          : "VIP1",
-                      "ALT_Pkt1_00"          : "VIP2",
-                      "ClusterIp"            : "${SBCPassiveHAIface.PrimaryPrivateIpAddress}",
-                      "HFE"                  : "${HFEPub_SecondaryPrivIP}",
-                      "SbcPersonalityType"   : "${SBCPersonalityType}",
-                      "SbcMgmtMode"          : "centralized",
-                      "CEName"               : "${SBCPassiveInstanceName}",
-                      "PeerCEName"           : "${SBCActiveInstanceName}",
-                      "PeerCEHa0IPv4Address" : "${SBCActiveHAIface.PrimaryPrivateIpAddress}",
-                      "SystemName"           : "${SBCSystemName}",
-                      "ActiveRoleMgtId"      : "${SBCActiveMgtIface}",
-                      "NodeName"             : "${AWS::StackName}"
-                      "ThirdPartyCpuAlloc"   : "0",
-                      "ThirdPartyMemAlloc"   : "0"
-                    }
-              --//
-              MIME-Version: 1.0
-              Content-Type: text/x-shellscript; charset="us-ascii"
-              #!/bin/bash -x
-              /opt/aws/bin/cfn-init --stack ${AWS::StackName} --resource SBCPassiveInstance --region ${AWS::Region}
-              INITEX=$?
-              cp /var/lib/cloud/instance/user-data-replacement.txt /var/lib/cloud/instance/user-data.txt
-              CPEX=$?
-              cloud-init single --name cc_sonusDataDump --frequency always
-              CLINITEX=$?
-              if [ "${!INITEX}${!CPEX}${!CLINITEX}" == "000" ]; then
-                EXC=0
-              else
-                EXC=1
-              fi
-              /opt/aws/bin/cfn-signal -e ${!EXC} --stack ${AWS::StackName} --resource SBCPassiveInstance --region ${AWS::Region}
+              {
+                "CERole"               : "STANDBY",
+                "ReverseNatPkt0"       : "True",
+                "ReverseNatPkt1"       : "False",
+                "IAM_ROLE"             : "${SBCInstanceRole}",
+                "ALT_Mgt0_00"          : "LOGICAL_MGMT_IP",
+                "ALT_Pkt0_00"          : "VIP1",
+                "ALT_Pkt1_00"          : "VIP2",
+                "ClusterIp"            : "${SBCPassiveHAIface.PrimaryPrivateIpAddress}",
+                "HFE"                  : "${HFEPub_SecondaryPrivIP}",
+                "SbcPersonalityType"   : "${SBCPersonalityType}",
+                "SbcMgmtMode"          : "centralized",
+                "CEName"               : "${SBCPassiveInstanceName}",
+                "PeerCEName"           : "${SBCActiveInstanceName}",
+                "PeerCEHa0IPv4Address" : "${SBCActiveHAIface.PrimaryPrivateIpAddress}",
+                "SystemName"           : "${SBCSystemName}",
+                "ActiveRoleMgtId"      : "${SBCActiveMgtIface}",
+                "NodeName"             : "${AWS::StackName}",
+                "AdminSshKey"          : "${PUBLIC_KEY}",
+                "ThirdPartyCpuAlloc"   : "0",
+                "ThirdPartyMemAlloc"   : "0"
+              }
             - HFEPub_SecondaryPrivIP:
                 !Select
                 - 0
                 - !GetAtt HFEPublicInterface.SecondaryPrivateIpAddresses
+              PUBLIC_KEY:
+                !GetAtt GetRSA.PUB
   HFEInstance:
     Type: AWS::EC2::Instance
     Properties:
