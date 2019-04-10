@@ -21,6 +21,6 @@
     },
     {
         "ParameterKey":"SBCCLIPassword",
-        "ParameterValue":"$[taskcat_genpass_16]"
+        "ParameterValue":"$[taskcat_genpass_16S]"
     }
 ]
