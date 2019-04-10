@@ -24,8 +24,8 @@ Metadata:
           - HFEPublicCIDR2
           - ManagementSubnetCIDR
           - SBCHASubnetCIDR
-          - SBCExternalVoipCIDR
-          - SBCInternalVoipCIDR
+          - SBCAccessVoipCIDR
+          - SBCCoreVoipCIDR
           - SBCAvailabilityZone
       - Label:
           default: 'Optional: SBC configuration. For default configuration no need
@@ -38,6 +38,43 @@ Metadata:
           - SBCVolumeType
           - SBCVolumeIOPS
           - SBCVolumeSize
+    ParameterLabels:
+      KeyPairName:
+        default: SSH Key Name
+      VPCID:
+        default: VPC ID
+      SBCAccessVoipCIDR:
+        default: SBC Access VoIP Subnet CIDR
+      SBCCoreVoipCIDR:
+        default: SBC Core VoIP Subnet CIDR
+      SBCCLIPassword:
+        default: SBC CLI Password
+      SBCInstanceType:
+        default: SBC Instance Type
+      AsteriskInstanceType:
+        default: Asterisk Instance Type
+      SBCPersonalityType:
+        default: SBC Personality Type
+      SBCActiveInstanceName:
+        default: SBC Active Instnace Name
+      SBCPassiveInstanceName:
+        default: SBC Passive Instance Name
+      SBCSystemName:
+        default: SBC System Name
+      SSHAccessCIDR:
+        default: SSH Access CIDR
+      Tenancy:
+        default: EC2 Placement Tenancy
+      SBCVolumeType:
+        default: SBC Volume Type
+      SBCVolumeIOPS:
+        default: SBC Volume IOPS
+      SBCVolumeSize:
+        default: SBC Volume Size
+      QSS3BucketName:
+        default: QuickStart S3 Bucket Name
+      QSS3KeyPrefix:
+        default: QuickStart S3 Key Prefix
 Parameters:
   # VPC.
   KeyPairName:
@@ -123,7 +160,7 @@ Parameters:
     AllowedPattern: '^((\d|[1-9]\d|1\d{2}|2[0-4]\d|25[0-5])\.){3}(\d|[1-9]\d|1\d{2}|2[0-4]\d|25[0-5])(\/(\d|[1-2]\d|3[0-2]))$'
     ConstraintDescription: Must be a valid IP CIDR range of the form x.x.x.x/x and
       subnet of VPC.
-  SBCExternalVoipCIDR:
+  SBCAccessVoipCIDR:
     Description: CIDR used within the SBC External Voip (public facing) subnet.
     Type: String
     MinLength: '1'
@@ -131,7 +168,7 @@ Parameters:
     AllowedPattern: '^((\d|[1-9]\d|1\d{2}|2[0-4]\d|25[0-5])\.){3}(\d|[1-9]\d|1\d{2}|2[0-4]\d|25[0-5])(\/(\d|[1-2]\d|3[0-2]))$'
     ConstraintDescription: Must be a valid IP CIDR range of the form x.x.x.x/x and
       subnet of VPC.
-  SBCInternalVoipCIDR:
+  SBCCoreVoipCIDR:
     Description: CIDR used within the SBC Internal Voip (private) subnet.
       served by Mangler instance.
     Type: String
@@ -318,8 +355,8 @@ Resources:
         PublicSubnet1CIDR: !Ref 'HFEPublicCIDR1'
         PublicSubnet2CIDR: !Ref 'HFEPublicCIDR2'
         PrivateSubnet1CIDR: !Ref 'SBCHASubnetCIDR'
-        PrivateSubnet2CIDR: !Ref 'SBCExternalVoipCIDR'
-        PrivateSubnet3CIDR: !Ref 'SBCInternalVoipCIDR'
+        PrivateSubnet2CIDR: !Ref 'SBCAccessVoipCIDR'
+        PrivateSubnet3CIDR: !Ref 'SBCCoreVoipCIDR'
         PrivateSubnet4CIDR: !Ref 'ManagementSubnetCIDR'
         PublicSubnetTag1: 'Name=Quickstart-Ribbon-SBC'
         PrivateSubnetTag1: 'Name=Quickstart-Ribbon-SBC'
@@ -351,23 +388,23 @@ Resources:
       Parameters:
         QSS3BucketName: !Ref QSS3BucketName
         QSS3KeyPrefix: !Ref QSS3KeyPrefix
-        PublicSubnet: !GetAtt
+        PublicSubnetID: !GetAtt
           - VPCStack
           - Outputs.PublicSubnet1ID
         KeyPairName: !Ref KeyPairName
         BastionSecurityGroupID: !GetAtt
           - BastionStack
           - Outputs.BastionSecurityGroupID
-        SBCAccessVoipSubnet: !GetAtt
+        SBCAccessVoipSubnetID: !GetAtt
           - VPCStack
           - Outputs.PublicSubnet2ID
-        SBCCoreVoipSubnet: !GetAtt
+        SBCCoreVoipSubnetID: !GetAtt
           - VPCStack
           - Outputs.PrivateSubnet3ID
-        SBCManagementSubnet: !GetAtt
+        SBCManagementSubnetID: !GetAtt
           - VPCStack
           - Outputs.PrivateSubnet4ID
-        SBCHASubnet: !GetAtt
+        SBCHASubnetID: !GetAtt
           - VPCStack
           - Outputs.PrivateSubnet1ID
         SSHAccessCIDR: !Ref SSHAccessCIDR
