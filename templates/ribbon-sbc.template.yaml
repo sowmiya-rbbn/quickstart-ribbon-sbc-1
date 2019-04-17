@@ -5,6 +5,12 @@ Description: AWS CloudFormation Template to setup and deploy vSBC HA instances
   and other routing elements required IAM role to performce IP movement betweenn two
   vSBC instances.
 Metadata:
+  AWSAMIRegionMap:
+    Filters:
+      RIBBONASTERISKAMI:
+        name: Asterisk- AWS Marketplace*(14.6.0)*
+        owner-alias: aws-marketplace
+        product-code.type: marketplace
   AWS::CloudFormation::Interface:
     ParameterGroups:
       - Label:
