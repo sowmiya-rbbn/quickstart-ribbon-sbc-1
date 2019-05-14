@@ -595,11 +595,11 @@ Resources:
         - IpProtocol: tcp
           FromPort: 22
           ToPort: 22
-          SourceSecurityGroupId: !Ref BastionSecurityGroupID
+          SourceSecurityGroupId: !Ref 'BastionSecurityGroupID'
         - IpProtocol: tcp
           FromPort: 2024
           ToPort: 2024
-          SourceSecurityGroupdId: !Ref BastionSecurityGroupID
+          SourceSecurityGroupId: !Ref 'BastionSecurityGroupID'
       Tags:
         - Key: Name
           Value: SBC Management Security Group
@@ -612,7 +612,7 @@ Resources:
         - IpProtocol: tcp
           FromPort: 443
           ToPort: 443
-          SourceSecurityGroupId: !Ref BastionSecurityGroupID
+          SourceSecurityGroupId: !Ref 'BastionSecurityGroupID'
       Tags:
         - Key: Name
           Value: SBC API Access Security Group
@@ -623,7 +623,7 @@ Resources:
       GroupId: !Ref SBCManagementSG
       FromPort: 22
       ToPort: 22
-      SourceSecurityGroupId: !Ref SBCManagementSG
+      SourceSecurityGroupId: !Ref 'SBCManagementSG'
   SBCManagementSGIngres2024:
     Type: AWS::EC2::SecurityGroupIngress
     Properties:
@@ -631,7 +631,7 @@ Resources:
       GroupId: !Ref SBCManagementSG
       FromPort: 2024
       ToPort: 2024
-      SourceSecurityGroupId: !Ref SBCManagementSG
+      SourceSecurityGroupId: !Ref 'SBCManagementSG'
   SBCAPISGIngres443:
     Type: AWS::EC2::SecurityGroupIngress
     Properties:
@@ -639,7 +639,7 @@ Resources:
       GroupId: !Ref SBCAPIAccessSG
       FromPort: 443
       ToPort: 443
-      SourceSecurityGroupId: !Ref SBCAPIAccessSG
+      SourceSecurityGroupId: !Ref 'SBCAPIAccessSG'
   HFEExVoipEIP:
     Type: AWS::EC2::EIP
     Properties:
@@ -937,6 +937,9 @@ Resources:
               REMOTE_SSH_MACHINE_IP: ''
   AnsibleConfigServer:
     Type: AWS::EC2::Instance
+    DependsOn:
+      - SBCActiveInstance
+      - SBCPassiveInstance
     CreationPolicy:
       ResourceSignal:
         Count: 1
