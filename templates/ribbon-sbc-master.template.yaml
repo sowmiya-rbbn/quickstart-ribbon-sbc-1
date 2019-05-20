@@ -8,14 +8,23 @@ Metadata:
   AWS::CloudFormation::Interface:
     ParameterGroups:
       - Label:
-          default: SBC Configuration
+          default: AWS Quick Start Configuration
         Parameters:
-          - SBCInstanceType
+          - QSS3BucketName
+          - QSS3KeyPrefix
+      - Label:
+          default: SBC configuration
+        Parameters:
           - KeyPairName
+          - SBCInstanceType
+          - AsteriskInstanceType
+          - SBCCLIPassword
       - Label:
           default: Bastion Configuration
         Parameters:
           - BastionAMIOS
+          - BastionInstanceType
+          - RemoteAccessCIDR
       - Label:
           default: Network Configuration
         Parameters:
@@ -28,27 +37,44 @@ Metadata:
           - SBCCoreVoipCIDR
           - SBCAvailabilityZone
       - Label:
-          default: 'Optional: SBC configuration. For default configuration no need
-            to change these values.'
+          default: SBC Options
         Parameters:
           - SBCPersonalityType
           - SBCActiveInstanceName
           - SBCPassiveInstanceName
           - SBCSystemName
+          - Tenancy
+          - PlacementId
           - SBCVolumeType
           - SBCVolumeIOPS
           - SBCVolumeSize
     ParameterLabels:
       KeyPairName:
         default: SSH Key Name
-      VPCID:
-        default: VPC ID
       SBCAccessVoipCIDR:
         default: SBC Access VoIP Subnet CIDR
       SBCCoreVoipCIDR:
         default: SBC Core VoIP Subnet CIDR
       SBCCLIPassword:
         default: SBC CLI Password
+      HFEPublicCIDR1:
+        default: HFE Public Subnet CIDR (1)
+      HFEPublicCIDR2:
+        default: HFE Public Subnet CIDR (2)
+      BastionAMIOS:
+        default: Bastion OS
+      BastionInstanceType:
+        default: Bastion Instance Type
+      ManagementSubnetCIDR:
+        default: Management Subnet CIDR
+      SBCHASubnetCIDR:
+        default: SBC HA Subnet CIDR
+      RemoteAccessCIDR:
+        default: Bastion Remote Access CIDR
+      SBCAvailabilityZone:
+        default: SBC Availability Zone
+      VPCCIDR:
+        default: VPC CIDR
       SBCInstanceType:
         default: SBC Instance Type
       AsteriskInstanceType:
@@ -61,10 +87,10 @@ Metadata:
         default: SBC Passive Instance Name
       SBCSystemName:
         default: SBC System Name
-      SSHAccessCIDR:
-        default: SSH Access CIDR
       Tenancy:
         default: EC2 Placement Tenancy
+      PlacementId:
+        default: EC2 Placement ID
       SBCVolumeType:
         default: SBC Volume Type
       SBCVolumeIOPS:
@@ -84,6 +110,7 @@ Parameters:
     ConstraintDescription: must be the name of an existing EC2 KeyPair.
   SBCCLIPassword:
     Type: String
+    Description: Password used on the SBC CLI.
   BastionAMIOS:
     Default: "Amazon-Linux-HVM"
     AllowedValues:
@@ -135,15 +162,17 @@ Parameters:
     AllowedPattern: '^((\d|[1-9]\d|1\d{2}|2[0-4]\d|25[0-5])\.){3}(\d|[1-9]\d|1\d{2}|2[0-4]\d|25[0-5])(\/(\d|[1-2]\d|3[0-2]))$'
     ConstraintDescription: Must be a valid IP CIDR range of the form x.x.x.x/x and
       subnet of VPC.
-  HFEPrivateCIDR:
-    Description: Enter a CIDR for pirvate subnet for SBC, this new subnet will be
-      served by Mangler instance.
+  Tenancy:
+    Description: Tenancy attribute for SBC instances
     Type: String
-    MinLength: '1'
-    Default: 10.74.14.0/24
-    AllowedPattern: '^((\d|[1-9]\d|1\d{2}|2[0-4]\d|25[0-5])\.){3}(\d|[1-9]\d|1\d{2}|2[0-4]\d|25[0-5])(\/(\d|[1-2]\d|3[0-2]))$'
-    ConstraintDescription: Must be a valid IP CIDR range of the form x.x.x.x/x and
-      subnet of VPC.
+    Default: default
+    AllowedValues:
+      - default
+      - dedicated
+  PlacementId:
+    Description: PlacementGroup to launch SBC instances(Optional)
+    Type: String
+    Default: ''
   ManagementSubnetCIDR:
     Description: CIDR used within the Management Subnet
     Type: String
@@ -177,41 +206,12 @@ Parameters:
     AllowedPattern: '^((\d|[1-9]\d|1\d{2}|2[0-4]\d|25[0-5])\.){3}(\d|[1-9]\d|1\d{2}|2[0-4]\d|25[0-5])(\/(\d|[1-2]\d|3[0-2]))$'
     ConstraintDescription: Must be a valid IP CIDR range of the form x.x.x.x/x and
       subnet of VPC.
-  PublicHFEPacketSubnetCIDR:
-    Description: CIDR used within the HFE Public Subnet.
-    Type: String
-    MinLength: '1'
-    Default: 10.74.19.0/24
-    AllowedPattern: '^((\d|[1-9]\d|1\d{2}|2[0-4]\d|25[0-5])\.){3}(\d|[1-9]\d|1\d{2}|2[0-4]\d|25[0-5])(\/(\d|[1-2]\d|3[0-2]))$'
-    ConstraintDescription: Must be a valid IP CIDR range of the form x.x.x.x/x and
-      subnet of VPC.
-  PrivateHFESubnetCIDR:
-    Description: CIDR used for the HFE Private Subnet.
-    Type: String
-    MinLength: '1'
-    Default: 10.74.20.0/24
-    AllowedPattern: '^((\d|[1-9]\d|1\d{2}|2[0-4]\d|25[0-5])\.){3}(\d|[1-9]\d|1\d{2}|2[0-4]\d|25[0-5])(\/(\d|[1-2]\d|3[0-2]))$'
-    ConstraintDescription: Must be a valid IP CIDR range of the form x.x.x.x/x and
-      subnet of VPC.
   RemoteAccessCIDR:
     Description: CIDR used to access the bastion instance.
     Type: String
     Default: 0.0.0.0/0
     AllowedPattern: '^((\d|[1-9]\d|1\d{2}|2[0-4]\d|25[0-5])\.){3}(\d|[1-9]\d|1\d{2}|2[0-4]\d|25[0-5])(\/(\d|[1-2]\d|3[0-2]))$'
     ConstraintDescription: Must be a valid IP CIDR range of the form x.x.x.x/x.
-  HFEManagementNeedsEIP:
-    Description: Enable EIP on the management interface of the HFE instance(s)?
-    Type: String
-    Default: 'Yes'
-    AllowedValues:
-      - 'Yes'
-      - 'No'
-  HFEManagementEIPAccessCIDR:
-    Description: The CIDR range used to access the HFE Management EIP.
-    Type: String
-    Default: '127.0.0.1/32'
-    AllowedPattern: '^((\d|[1-9]\d|1\d{2}|2[0-4]\d|25[0-5])\.){3}(\d|[1-9]\d|1\d{2}|2[0-4]\d|25[0-5])(\/(\d|[1-2]\d|3[0-2]))$'
-    ConstraintDescription: Must be a valid IP CIDR range of the form x.x.x.x/x
   SBCAvailabilityZone:
     Description: Enter Availability Zone for SBC, New subnets for SBC will be created
       here.
@@ -261,15 +261,6 @@ Parameters:
     MaxLength: '26'
     AllowedPattern: ^[A-Za-z]{1}[-A-Za-z0-9]*[A-Za-z0-9]{1}$
     ConstraintDescription: 'Enter valid system name.  Regex: ^[A-Za-z]{1}[-A-Za-z0-9]*[A-Za-z0-9]{1}$ '
-  # TODO: Rename. De-couple scope.
-  SSHAccessCIDR:
-    Description: IP CIDR from where you could SSH into SBC and PKTART instances
-    Type: String
-    MinLength: '9'
-    MaxLength: '18'
-    Default: '127.0.0.1/32'
-    AllowedPattern: (\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})/(\d{1,2})
-    ConstraintDescription: must be a valid CIDR range of the form x.x.x.x/x.
   SBCVolumeType:
     Description: Select Type of Volume for SBC
     Type: String
@@ -277,14 +268,6 @@ Parameters:
     AllowedValues:
       - gp2
       - io1
-  CreateVPCEndPoint:
-    Description: Do you want to create VPC End-point to access API server? if you
-      select no then SBC will reach API server using EIP on mgt0 ports
-    Type: String
-    Default: 'yes'
-    AllowedValues:
-      - 'yes'
-      - 'no'
   SBCVolumeIOPS:
     Description: Enter IOPS reservation for IO1 type EBS volume [<= 1950]. This value is ignored for GP2 type volumes.
     Type: Number
@@ -297,32 +280,41 @@ Parameters:
     MinValue: '65'
     MaxValue: '1000'
   QSS3BucketName:
-    Type: String
+    AllowedPattern: ^[0-9a-zA-Z]+([0-9a-zA-Z-]*[0-9a-zA-Z])*$
+    ConstraintDescription: Quick Start bucket name can include numbers, lowercase
+      letters, uppercase letters, and hyphens (-). It cannot start or end with a hyphen
+      (-).
     Default: aws-quickstart
-  QSS3KeyPrefix:
+    Description: S3 bucket name for the Quick Start assets. This string can include
+      numbers, lowercase letters, uppercase letters, and hyphens (-). It cannot start
+      or end with a hyphen (-).
     Type: String
+  QSS3KeyPrefix:
+    AllowedPattern: ^[0-9a-zA-Z-/]*$
+    ConstraintDescription: Quick Start key prefix can include numbers, lowercase letters,
+      uppercase letters, hyphens (-), and forward slash (/).
     Default: quickstart-ribbon-sbc/
-Conditions:
-  # This condition is not used.
-  # EipOnPkt0: !Equals
-  #  - 'true'
-  #  - 'true'
-  VolumeTypeIO1:
-    Fn::Equals:
-      - !Ref 'SBCVolumeType'
-      - io1
-  CreateVPCEndPoint:
-    Fn::Equals:
-      - !Ref 'CreateVPCEndPoint'
-      - 'yes'
-  EipForHFEManagementInterface:
-    Fn::Equals:
-      - !Ref 'HFEManagementNeedsEIP'
-      - 'Yes'
-  noVPCEndPointForMgt:
-    Fn::Equals:
-      - !Ref 'CreateVPCEndPoint'
-      - 'no'
+    Description: S3 key prefix for the Quick Start assets. Quick Start key prefix
+      can include numbers, lowercase letters, uppercase letters, hyphens (-), and
+      forward slash (/).
+    Type: String
+  AsteriskInstanceType:
+    Description: Instance type for the Asterisk Instance.
+    Type: String
+    Default: c5.2xlarge
+    AllowedValues:
+      - m4.xlarge
+      - m5.xlarge
+      - c3.2xlarge
+      - c3.4xlarge
+      - c3.8xlarge
+      - c4.2xlarge
+      - c4.4xlarge
+      - c4.8xlarge
+      - c5.2xlarge
+      - c5.4xlarge
+      - c5.9xlarge
+    ConstraintDescription: Must be a valid EC2 instance type.
 Rules:
   NameMismatch:
     Assertions:
@@ -407,8 +399,15 @@ Resources:
         SBCHASubnetID: !GetAtt
           - VPCStack
           - Outputs.PrivateSubnet1ID
-        SSHAccessCIDR: !Ref SSHAccessCIDR
         VPCID: !GetAtt
           - VPCStack
           - Outputs.VPCID
         SBCCLIPassword: !Ref SBCCLIPassword
+        Tenancy: !Ref Tenancy
+        PlacementId: !Ref PlacementId
+        SBCInstanceType: !Ref SBCInstanceType
+        SBCPersonalityType: !Ref SBCPersonalityType
+        SBCVolumeType: !Ref SBCVolumeType
+        SBCVolumeIOPS: !Ref SBCVolumeIOPS
+        SBCVolumeSize: !Ref SBCVolumeSize
+        AsteriskInstanceType: !Ref AsteriskInstanceType

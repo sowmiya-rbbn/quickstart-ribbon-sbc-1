@@ -21,11 +21,12 @@ Metadata:
           - QSS3BucketName
           - QSS3KeyPrefix
       - Label:
-          default: Instance Configuration
+          default: SBC configuration
         Parameters:
           - KeyPairName
           - SBCInstanceType
           - AsteriskInstanceType
+          - SBCCLIPassword
       - Label:
           default: Network Configuration
         Parameters:
@@ -39,8 +40,7 @@ Metadata:
           - PublicSubnetID
           - BastionSecurityGroupID
       - Label:
-          default: 'Optional: SBC configuration. For default configuration no need to
-            change these values.'
+          default: SBC Options
         Parameters:
           - SBCPersonalityType
           - SBCActiveInstanceName
@@ -81,13 +81,11 @@ Metadata:
       SBCPersonalityType:
         default: SBC Personality Type
       SBCActiveInstanceName:
-        default: SBC Active Instnace Name
+        default: SBC Active Instance Name
       SBCPassiveInstanceName:
         default: SBC Passive Instance Name
       SBCSystemName:
         default: SBC System Name
-      SSHAccessCIDR:
-        default: SSH Access CIDR
       Tenancy:
         default: EC2 Placement Tenancy
       PlacementId:
@@ -146,6 +144,7 @@ Parameters:
     Description: Subnet ID for the HFE Public Voip Subnet
   SBCCLIPassword:
     Type: String
+    Description: Password used on the SBC CLI.
   BastionSecurityGroupID:
     Description: SecurityGroup associated with a bastion instance.
     Type: AWS::EC2::SecurityGroup::Id
@@ -212,14 +211,6 @@ Parameters:
     MaxLength: '26'
     AllowedPattern: ^[A-Za-z]{1}[-A-Za-z0-9]*[A-Za-z0-9]{1}$
     ConstraintDescription: 'Enter valid system name.  Regex: ^[A-Za-z]{1}[-A-Za-z0-9]*[A-Za-z0-9]{1}$ '
-  SSHAccessCIDR:
-    Description: IP CIDR from where you could SSH into SBC and PKTART instances
-    Type: String
-    MinLength: '9'
-    MaxLength: '18'
-    Default: 0.0.0.0/0
-    AllowedPattern: (\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})/(\d{1,2})
-    ConstraintDescription: must be a valid CIDR range of the form x.x.x.x/x.
   Tenancy:
     Description: Tenancy attribute for SBC instances
     Type: String
@@ -251,11 +242,24 @@ Parameters:
     MinValue: '65'
     MaxValue: '1000'
   QSS3BucketName:
-    Type: String
+    AllowedPattern: ^[0-9a-zA-Z]+([0-9a-zA-Z-]*[0-9a-zA-Z])*$
+    ConstraintDescription: Quick Start bucket name can include numbers, lowercase
+      letters, uppercase letters, and hyphens (-). It cannot start or end with a hyphen
+      (-).
     Default: aws-quickstart
-  QSS3KeyPrefix:
+    Description: S3 bucket name for the Quick Start assets. This string can include
+      numbers, lowercase letters, uppercase letters, and hyphens (-). It cannot start
+      or end with a hyphen (-).
     Type: String
+  QSS3KeyPrefix:
+    AllowedPattern: ^[0-9a-zA-Z-/]*$
+    ConstraintDescription: Quick Start key prefix can include numbers, lowercase letters,
+      uppercase letters, hyphens (-), and forward slash (/).
     Default: quickstart-ribbon-sbc/
+    Description: S3 key prefix for the Quick Start assets. Quick Start key prefix
+      can include numbers, lowercase letters, uppercase letters, hyphens (-), and
+      forward slash (/).
+    Type: String
 Conditions:
   VolumeTypeIO1:
     !Equals
