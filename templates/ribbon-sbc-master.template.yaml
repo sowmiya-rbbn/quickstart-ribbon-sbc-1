@@ -52,55 +52,55 @@ Metadata:
       KeyPairName:
         default: SSH Key Name
       SBCAccessVoipCIDR:
-        default: SBC Access VoIP Subnet CIDR
+        default: SBC access subnet CIDR
       SBCCoreVoipCIDR:
-        default: SBC Core VoIP Subnet CIDR
+        default: SBC core subnet CIDR
       SBCCLIPassword:
         default: SBC CLI Password
       HFEPublicCIDR1:
-        default: HFE Public Subnet CIDR (1)
+        default: HFE public subnet 1 CIDR
       HFEPublicCIDR2:
-        default: HFE Public Subnet CIDR (2)
+        default: HFE public subnet 2 CIDR
       BastionAMIOS:
-        default: Bastion OS
+        default: Bastion AMI operating system
       BastionInstanceType:
-        default: Bastion Instance Type
+        default: Bastion instance type
       ManagementSubnetCIDR:
-        default: Management Subnet CIDR
+        default: SBC management subnet CIDR
       SBCHASubnetCIDR:
-        default: SBC HA Subnet CIDR
+        default: SBC HA subnet CIDR
       RemoteAccessCIDR:
-        default: Bastion Remote Access CIDR
+        default: Bastion remote access CIDR
       SBCAvailabilityZone:
-        default: SBC Availability Zone
+        default: Availability Zone
       VPCCIDR:
         default: VPC CIDR
       SBCInstanceType:
-        default: SBC Instance Type
+        default: SBC instance type
       AsteriskInstanceType:
-        default: Asterisk Instance Type
+        default: Asterisk instance type
       SBCPersonalityType:
         default: SBC Personality Type
       SBCActiveInstanceName:
-        default: SBC Active Instnace Name
+        default: SBC active instance type
       SBCPassiveInstanceName:
-        default: SBC Passive Instance Name
+        default: SBC passive instance type
       SBCSystemName:
-        default: SBC System Name
+        default: SBC system name
       Tenancy:
-        default: EC2 Placement Tenancy
+        default: EC2 placement tenancy
       PlacementId:
-        default: EC2 Placement ID
+        default: EC2 placement ID
       SBCVolumeType:
-        default: SBC Volume Type
+        default: SBC volume type
       SBCVolumeIOPS:
-        default: SBC Volume IOPS
+        default: SBC volume IOPS
       SBCVolumeSize:
-        default: SBC Volume Size
+        default: SBC volume size
       QSS3BucketName:
-        default: QuickStart S3 Bucket Name
+        default: QuickStart S3 bucket name
       QSS3KeyPrefix:
-        default: QuickStart S3 Key Prefix
+        default: QuickStart S3 key prefix
 Parameters:
   # VPC.
   KeyPairName:
