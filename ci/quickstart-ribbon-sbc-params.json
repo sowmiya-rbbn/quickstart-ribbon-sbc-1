@@ -12,14 +12,6 @@
         "ParameterValue":"$[taskcat_getsingleaz_1]"
     },
     {
-        "ParameterKey":"HFEManagementEIPAccessCIDR",
-        "ParameterValue":"127.0.0.1/32"
-    },
-    {
-        "ParameterKey":"SSHAccessCIDR",
-        "ParameterValue":"127.0.0.1/32"
-    },
-    {
         "ParameterKey":"SBCCLIPassword",
         "ParameterValue":"$[taskcat_genpass_16S]"
     }
