@@ -8,10 +8,22 @@ Metadata:
   AWS::CloudFormation::Interface:
     ParameterGroups:
       - Label:
-          default: AWS Quick Start Configuration
+          default: Network configuration
         Parameters:
-          - QSS3BucketName
-          - QSS3KeyPrefix
+          - VPCCIDR
+          - SBCAvailabilityZone
+          - HFEPublicCIDR1
+          - HFEPublicCIDR2
+          - ManagementSubnetCIDR
+          - SBCHASubnetCIDR
+          - SBCAccessVoipCIDR
+          - SBCCoreVoipCIDR          
+      - Label:
+          default: Bastion configuration
+        Parameters:
+          - BastionAMIOS
+          - BastionInstanceType
+          - RemoteAccessCIDR
       - Label:
           default: SBC configuration
         Parameters:
@@ -20,24 +32,7 @@ Metadata:
           - AsteriskInstanceType
           - SBCCLIPassword
       - Label:
-          default: Bastion Configuration
-        Parameters:
-          - BastionAMIOS
-          - BastionInstanceType
-          - RemoteAccessCIDR
-      - Label:
-          default: Network Configuration
-        Parameters:
-          - VPCCIDR
-          - HFEPublicCIDR1
-          - HFEPublicCIDR2
-          - ManagementSubnetCIDR
-          - SBCHASubnetCIDR
-          - SBCAccessVoipCIDR
-          - SBCCoreVoipCIDR
-          - SBCAvailabilityZone
-      - Label:
-          default: SBC Options
+          default: SBC options
         Parameters:
           - SBCPersonalityType
           - SBCActiveInstanceName
@@ -48,15 +43,20 @@ Metadata:
           - SBCVolumeType
           - SBCVolumeIOPS
           - SBCVolumeSize
+      - Label:
+          default: AWS Quick Start configuration
+        Parameters:
+          - QSS3BucketName
+          - QSS3KeyPrefix
     ParameterLabels:
       KeyPairName:
-        default: SSH Key Name
+        default: SSH key name
       SBCAccessVoipCIDR:
         default: SBC access subnet CIDR
       SBCCoreVoipCIDR:
         default: SBC core subnet CIDR
       SBCCLIPassword:
-        default: SBC CLI Password
+        default: SBC CLI password
       HFEPublicCIDR1:
         default: HFE public subnet 1 CIDR
       HFEPublicCIDR2:
@@ -80,7 +80,7 @@ Metadata:
       AsteriskInstanceType:
         default: Asterisk instance type
       SBCPersonalityType:
-        default: SBC Personality Type
+        default: SBC personality Type
       SBCActiveInstanceName:
         default: SBC active instance type
       SBCPassiveInstanceName:
@@ -104,10 +104,10 @@ Metadata:
 Parameters:
   # VPC.
   KeyPairName:
-    Description: 'Name of an existing EC2 KeyPair to enable SSH access to the SBC
-      and Mangler instance '
+    Description: 'Name of an existing EC2 key pair to enable SSH access to the SBC
+      and Mangler instance.'
     Type: AWS::EC2::KeyPair::KeyName
-    ConstraintDescription: must be the name of an existing EC2 KeyPair.
+    ConstraintDescription: must be the name of an existing EC2 key pair.
   SBCCLIPassword:
     Type: String
     Description: Password used on the SBC CLI.
@@ -119,7 +119,7 @@ Parameters:
       - Ubuntu-Server-14.04-LTS-HVM
       - Ubuntu-Server-16.04-LTS-HVM
     Type: String
-    Description: "The Linux distribution for the AMI to be used for the bastion instances"
+    Description: "The Linux distribution for the AMI to be used for the bastion instances."
   BastionInstanceType:
     AllowedValues:
       - t2.nano
@@ -145,7 +145,7 @@ Parameters:
     AllowedPattern: '^((\d|[1-9]\d|1\d{2}|2[0-4]\d|25[0-5])\.){3}(\d|[1-9]\d|1\d{2}|2[0-4]\d|25[0-5])(\/(\d|[1-2]\d|3[0-2]))$'
     ConstraintDescription: Must be a valid IP CIDR range of the form x.x.x.x/x.
   HFEPublicCIDR1:
-    Description: Enter a CIDR for private subnet for SBC, this new subnet will be
+    Description: Enter a CIDR for private subnet for SBC; this new subnet will be
       served by Mangler instance.
     Type: String
     MinLength: '1'
@@ -154,7 +154,7 @@ Parameters:
     ConstraintDescription: Must be a valid IP CIDR range of the form x.x.x.x/x and
       subnet of VPC.
   HFEPublicCIDR2:
-    Description: Enter a CIDR for private subnet for SBC, this new subnet will be
+    Description: Enter a CIDR for private subnet for SBC; this new subnet will be
       served by Mangler instance.
     Type: String
     MinLength: '1'
@@ -163,18 +163,18 @@ Parameters:
     ConstraintDescription: Must be a valid IP CIDR range of the form x.x.x.x/x and
       subnet of VPC.
   Tenancy:
-    Description: Tenancy attribute for SBC instances
+    Description: Tenancy attribute for SBC instances.
     Type: String
     Default: default
     AllowedValues:
       - default
       - dedicated
   PlacementId:
-    Description: PlacementGroup to launch SBC instances(Optional)
+    Description: Placement group to launch SBC instances.
     Type: String
     Default: ''
   ManagementSubnetCIDR:
-    Description: CIDR used within the Management Subnet
+    Description: CIDR used within the management subnet.
     Type: String
     MinLength: '1'
     Default: 10.74.15.0/24
@@ -182,7 +182,7 @@ Parameters:
     ConstraintDescription: Must be a valid IP CIDR range of the form x.x.x.x/x and
       subnet of VPC.
   SBCHASubnetCIDR:
-    Description: CIDR used within the SBC High Availability subnet.
+    Description: CIDR used within the SBC high availability subnet.
     Type: String
     MinLength: '1'
     Default: 10.74.16.0/28
@@ -190,7 +190,7 @@ Parameters:
     ConstraintDescription: Must be a valid IP CIDR range of the form x.x.x.x/x and
       subnet of VPC.
   SBCAccessVoipCIDR:
-    Description: CIDR used within the SBC External Voip (public facing) subnet.
+    Description: CIDR used within the SBC external Voip (public-facing) subnet.
     Type: String
     MinLength: '1'
     Default: 10.74.17.0/24
@@ -198,8 +198,8 @@ Parameters:
     ConstraintDescription: Must be a valid IP CIDR range of the form x.x.x.x/x and
       subnet of VPC.
   SBCCoreVoipCIDR:
-    Description: CIDR used within the SBC Internal Voip (private) subnet.
-      served by Mangler instance.
+    Description: CIDR used within the SBC internal Voip (private) subnet.
+      Served by Mangler instance.
     Type: String
     MinLength: '1'
     Default: 10.74.18.0/24
@@ -213,7 +213,7 @@ Parameters:
     AllowedPattern: '^((\d|[1-9]\d|1\d{2}|2[0-4]\d|25[0-5])\.){3}(\d|[1-9]\d|1\d{2}|2[0-4]\d|25[0-5])(\/(\d|[1-2]\d|3[0-2]))$'
     ConstraintDescription: Must be a valid IP CIDR range of the form x.x.x.x/x.
   SBCAvailabilityZone:
-    Description: Enter Availability Zone for SBC, New subnets for SBC will be created
+    Description: Enter Availability Zone for SBC. New subnets for SBC will be created
       here.
     Type: AWS::EC2::AvailabilityZone::Name
   SBCInstanceType:
@@ -239,42 +239,42 @@ Parameters:
     Default: isbc
     AllowedValues:
       - isbc
-    ConstraintDescription: Must be a valid SBC Personality type.
+    ConstraintDescription: Must be a valid SBC personality type.
   SBCActiveInstanceName:
-    Description: CE name of the active instance
+    Description: CE name of the active instance.
     Type: String
     Default: vsbc1
     MaxLength: '63'
     AllowedPattern: ^[A-Za-z]{1}[-A-Za-z0-9.]*[A-Za-z0-9]{1}$
     ConstraintDescription: 'Enter valid ceName(instance name).  Regex: ^[A-Za-z]{1}[-A-Za-z0-9.]*[A-Za-z0-9]{1}$'
   SBCPassiveInstanceName:
-    Description: CE name of the standby instance
+    Description: CE name of the standby instance.
     Type: String
     Default: vsbc2
     MaxLength: '63'
     AllowedPattern: ^[A-Za-z]{1}[-A-Za-z0-9.]*[A-Za-z0-9]{1}$
     ConstraintDescription: 'Enter valid ceName(instance name).  Regex: ^[A-Za-z]{1}[-A-Za-z0-9.]*[A-Za-z0-9]{1}$'
   SBCSystemName:
-    Description: System Name
+    Description: System name.
     Type: String
     Default: vsbcSystem
     MaxLength: '26'
     AllowedPattern: ^[A-Za-z]{1}[-A-Za-z0-9]*[A-Za-z0-9]{1}$
     ConstraintDescription: 'Enter valid system name.  Regex: ^[A-Za-z]{1}[-A-Za-z0-9]*[A-Za-z0-9]{1}$ '
   SBCVolumeType:
-    Description: Select Type of Volume for SBC
+    Description: Volume type for SBC instances.
     Type: String
     Default: io1
     AllowedValues:
       - gp2
       - io1
   SBCVolumeIOPS:
-    Description: Enter IOPS reservation for IO1 type EBS volume [<= 1950]. This value is ignored for GP2 type volumes.
+    Description: IOPS reservation for io1 type EBS volume [<= 1950]. This value is ignored for GP2 type volumes.
     Type: Number
     Default: '600'
     MaxValue: '1950'
   SBCVolumeSize:
-    Description: Enter size of disk in GiB. Minimum disk required is 65 GiB
+    Description: Size of disk, in GiB. Minimum disk required is 65 GiB.
     Type: Number
     Default: '65'
     MinValue: '65'
@@ -299,7 +299,7 @@ Parameters:
       forward slash (/).
     Type: String
   AsteriskInstanceType:
-    Description: Instance type for the Asterisk Instance.
+    Description: Instance type for the Asterisk instance.
     Type: String
     Default: c5.2xlarge
     AllowedValues:
