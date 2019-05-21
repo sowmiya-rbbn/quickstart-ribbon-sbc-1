@@ -105,12 +105,14 @@ Parameters:
   # VPC.
   KeyPairName:
     Description: 'Name of an existing EC2 key pair to enable SSH access to the SBC
-      and Mangler instance.'
+      and HFE instance.'
     Type: AWS::EC2::KeyPair::KeyName
     ConstraintDescription: must be the name of an existing EC2 key pair.
   SBCCLIPassword:
     Type: String
     Description: Password used on the SBC CLI.
+    AllowedPattern: (^.*(?=.{8,})((?=.*[!@#$%^&*()\-_=+{};:,<.>]){1})(?=.*\d)((?=.*[a-z]){1})((?=.*[A-Z]){1}).*$)
+    ConstraintDescription: Must contain one uppercase letter, one lowercase letter, one number, and one special character. Must be 8chars or more.  
   BastionAMIOS:
     Default: "Amazon-Linux-HVM"
     AllowedValues:
@@ -145,8 +147,8 @@ Parameters:
     AllowedPattern: '^((\d|[1-9]\d|1\d{2}|2[0-4]\d|25[0-5])\.){3}(\d|[1-9]\d|1\d{2}|2[0-4]\d|25[0-5])(\/(\d|[1-2]\d|3[0-2]))$'
     ConstraintDescription: Must be a valid IP CIDR range of the form x.x.x.x/x.
   HFEPublicCIDR1:
-    Description: Enter a CIDR for private subnet for SBC; this new subnet will be
-      served by Mangler instance.
+    Description: Enter a CIDR for public subnet for SBC; this new subnet will be
+      served by HFE instance.
     Type: String
     MinLength: '1'
     Default: 10.74.12.0/24
@@ -154,8 +156,8 @@ Parameters:
     ConstraintDescription: Must be a valid IP CIDR range of the form x.x.x.x/x and
       subnet of VPC.
   HFEPublicCIDR2:
-    Description: Enter a CIDR for private subnet for SBC; this new subnet will be
-      served by Mangler instance.
+    Description: Enter a CIDR for public subnet for SBC; this new subnet will be
+      served by HFE instance.
     Type: String
     MinLength: '1'
     Default: 10.74.13.0/24
@@ -199,7 +201,7 @@ Parameters:
       subnet of VPC.
   SBCCoreVoipCIDR:
     Description: CIDR used within the SBC internal Voip (private) subnet.
-      Served by Mangler instance.
+      Served by HFE instance.
     Type: String
     MinLength: '1'
     Default: 10.74.18.0/24
@@ -219,7 +221,7 @@ Parameters:
   SBCInstanceType:
     Description: Instance type for the SBC Mangler.
     Type: String
-    Default: m5.xlarge
+    Default: c5.2xlarge
     AllowedValues:
       - m4.xlarge
       - m5.xlarge

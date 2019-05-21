@@ -145,6 +145,8 @@ Parameters:
   SBCCLIPassword:
     Type: String
     Description: Password used on the SBC CLI.
+    AllowedPattern: (^.*(?=.{8,})((?=.*[!@#$%^&*()\-_=+{};:,<.>]){1})(?=.*\d)((?=.*[a-z]){1})((?=.*[A-Z]){1}).*$)
+    ConstraintDescription: Must be greater than 8 characters, include one uppercase letter, lowercase letter, one special character, and one number.
   BastionSecurityGroupID:
     Description: Security group associated with a bastion instance.
     Type: AWS::EC2::SecurityGroup::Id
@@ -481,6 +483,14 @@ Resources:
       GroupDescription: Security Group for SBC External Voip traffic. (Incoming calls)
       VpcId: !Ref VPCID
       SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 1024
+          ToPort: 65535
+          CidrIp: 0.0.0.0/0
+        - IpProtocol: udp
+          FromPort: 1024
+          ToPort: 65535
+          CidrIp: 0.0.0.0/0
         - IpProtocol: udp
           FromPort: 5060
           ToPort: 5061
@@ -770,9 +780,9 @@ Resources:
           DeviceIndex: '0'
         - NetworkInterfaceId: !Ref SBCActiveHAIface
           DeviceIndex: '1'
-        - NetworkInterfaceId: !Ref SBCActiveCoreVoipIface
-          DeviceIndex: '2'
         - NetworkInterfaceId: !Ref SBCActiveAccessVoipIface
+          DeviceIndex: '2'
+        - NetworkInterfaceId: !Ref SBCActiveCoreVoipIface
           DeviceIndex: '3'
       Tags:
         - Key: Name
@@ -839,9 +849,9 @@ Resources:
           DeviceIndex: '0'
         - NetworkInterfaceId: !Ref SBCPassiveHAIface
           DeviceIndex: '1'
-        - NetworkInterfaceId: !Ref SBCPassiveCoreVoipIface
-          DeviceIndex: '2'
         - NetworkInterfaceId: !Ref SBCPassiveAccessVoipIface
+          DeviceIndex: '2'
+        - NetworkInterfaceId: !Ref SBCPassiveCoreVoipIface
           DeviceIndex: '3'
       Tags:
         - Key: Name
@@ -921,6 +931,7 @@ Resources:
                 date +"%Y-%m-%d %T"
               }
               mkdir -p ${!HFE_DIR};
+              route add -net 0.0.0.0 netmask 0.0.0.0 dev eth1 methric 0;
               aws s3 cp s3://${QSS3BucketName}/${QSS3KeyPrefix}scripts/HFE.sh ${!HFE_FILE}
               if [ $? -ne 0 ]; then
                 /bin/echo $(timestamp) "Error:Could not copy HFE script from S3 bucket."
@@ -933,11 +944,12 @@ Resources:
               sudo chmod 744 ${!HFE_FILE}
               sudo /bin/bash ${!HFE_FILE} setup
               /bin/echo "Configured using HFE script ${!HFE_FILE}" >> ${!LOG_FILE}
+              route del -net 0.0.0.0 netmask 0.0.0.0 dev eth1 metric 0;
               /bin/echo $(timestamp) " =========================   Done    ==========================================" >> ${!LOG_FILE}
             - SBC_SECONDARY_IP:
                 !Select
                 - 0
-                - !GetAtt SBCActiveCoreVoipIface.SecondaryPrivateIpAddresses
+                - !GetAtt SBCActiveAccessVoipIface.SecondaryPrivateIpAddresses
               REMOTE_SSH_MACHINE_IP: ''
   AnsibleConfigServer:
     Type: AWS::EC2::Instance
