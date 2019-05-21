@@ -16,10 +16,17 @@ Metadata:
   AWS::CloudFormation::Interface:
     ParameterGroups:
       - Label:
-          default: AWS Quick Start Configuration
+          default: Network configuration
         Parameters:
-          - QSS3BucketName
-          - QSS3KeyPrefix
+          - SBCAccessVoipCIDR
+          - SBCCoreVoipCIDR
+          - VPCID
+          - PublicSubnetID
+          - SBCManagementSubnetID
+          - SBCHASubnetID
+          - SBCCoreVoipSubnetID
+          - SBCAccessVoipSubnetID
+          - BastionSecurityGroupID
       - Label:
           default: SBC configuration
         Parameters:
@@ -28,19 +35,7 @@ Metadata:
           - AsteriskInstanceType
           - SBCCLIPassword
       - Label:
-          default: Network Configuration
-        Parameters:
-          - SBCAccessVoipCIDR
-          - SBCCoreVoipCIDR
-          - VPCID
-          - SBCCoreVoipSubnetID
-          - SBCAccessVoipSubnetID
-          - SBCManagementSubnetID
-          - SBCHASubnetID
-          - PublicSubnetID
-          - BastionSecurityGroupID
-      - Label:
-          default: SBC Options
+          default: SBC options
         Parameters:
           - SBCPersonalityType
           - SBCActiveInstanceName
@@ -51,9 +46,14 @@ Metadata:
           - SBCVolumeType
           - SBCVolumeIOPS
           - SBCVolumeSize
+      - Label:
+          default: AWS Quick Start configuration
+        Parameters:
+          - QSS3BucketName
+          - QSS3KeyPrefix
     ParameterLabels:
       KeyPairName:
-        default: SSH Key Name
+        default: SSH key name
       VPCID:
         default: VPC ID
       SBCAccessVoipCIDR:
@@ -71,7 +71,7 @@ Metadata:
       PublicSubnetID:
         default: Public subnet ID
       SBCCLIPassword:
-        default: SBC CLI Password
+        default: SBC CLI password
       BastionSecurityGroupID:
         default: Bastion security group ID
       SBCInstanceType:
@@ -103,15 +103,15 @@ Metadata:
 
 Parameters:
   KeyPairName:
-    Description: Name of an existing EC2 KeyPair to enable SSH access to various EC2
-      instances
+    Description: Name of an existing EC2 key pair to enable SSH access to various EC2
+      instances.
     Type: AWS::EC2::KeyPair::KeyName
-    ConstraintDescription: must be the name of an existing EC2 KeyPair.
+    ConstraintDescription: Must be the name of an existing EC2 key pair.
   VPCID:
-    Description: ID of your existing VPC for deployment
+    Description: ID of your existing VPC for deployment.
     Type: AWS::EC2::VPC::Id
   SBCAccessVoipCIDR:
-    Description: CIDR used within the SBC access VoIP (public facing) subnet.
+    Description: CIDR used within the SBC access VoIP (public-facing) subnet.
     Type: String
     MinLength: '1'
     Default: 10.74.20.0/24
@@ -119,7 +119,7 @@ Parameters:
     ConstraintDescription: Must be a valid IP CIDR range of the form x.x.x.x/x and
       subnet of VPC.
   SBCCoreVoipCIDR:
-    Description: CIDR used within the SBC core VoIP (private) subnet. served by
+    Description: CIDR used within the SBC core VoIP (private) subnet. Served by
       Mangler instance.
     Type: String
     MinLength: '1'
@@ -129,27 +129,27 @@ Parameters:
       subnet of VPC.
   SBCCoreVoipSubnetID:
     Type: String
-    Description: Subnet ID for the SBC core VoIP (private) subnet
+    Description: Subnet ID for the SBC core VoIP (private) subnet.
   SBCAccessVoipSubnetID:
     Type: String
-    Description: Subnet ID for the SBC access VoIP subnet
+    Description: Subnet ID for the SBC access VoIP subnet.
   SBCManagementSubnetID:
     Type: String
-    Description: Subnet ID for the SBC management subnet
+    Description: Subnet ID for the SBC management subnet.
   SBCHASubnetID:
     Type: String
-    Description: Subnet ID for the SBC HA subnet
+    Description: Subnet ID for the SBC HA subnet.
   PublicSubnetID:
     Type: String
-    Description: Subnet ID for the HFE Public Voip Subnet
+    Description: Subnet ID for the HFE public Voip subnet.
   SBCCLIPassword:
     Type: String
     Description: Password used on the SBC CLI.
   BastionSecurityGroupID:
-    Description: SecurityGroup associated with a bastion instance.
+    Description: Security group associated with a bastion instance.
     Type: AWS::EC2::SecurityGroup::Id
   SBCInstanceType:
-    Description: Instance type for the SBC and HFE instnaces
+    Description: Instance type for the SBC and HFE instances.
     Type: String
     Default: c5.2xlarge
     AllowedValues:
@@ -183,60 +183,60 @@ Parameters:
       - c5.9xlarge
     ConstraintDescription: Must be a valid EC2 instance type.
   SBCPersonalityType:
-    Description: SBC Personality Type. Currently only supports 'isbc' (Integrated).
+    Description: SBC personality type. Currently only supports 'isbc' (Integrated).
       Distributed is currently not supported.
     Type: String
     Default: isbc
     AllowedValues:
       - isbc
-    ConstraintDescription: Must be a valid SBC Personality type.
+    ConstraintDescription: Must be a valid SBC personality type.
   SBCActiveInstanceName:
-    Description: CE name of the active instance
+    Description: CE name of the active instance.
     Type: String
     Default: vsbc1
     MaxLength: '63'
     AllowedPattern: ^[A-Za-z]{1}[-A-Za-z0-9.]*[A-Za-z0-9]{1}$
     ConstraintDescription: 'Enter valid ceName(instance name).  Regex: ^[A-Za-z]{1}[-A-Za-z0-9.]*[A-Za-z0-9]{1}$'
   SBCPassiveInstanceName:
-    Description: CE name of the standby instance
+    Description: CE name of the standby instance.
     Type: String
     Default: vsbc2
     MaxLength: '63'
     AllowedPattern: ^[A-Za-z]{1}[-A-Za-z0-9.]*[A-Za-z0-9]{1}$
     ConstraintDescription: 'Enter valid ceName(instance name).  Regex: ^[A-Za-z]{1}[-A-Za-z0-9.]*[A-Za-z0-9]{1}$'
   SBCSystemName:
-    Description: System Name
+    Description: System name.
     Type: String
     Default: vsbcSystem
     MaxLength: '26'
     AllowedPattern: ^[A-Za-z]{1}[-A-Za-z0-9]*[A-Za-z0-9]{1}$
     ConstraintDescription: 'Enter valid system name.  Regex: ^[A-Za-z]{1}[-A-Za-z0-9]*[A-Za-z0-9]{1}$ '
   Tenancy:
-    Description: Tenancy attribute for SBC instances
+    Description: Tenancy attribute for SBC instances.
     Type: String
     Default: default
     AllowedValues:
       - default
       - dedicated
   PlacementId:
-    Description: PlacementGroup to launch SBC instances(Optional)
+    Description: Placement group to launch SBC instances.
     Type: String
     Default: ''
   SBCVolumeType:
-    Description: Select Type of Volume for SBC
+    Description: Volume type for SBC instances.
     Type: String
     Default: io1
     AllowedValues:
       - gp2
       - io1
   SBCVolumeIOPS:
-    Description: Enter IOPS reservation for IO1 type EBS volume [<= 1950]. This value
-      is ignored for GP2 type volumes.
+    Description: IOPS reservation for i01 type EBS volume [<= 1950]. This value
+      is ignored for gp2 type volumes.
     Type: Number
     Default: '600'
     MaxValue: '1950'
   SBCVolumeSize:
-    Description: Enter size of disk in GiB. Minimum disk required is 65 GiB
+    Description: Enter size of disk, in GiB. Minimum disk required is 65 GiB.
     Type: Number
     Default: '65'
     MinValue: '65'
