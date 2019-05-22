@@ -219,7 +219,7 @@ Parameters:
       here.
     Type: AWS::EC2::AvailabilityZone::Name
   SBCInstanceType:
-    Description: Instance type for the SBC Mangler.
+    Description: Instance type for the SBC HFE.
     Type: String
     Default: c5.2xlarge
     AllowedValues:

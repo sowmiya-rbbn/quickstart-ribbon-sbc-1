@@ -120,7 +120,7 @@ Parameters:
       subnet of VPC.
   SBCCoreVoipCIDR:
     Description: CIDR used within the SBC core VoIP (private) subnet. Served by
-      Mangler instance.
+      HFE instance.
     Type: String
     MinLength: '1'
     Default: 10.74.20.0/24
@@ -491,14 +491,6 @@ Resources:
           FromPort: 1024
           ToPort: 65535
           CidrIp: 0.0.0.0/0
-        - IpProtocol: udp
-          FromPort: 5060
-          ToPort: 5061
-          CidrIp: !Ref SBCAccessVoipCIDR
-        - IpProtocol: tcp
-          FromPort: 5060
-          ToPort: 5061
-          CidrIp: !Ref SBCAccessVoipCIDR
       Tags:
         - Key: Name
           Value:
@@ -922,7 +914,7 @@ Resources:
         Fn::Base64:
           Fn::Sub:
             - |
-              #!/bin/bash
+              #!/bin/bash -x
               HFE_DIR="/home/ec2-user/HFE/"
               HFE_FILE="$HFE_DIR/HFE.sh"
               LOG_FILE="$HFE_DIR/cloud-init-nat.log"
@@ -931,7 +923,7 @@ Resources:
                 date +"%Y-%m-%d %T"
               }
               mkdir -p ${!HFE_DIR};
-              route add -net 0.0.0.0 netmask 0.0.0.0 dev eth1 methric 0;
+              route add -net 0.0.0.0 netmask 0.0.0.0 dev eth1 metric 0;
               aws s3 cp s3://${QSS3BucketName}/${QSS3KeyPrefix}scripts/HFE.sh ${!HFE_FILE}
               if [ $? -ne 0 ]; then
                 /bin/echo $(timestamp) "Error:Could not copy HFE script from S3 bucket."
@@ -1145,7 +1137,7 @@ Resources:
               else
                 /bin/echo "Copied sip script from S3 bucket."  >> log.txt
               fi;
-              aws s3 cp s3://${QSS3BucketName}/${QSS3KeyPrefix}/scripts/extensions.conf ${!EXT_FILE}
+              aws s3 cp s3://${QSS3BucketName}/${QSS3KeyPrefix}scripts/extensions.conf ${!EXT_FILE}
               if [ $? -ne 0 ]; then
                 /bin/echo "Error:Could not copy ext script from S3 bucket."  >> log.txt
               else
