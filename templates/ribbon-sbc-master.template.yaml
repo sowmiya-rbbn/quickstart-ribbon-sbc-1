@@ -221,7 +221,7 @@ Parameters:
   SBCInstanceType:
     Description: Instance type for the SBC HFE.
     Type: String
-    Default: m5.2xlarge
+    Default: m5.xlarge
     AllowedValues:
       - m4.xlarge
       - m5.xlarge
@@ -303,7 +303,7 @@ Parameters:
   AsteriskInstanceType:
     Description: Instance type for the Asterisk instance.
     Type: String
-    Default: m5.2xlarge
+    Default: m5.xlarge
     AllowedValues:
       - m4.xlarge
       - m5.xlarge
