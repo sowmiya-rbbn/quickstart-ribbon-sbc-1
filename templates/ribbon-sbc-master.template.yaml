@@ -391,7 +391,7 @@ Resources:
           - Outputs.BastionSecurityGroupID
         SBCAccessVoipSubnetID: !GetAtt
           - VPCStack
-          - Outputs.PublicSubnet2ID
+          - Outputs.PrivateSubnet2ID
         SBCCoreVoipSubnetID: !GetAtt
           - VPCStack
           - Outputs.PrivateSubnet3ID
