@@ -1060,6 +1060,25 @@ Resources:
           #!/bin/bash -x
           /opt/aws/bin/cfn-init --stack ${AWS::StackName} --resource AnsibleConfigServer --region ${AWS::Region}
           /opt/aws/bin/cfn-signal -e $? --stack ${AWS::StackName} --resource AnsibleConfigServer --region ${AWS::Region}
+  HFEPrivateRouteTable:
+    Type: 'AWS::EC2::RouteTable'
+    Properties:
+      VpcId: !Ref VPCID
+      Tags:
+        - Key: Name
+          Value: !Sub HFEPrivateRouteTable_Ribbon
+  HFEPrivateRoute:
+    Type: 'AWS::EC2::Route'
+    DependsOn: HFEPrivateInterface
+    Properties:
+      RouteTableId: !Ref HFEPrivateRouteTable
+      DestinationCidrBlock: 0.0.0.0/0
+      NetworkInterfaceId: !Ref HFEPrivateInterface
+  HFEPrivateRouteAssociation:
+    Type: 'AWS::EC2::SubnetRouteTableAssociation'
+    Properties:
+      RouteTableId: !Ref HFEPrivateRouteTable
+      SubnetId: !Ref SBCAccessVoipSubnetID
   AnsibleConfigServerInterface:
     Type: AWS::EC2::NetworkInterface
     Properties:
