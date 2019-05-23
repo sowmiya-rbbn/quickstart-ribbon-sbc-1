@@ -413,3 +413,5 @@ Resources:
         SBCVolumeIOPS: !Ref SBCVolumeIOPS
         SBCVolumeSize: !Ref SBCVolumeSize
         AsteriskInstanceType: !Ref AsteriskInstanceType
+        SBCAccessVoipCIDR: !Ref SBCAccessVoipCIDR
+        SBCCoreVoipCIDR:  !Ref SBCCoreVoipCIDR
