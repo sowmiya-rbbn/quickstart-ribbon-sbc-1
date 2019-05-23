@@ -12,7 +12,7 @@ The Quick Start offers two deployment options:
 
 You can also use the AWS CloudFormation templates as a starting point for your own implementation.
 
-![Quick Start architecture for Ribbon SBC SWe on AWS](https://d1.awsstatic.com/partner-network/QuickStart/datasheets/ribbon-sbc-architecture-on-aws.png)
+![Quick Start architecture for Ribbon SBC SWe on AWS](https://d0.awsstatic.com/partner-network/QuickStart/datasheets/ribbon-sbc-architecture-on-aws.png)
 
 For architectural details, best practices, step-by-step instructions, and customization options, see the 
 [deployment guide](https://fwd.aws/9R5e4).
