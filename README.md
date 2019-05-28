@@ -1,7 +1,7 @@
 # quickstart-ribbon-sbc
 # Secure Multimedia Session Control on the AWS Cloud using Ribbon SBC SWe
 
-TThis Quick Start deploys the Ribbon Session Border Controller Software Edition (SBC SWe) on the Amazon Web Services (AWS) Cloud in about 30 minutes.
+This Quick Start deploys the Ribbon Session Border Controller Software Edition (SBC SWe) on the Amazon Web Services (AWS) Cloud in about 30 minutes.
 
 You can use the Ribbon SBC SWe to secure real-time communications, including unified communications, conferencing and collaboration, and contact center services, on AWS. The Ribbon SBC SWe provides robust interworking and normalization for multiple signaling and media protocols, call admission control to manage traffic levels, and multiple security features for both signaling and media to protect privacy and to help ensure regulatory compliance.
 
