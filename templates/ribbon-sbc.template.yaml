@@ -24,8 +24,8 @@ Metadata:
           - PublicSubnetID
           - SBCManagementSubnetID
           - SBCHASubnetID
-          - SBCCoreVoipSubnetID
           - SBCAccessVoipSubnetID
+          - SBCCoreVoipSubnetID
           - BastionSecurityGroupID
       - Label:
           default: SBC configuration
@@ -60,10 +60,10 @@ Metadata:
         default: SBC access subnet CIDR
       SBCCoreVoipCIDR:
         default: SBC core subnet CIDR
-      SBCCoreVoipSubnetID:
-        default: SBC core subnet ID
       SBCAccessVoipSubnetID:
         default: SBC access subnet ID
+      SBCCoreVoipSubnetID:
+        default: SBC core subnet ID
       SBCManagementSubnetID:
         default: SBC management subnet ID
       SBCHASubnetID:
@@ -111,15 +111,7 @@ Parameters:
     Description: ID of your existing VPC for deployment.
     Type: AWS::EC2::VPC::Id
   SBCAccessVoipCIDR:
-    Description: CIDR used within the SBC access VoIP (public-facing) subnet.
-    Type: String
-    MinLength: '1'
-    Default: 10.74.20.0/24
-    AllowedPattern: (\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})/(\d{1,2})
-    ConstraintDescription: Must be a valid IP CIDR range of the form x.x.x.x/x and
-      subnet of VPC.
-  SBCCoreVoipCIDR:
-    Description: CIDR used within the SBC core VoIP (private) subnet. Served by
+    Description: CIDR used within the SBC access VoIP (public-facing) subnet. Served by
       HFE instance.
     Type: String
     MinLength: '1'
@@ -127,12 +119,20 @@ Parameters:
     AllowedPattern: (\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})/(\d{1,2})
     ConstraintDescription: Must be a valid IP CIDR range of the form x.x.x.x/x and
       subnet of VPC.
-  SBCCoreVoipSubnetID:
+  SBCCoreVoipCIDR:
+    Description: CIDR used within the SBC core VoIP (private) subnet. 
     Type: String
-    Description: Subnet ID for the SBC core VoIP (private) subnet.
+    MinLength: '1'
+    Default: 10.74.20.0/24
+    AllowedPattern: (\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})/(\d{1,2})
+    ConstraintDescription: Must be a valid IP CIDR range of the form x.x.x.x/x and
+      subnet of VPC.
   SBCAccessVoipSubnetID:
     Type: String
     Description: Subnet ID for the SBC access VoIP subnet.
+  SBCCoreVoipSubnetID:
+    Type: String
+    Description: Subnet ID for the SBC core VoIP (private) subnet.
   SBCManagementSubnetID:
     Type: String
     Description: Subnet ID for the SBC management subnet.
@@ -295,63 +295,63 @@ Mappings:
       AMZNLINUXHVM: amzn-ami-hvm-2018.03.0.20181129-x86_64-gp2
       RIBBONASTERISKAMI: Asterisk- AWS Marketplace 27 Nov 2018 (14.6.0)-9fa53578-e190-40d0-823c-7998f5542773-ami-09a5e4cd15cff5ae1.4
     ap-northeast-1:
-      AMZNLINUXHVM: ami-00a5245b4816c38e6
+      AMZNLINUXHVM: ami-0ab3e16f9c414dee7
       RIBBONASTERISKAMI: ami-0b25f99dc11a472f5
       RIBBONSBCAMI: ami-0b984752ed7d6a0f0
     ap-northeast-2:
-      AMZNLINUXHVM: ami-00dc207f8ba6dc919
+      AMZNLINUXHVM: ami-0e1e385b0a934254a
       RIBBONASTERISKAMI: ami-0a02619ab95c9d40b
       RIBBONSBCAMI: ami-047c00c834b46bdb9
     ap-south-1:
-      AMZNLINUXHVM: ami-0ad42f4f66f6c1cc9
+      AMZNLINUXHVM: ami-02913db388613c3e1
       RIBBONASTERISKAMI: ami-03cbcea0fc77d9c6c
       RIBBONSBCAMI: ami-00d7df60f86722524
     ap-southeast-1:
-      AMZNLINUXHVM: ami-05b3bcf7f311194b3
+      AMZNLINUXHVM: ami-05c859630889c79c8
       RIBBONASTERISKAMI: ami-07b92c54e4ad37beb
       RIBBONSBCAMI: ami-00c8f3e9b68d75b59
     ap-southeast-2:
-      AMZNLINUXHVM: ami-02fd0b06f06d93dfc
+      AMZNLINUXHVM: ami-07cc15c3ba6f8e287
       RIBBONASTERISKAMI: ami-063ccb9dd8542bf3f
       RIBBONSBCAMI: ami-004cd1d7ae297e670
     ca-central-1:
-      AMZNLINUXHVM: ami-07423fb63ea0a0930
+      AMZNLINUXHVM: ami-04070f04f450607dc
       RIBBONASTERISKAMI: ami-0656a851d839217bd
       RIBBONSBCAMI: ami-0ef943c3daba37c78
     eu-central-1:
-      AMZNLINUXHVM: ami-0cfbf4f6db41068ac
+      AMZNLINUXHVM: ami-010fae13a16763bb4
       RIBBONASTERISKAMI: ami-03bd1b73b5c8527d6
       RIBBONSBCAMI: ami-0a0ee6030e3991da9
     eu-west-1:
-      AMZNLINUXHVM: ami-08935252a36e25f85
+      AMZNLINUXHVM: ami-028188d9b49b32a80
       RIBBONASTERISKAMI: ami-0422f1982eb404b0d
       RIBBONSBCAMI: ami-09bb2f4b9adb91497
     eu-west-2:
-      AMZNLINUXHVM: ami-01419b804382064e4
+      AMZNLINUXHVM: ami-04de2b60dd25fbb2e
       RIBBONASTERISKAMI: ami-00c699d52524fe58e
       RIBBONSBCAMI: ami-0929a04a05ed4660b
     eu-west-3:
-      AMZNLINUXHVM: ami-0dd7e7ed60da8fb83
+      AMZNLINUXHVM: ami-0652eb0db9b20aeaf
       RIBBONASTERISKAMI: ami-0fe5966306e14a1d7
       RIBBONSBCAMI: ami-0bb4578f3ef1d00f5
     sa-east-1:
-      AMZNLINUXHVM: ami-05145e0b28ad8e0b2
+      AMZNLINUXHVM: ami-0e2c2c29d8017dd99
       RIBBONASTERISKAMI: ami-0ded104c1534ff1e7
       RIBBONSBCAMI: ami-07e90b1824ba80de0
     us-east-1:
-      AMZNLINUXHVM: ami-0080e4c5bc078760e
+      AMZNLINUXHVM: ami-00eb20669e0990cb4
       RIBBONASTERISKAMI: ami-0ece7775245867632
       RIBBONSBCAMI: ami-05b8856db70198486
     us-east-2:
-      AMZNLINUXHVM: ami-0cd3dfa4e37921605
+      AMZNLINUXHVM: ami-0c64dd618a49aeee8
       RIBBONASTERISKAMI: ami-0ead1c7d26f9ae16e
       RIBBONSBCAMI: ami-0d1f5143e28d74c9e
     us-west-1:
-      AMZNLINUXHVM: ami-0ec6517f6edbf8044
+      AMZNLINUXHVM: ami-0bce08e823ed38bdd
       RIBBONASTERISKAMI: ami-0ad5e1f3a4bc4f6a3
       RIBBONSBCAMI: ami-0811a0b37cdcd3865
     us-west-2:
-      AMZNLINUXHVM: ami-01e24be29428c15b2
+      AMZNLINUXHVM: ami-08d489468314a58df
       RIBBONASTERISKAMI: ami-0069b14731c27d739
       RIBBONSBCAMI: ami-04f0af8362c548c9a
 Resources:
@@ -359,25 +359,25 @@ Resources:
     Type: AWS::EC2::NetworkInterface
     Properties:
       SubnetId: !Ref SBCAccessVoipSubnetID
-      Description: !Sub ${SBCSystemName}-pkt1A_Ribbon
+      Description: !Sub ${SBCSystemName}-pkt0A_Ribbon
       GroupSet:
         - !Ref SBCAccessVoipSG
       SecondaryPrivateIpAddressCount: 1
       Tags:
         - Key: Name
-          Value: !Sub ${SBCSystemName}-pkt1A_Ribbon
+          Value: !Sub ${SBCSystemName}-pkt0A_Ribbon
   SBCActiveCoreVoipIface:
     Type: AWS::EC2::NetworkInterface
     Properties:
       SubnetId: !Ref SBCCoreVoipSubnetID
-      Description: !Sub ${SBCSystemName}-pkt0A_Ribbon
+      Description: !Sub ${SBCSystemName}-pkt1A_Ribbon
       GroupSet:
         - !Ref SBCCoreVoipSG
       SecondaryPrivateIpAddressCount: 1
       SourceDestCheck: false
       Tags:
         - Key: Name
-          Value: !Sub ${SBCSystemName}-pkt0A_Ribbon
+          Value: !Sub ${SBCSystemName}-pkt1A_Ribbon
   SBCActiveMgtIface:
     Type: AWS::EC2::NetworkInterface
     Properties:
@@ -406,23 +406,23 @@ Resources:
     Type: AWS::EC2::NetworkInterface
     Properties:
       SubnetId: !Ref SBCAccessVoipSubnetID
-      Description: !Sub ${SBCSystemName}-pkt1B_Ribbon
+      Description: !Sub ${SBCSystemName}-pkt0B_Ribbon
       GroupSet:
         - !Ref SBCAccessVoipSG
       Tags:
         - Key: Name
-          Value: !Sub ${SBCSystemName}-pkt1B_Ribbon
+          Value: !Sub ${SBCSystemName}-pkt0B_Ribbon
   SBCPassiveCoreVoipIface:
     Type: AWS::EC2::NetworkInterface
     Properties:
       SubnetId: !Ref SBCCoreVoipSubnetID
-      Description: !Sub ${SBCSystemName}-pkt0B_Ribbon
+      Description: !Sub ${SBCSystemName}-pkt1B_Ribbon
       GroupSet:
         - !Ref SBCCoreVoipSG
       SourceDestCheck: false
       Tags:
         - Key: Name
-          Value: !Sub ${SBCSystemName}-pkt0B_Ribbon
+          Value: !Sub ${SBCSystemName}-pkt1B_Ribbon
   SBCPassiveMgtIface:
     Type: AWS::EC2::NetworkInterface
     Properties:
@@ -619,10 +619,14 @@ Resources:
           FromPort: 443
           ToPort: 443
           SourceSecurityGroupId: !Ref 'BastionSecurityGroupID'
+        - IpProtocol: tcp
+          FromPort: 444
+          ToPort: 444
+          SourceSecurityGroupId: !Ref 'BastionSecurityGroupID'
       Tags:
         - Key: Name
           Value: SBC API Access Security Group
-  SBCManagementSGIngres22:
+  SBCManagementSGIngress22:
     Type: AWS::EC2::SecurityGroupIngress
     Properties:
       IpProtocol: tcp
@@ -630,7 +634,7 @@ Resources:
       FromPort: 22
       ToPort: 22
       SourceSecurityGroupId: !Ref 'SBCManagementSG'
-  SBCManagementSGIngres2024:
+  SBCManagementSGIngress2024:
     Type: AWS::EC2::SecurityGroupIngress
     Properties:
       IpProtocol: tcp
@@ -638,7 +642,7 @@ Resources:
       FromPort: 2024
       ToPort: 2024
       SourceSecurityGroupId: !Ref 'SBCManagementSG'
-  SBCAPISGIngres443:
+  SBCAPISGIngress443:
     Type: AWS::EC2::SecurityGroupIngress
     Properties:
       IpProtocol: tcp
@@ -646,6 +650,103 @@ Resources:
       FromPort: 443
       ToPort: 443
       SourceSecurityGroupId: !Ref 'SBCAPIAccessSG'
+  SBCAPISGIngress444:
+    Type: AWS::EC2::SecurityGroupIngress
+    Properties:
+      IpProtocol: tcp
+      GroupId: !Ref SBCAPIAccessSG
+      FromPort: 444
+      ToPort: 444
+      SourceSecurityGroupId: !Ref 'SBCAPIAccessSG'
+  SBCManagementSGIngress123:
+    Type: AWS::EC2::SecurityGroupIngress
+    Properties:
+      IpProtocol: udp
+      GroupId: !Ref SBCManagementSG
+      FromPort: 123
+      ToPort: 123
+      SourceSecurityGroupId: !Ref 'SBCManagementSG'
+  SBCManagementSGIngress161:
+    Type: AWS::EC2::SecurityGroupIngress
+    Properties:
+      IpProtocol: udp
+      GroupId: !Ref SBCManagementSG
+      FromPort: 161
+      ToPort: 161
+      SourceSecurityGroupId: !Ref 'SBCManagementSG'
+  SBCManagementSGIngress162:
+    Type: AWS::EC2::SecurityGroupIngress
+    Properties:
+      IpProtocol: udp
+      GroupId: !Ref SBCManagementSG
+      FromPort: 162
+      ToPort: 162
+      SourceSecurityGroupId: !Ref 'SBCManagementSG'
+  SBCManagementSGIngress2022:
+    Type: AWS::EC2::SecurityGroupIngress
+    Properties:
+      IpProtocol: tcp
+      GroupId: !Ref SBCManagementSG
+      FromPort: 2022
+      ToPort: 2022
+      SourceSecurityGroupId: !Ref 'SBCManagementSG'
+  SBCManagementSGIngress80:
+    Type: AWS::EC2::SecurityGroupIngress
+    Properties:
+      IpProtocol: tcp
+      GroupId: !Ref SBCManagementSG
+      FromPort: 80
+      ToPort: 80
+      SourceSecurityGroupId: !Ref 'SBCManagementSG'
+  SBCManagementSGIngress3057:
+    Type: AWS::EC2::SecurityGroupIngress
+    Properties:
+      IpProtocol: udp
+      GroupId: !Ref SBCManagementSG
+      FromPort: 3057
+      ToPort: 3057
+      SourceSecurityGroupId: !Ref 'SBCManagementSG'
+  SBCManagementSGIngress3054:
+    Type: AWS::EC2::SecurityGroupIngress
+    Properties:
+      IpProtocol: udp
+      GroupId: !Ref SBCManagementSG
+      FromPort: 3054
+      ToPort: 3054
+      SourceSecurityGroupId: !Ref 'SBCManagementSG'
+  SBCManagementSGIngress3055:
+    Type: AWS::EC2::SecurityGroupIngress
+    Properties:
+      IpProtocol: udp
+      GroupId: !Ref SBCManagementSG
+      FromPort: 3055
+      ToPort: 3055
+      SourceSecurityGroupId: !Ref 'SBCManagementSG'
+  SBCManagementSGIngress4019:
+    Type: AWS::EC2::SecurityGroupIngress
+    Properties:
+      IpProtocol: tcp
+      GroupId: !Ref SBCManagementSG
+      FromPort: 4019
+      ToPort: 4019
+      SourceSecurityGroupId: !Ref 'SBCManagementSG'
+  SBCManagementSGIngress5093:
+    Type: AWS::EC2::SecurityGroupIngress
+    Properties:
+      IpProtocol: udp
+      GroupId: !Ref SBCManagementSG
+      FromPort: 5093
+      ToPort: 5093
+      SourceSecurityGroupId: !Ref 'SBCManagementSG'
+  HFEExEIP:
+    Type: AWS::EC2::EIP
+    Properties:
+      Domain: !Ref VPCID
+  HFEExEIPAssociation:
+    Type: AWS::EC2::EIPAssociation
+    Properties:
+      AllocationId: !GetAtt HFEExEIP.AllocationId
+      NetworkInterfaceId: !Ref HFEPublicInterface
   HFEExVoipEIP:
     Type: AWS::EC2::EIP
     Properties:
@@ -729,6 +830,8 @@ Resources:
                   - ec2:DescribeRegions
                   - ec2:ModifyInstanceAttribute
                   - ec2:DescribeSubnets
+                  - events:PutRule
+                  - cloudwatch:PutMetricData
                 Resource: '*'
   SBCInstanceProfile:
     Type: AWS::IAM::InstanceProfile
@@ -914,6 +1017,21 @@ Resources:
         Fn::Base64:
           Fn::Sub:
             - |
+              Content-Type: multipart/mixed; boundary="//"
+              MIME-Version: 1.0
+              --//
+              Content-Type: text/cloud-config; charset="us-ascii"
+              MIME-Version: 1.0
+              Content-Transfer-Encoding: 7bit
+              Content-Disposition: attachment; filename="cloud-config.txt"
+              #cloud-config
+              cloud_final_modules:
+              - [scripts-user, always]
+              --//
+              Content-Type: text/x-shellscript; charset="us-ascii"
+              MIME-Version: 1.0
+              Content-Transfer-Encoding: 7bit
+              Content-Disposition: attachment; filename="userdata.txt"
               #!/bin/bash -x
               HFE_DIR="/home/ec2-user/HFE/"
               HFE_FILE="$HFE_DIR/HFE.sh"
@@ -923,20 +1041,19 @@ Resources:
                 date +"%Y-%m-%d %T"
               }
               mkdir -p ${!HFE_DIR};
-              route add -net 0.0.0.0 netmask 0.0.0.0 dev eth1 metric 0;
-              aws s3 cp s3://${QSS3BucketName}/${QSS3KeyPrefix}scripts/HFE.sh ${!HFE_FILE}
+              aws s3 cp --region ${AWS::Region} s3://${QSS3BucketName}/${QSS3KeyPrefix}scripts/HFE.sh ${!HFE_FILE}
               if [ $? -ne 0 ]; then
-                /bin/echo $(timestamp) "Error:Could not copy HFE script from S3 bucket."
+                /bin/echo $(timestamp) "Error:Could not copy HFE script from S3 bucket." >> ${!LOG_FILE}
               else
-                /bin/echo $(timestamp) "Copied HFE script from S3 bucket."
+                /bin/echo $(timestamp) "Copied HFE script from S3 bucket." >> ${!LOG_FILE}
               fi;
+              /bin/echo "" > ${!NAT_VAR}
               /bin/echo "SBC_SECONDARY_IP=${SBC_SECONDARY_IP}" >> ${!NAT_VAR}
-              /bin/echo "REMOTE_SSH_MACHINE_IP=${REMOTE_SSH_MACHINE_IP}"
-              /bin/echo $(!timestamp) "Copied natVars.input" >> ${!LOG_FILE}
+              /bin/echo "REMOTE_SSH_MACHINE_IP=${REMOTE_SSH_MACHINE_IP}" >> ${!NAT_VAR}
+              /bin/echo $(timestamp) "Copied natVars.input" >> ${!LOG_FILE}
               sudo chmod 744 ${!HFE_FILE}
               sudo /bin/bash ${!HFE_FILE} setup
               /bin/echo "Configured using HFE script ${!HFE_FILE}" >> ${!LOG_FILE}
-              route del -net 0.0.0.0 netmask 0.0.0.0 dev eth1 metric 0;
               /bin/echo $(timestamp) " =========================   Done    ==========================================" >> ${!LOG_FILE}
             - SBC_SECONDARY_IP:
                 !Select
@@ -1348,20 +1465,18 @@ Resources:
                 Resource: '*'
 
 Outputs:
+  SBCSignalingPublicIP:
+    Value: !Ref HFEExVoipEIP
   InstanceIdActive:
     Value: !Ref SBCActiveInstance
-  DefaultCliAdminPassword:
-    Description: 'It is eth0 interface-id of instance which has assigned active role
-      in the template. This is used as default CLI admin password '
-    Value: !Ref SBCActiveMgtIface
   Mgt0InterfaceIDActive:
     Value: !Ref SBCActiveMgtIface
   HA0InterfaceIDActive:
     Value: !Ref SBCActiveHAIface
   Pkt0InterfaceIDActive:
-    Value: !Ref SBCActiveCoreVoipIface
-  Pkt1InterfaceIDActive:
     Value: !Ref SBCActiveAccessVoipIface
+  Pkt1InterfaceIDActive:
+    Value: !Ref SBCActiveCoreVoipIface
   InstanceIdStandby:
     Value: !Ref SBCPassiveInstance
   Mgt0InterfaceIDStandby:
@@ -1369,7 +1484,7 @@ Outputs:
   HA0InterfaceIDStandby:
     Value: !Ref SBCPassiveHAIface
   Pkt0InterfaceIDStandby:
-    Value: !Ref SBCPassiveCoreVoipIface
-  Pkt1InterfaceIDStandby:
     Value: !Ref SBCPassiveAccessVoipIface
+  Pkt1InterfaceIDStandby:
+    Value: !Ref SBCPassiveCoreVoipIface
 ...
