@@ -46,7 +46,7 @@ def readConfig(config):
 		conf.append('SBC_HOST_IP: ' + sbcIp)
                 conf.append('SBC_HOST_IP_STANDBY: ' + sbcIpStandby)
 		conf.append('SBC_EMA_USER: admin')
-		conf.append('SBC_EMA_PASSWD: ' + clipass)
+		conf.append('SBC_EMA_PASSWD: ' +  '\'' + clipass + '\'')
                 conf.append('ADMIN_KEY_FILE: ' + adminKeyFile)
                 conf.append('CURRENT_ACTIVE: ' + currentActive)
 		#Addr_ctxt
