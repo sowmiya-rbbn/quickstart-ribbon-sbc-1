@@ -21,7 +21,6 @@ Metadata:
           - PublicSubnet2CIDR
           - PublicSubnetTag1
           - PublicSubnetTag2
-          - PublicSubnetTag3
           - PrivateSubnet1CIDR
           - PrivateSubnet2CIDR
           - PrivateSubnet3CIDR
@@ -29,6 +28,7 @@ Metadata:
           - PrivateSubnetTag1
           - PrivateSubnetTag2
           - PrivateSubnetTag3
+          - PrivateSubnetTag4
           - VPCTenancy
     ParameterLabels:
       AvailabilityZone:
@@ -47,6 +47,8 @@ Metadata:
         default: Tag for Private Subnets
       PrivateSubnetTag3:
         default: Tag for Private Subnets
+      PrivateSubnetTag4:
+        default: Tag for Private Subnets
       PublicSubnet1CIDR:
         default: Public subnet 1 CIDR
       PublicSubnet2CIDR:
@@ -54,8 +56,6 @@ Metadata:
       PublicSubnetTag1:
         default: Tag for Public Subnets
       PublicSubnetTag2:
-        default: Tag for Public Subnets
-      PublicSubnetTag3:
         default: Tag for Public Subnets
       VPCCIDR:
         default: VPC CIDR
@@ -110,6 +110,13 @@ Parameters:
     Default: ''
     Description: tag to add to private subnets A, in format Key=Value (Optional)
     Type: String
+  PrivateSubnetTag4:
+    AllowedPattern: ^([a-zA-Z0-9+\-._:/@]+=[a-zA-Z0-9+\-.,_:/@ *\\"'\[\]\{\}]*)?$
+    ConstraintDescription: tags must be in format "Key=Value" keys can only contain
+      [a-zA-Z0-9+\-._:/@], values can contain [a-zA-Z0-9+\-._:/@ *\\"'\[\]\{\}]
+    Default: ''
+    Description: tag to add to private subnets A, in format Key=Value (Optional)
+    Type: String
   PublicSubnet1CIDR:
     AllowedPattern: ^(([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\.){3}([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])(\/(1[6-9]|2[0-8]))$
     ConstraintDescription: CIDR block parameter must be in the form x.x.x.x/16-28
@@ -132,13 +139,6 @@ Parameters:
     Description: tag to add to public subnets, in format Key=Value (Optional)
     Type: String
   PublicSubnetTag2:
-    AllowedPattern: ^([a-zA-Z0-9+\-._:/@]+=[a-zA-Z0-9+\-.,_:/@ *\\"'\[\]\{\}]*)?$
-    ConstraintDescription: tags must be in format "Key=Value" keys can only contain
-      [a-zA-Z0-9+\-._:/@], values can contain [a-zA-Z0-9+\-._:/@ *\\"'\[\]\{\}]
-    Default: ''
-    Description: tag to add to public subnets, in format Key=Value (Optional)
-    Type: String
-  PublicSubnetTag3:
     AllowedPattern: ^([a-zA-Z0-9+\-._:/@]+=[a-zA-Z0-9+\-.,_:/@ *\\"'\[\]\{\}]*)?$
     ConstraintDescription: tags must be in format "Key=Value" keys can only contain
       [a-zA-Z0-9+\-._:/@], values can contain [a-zA-Z0-9+\-._:/@ *\\"'\[\]\{\}]
@@ -174,6 +174,10 @@ Conditions:
     - !Equals
       - !Ref 'PrivateSubnetTag3'
       - ''
+  PrivateSubnetTag4Condition: !Not
+    - !Equals
+      - !Ref 'PrivateSubnetTag4'
+      - ''
   PublicSubnetTag1Condition: !Not
     - !Equals
       - !Ref 'PublicSubnetTag1'
@@ -181,10 +185,6 @@ Conditions:
   PublicSubnetTag2Condition: !Not
     - !Equals
       - !Ref 'PublicSubnetTag2'
-      - ''
-  PublicSubnetTag3Condition: !Not
-    - !Equals
-      - !Ref 'PublicSubnetTag3'
       - ''
 Resources:
   DHCPOptions:
@@ -270,6 +270,19 @@ Resources:
                 - '='
                 - !Ref 'PrivateSubnetTag3'
           - !Ref 'AWS::NoValue'
+        - !If
+          - PrivateSubnetTag4Condition
+          - Key: !Select
+              - '0'
+              - !Split
+                - '='
+                - !Ref 'PrivateSubnetTag4'
+            Value: !Select
+              - '1'
+              - !Split
+                - '='
+                - !Ref 'PrivateSubnetTag4'
+          - !Ref 'AWS::NoValue'
   PrivateSubnet2:
     Type: AWS::EC2::Subnet
     Properties:
@@ -317,6 +330,19 @@ Resources:
               - !Split
                 - '='
                 - !Ref 'PrivateSubnetTag3'
+          - !Ref 'AWS::NoValue'
+        - !If
+          - PrivateSubnetTag4Condition
+          - Key: !Select
+              - '0'
+              - !Split
+                - '='
+                - !Ref 'PrivateSubnetTag4'
+            Value: !Select
+              - '1'
+              - !Split
+                - '='
+                - !Ref 'PrivateSubnetTag4'
           - !Ref 'AWS::NoValue'
   PrivateSubnet3:
     Type: AWS::EC2::Subnet
@@ -366,6 +392,19 @@ Resources:
                 - '='
                 - !Ref 'PrivateSubnetTag3'
           - !Ref 'AWS::NoValue'
+        - !If
+          - PrivateSubnetTag4Condition
+          - Key: !Select
+              - '0'
+              - !Split
+                - '='
+                - !Ref 'PrivateSubnetTag4'
+            Value: !Select
+              - '1'
+              - !Split
+                - '='
+                - !Ref 'PrivateSubnetTag4'
+          - !Ref 'AWS::NoValue'
   PrivateSubnet4:
     Type: AWS::EC2::Subnet
     Properties:
@@ -414,6 +453,19 @@ Resources:
                 - '='
                 - !Ref 'PrivateSubnetTag3'
           - !Ref 'AWS::NoValue'
+        - !If
+          - PrivateSubnetTag4Condition
+          - Key: !Select
+              - '0'
+              - !Split
+                - '='
+                - !Ref 'PrivateSubnetTag4'
+            Value: !Select
+              - '1'
+              - !Split
+                - '='
+                - !Ref 'PrivateSubnetTag4'
+          - !Ref 'AWS::NoValue'
   PublicSubnet1:
     Type: AWS::EC2::Subnet
     Properties:
@@ -448,19 +500,6 @@ Resources:
               - !Split
                 - '='
                 - !Ref 'PublicSubnetTag2'
-          - !Ref 'AWS::NoValue'
-        - !If
-          - PublicSubnetTag3Condition
-          - Key: !Select
-              - '0'
-              - !Split
-                - '='
-                - !Ref 'PublicSubnetTag3'
-            Value: !Select
-              - '1'
-              - !Split
-                - '='
-                - !Ref 'PublicSubnetTag3'
           - !Ref 'AWS::NoValue'
       MapPublicIpOnLaunch: true
   PublicSubnet2:
@@ -497,19 +536,6 @@ Resources:
               - !Split
                 - '='
                 - !Ref 'PublicSubnetTag2'
-          - !Ref 'AWS::NoValue'
-        - !If
-          - PublicSubnetTag3Condition
-          - Key: !Select
-              - '0'
-              - !Split
-                - '='
-                - !Ref 'PublicSubnetTag3'
-            Value: !Select
-              - '1'
-              - !Split
-                - '='
-                - !Ref 'PublicSubnetTag3'
           - !Ref 'AWS::NoValue'
       MapPublicIpOnLaunch: true
   PrivateSubnet1RouteTable:
