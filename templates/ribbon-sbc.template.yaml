@@ -120,7 +120,7 @@ Parameters:
     ConstraintDescription: Must be a valid IP CIDR range of the form x.x.x.x/x and
       subnet of VPC.
   SBCCoreVoipCIDR:
-    Description: CIDR used within the SBC core VoIP (private) subnet. 
+    Description: CIDR used within the SBC core VoIP (private) subnet.
     Type: String
     MinLength: '1'
     Default: 10.74.20.0/24
@@ -1331,7 +1331,7 @@ Resources:
         S3Bucket: !GetAtt CopyZipsTemplate.Outputs.LambdaZipsBucket
         S3Key: !Sub '${QSS3KeyPrefix}functions/packages/KeyGen/lambda.zip'
       Handler: service.handler
-      Runtime: python2.7
+      Runtime: python3.7
       Timeout: 5
       Role: !GetAtt 'LambdaExecutionRole.Arn'
   LambdaExecutionRole:
