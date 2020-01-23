@@ -295,63 +295,63 @@ Mappings:
       AMZNLINUXHVM: amzn-ami-hvm-2018.03.0.20181129-x86_64-gp2
       RIBBONASTERISKAMI: Asterisk- AWS Marketplace 27 Nov 2018 (14.6.0)-9fa53578-e190-40d0-823c-7998f5542773-ami-09a5e4cd15cff5ae1.4
     ap-northeast-1:
-      AMZNLINUXHVM: ami-0ab3e16f9c414dee7
+      AMZNLINUXHVM: ami-079e6fb1e856e80c1
       RIBBONASTERISKAMI: ami-0b25f99dc11a472f5
       RIBBONSBCAMI: ami-0b984752ed7d6a0f0
     ap-northeast-2:
-      AMZNLINUXHVM: ami-0e1e385b0a934254a
+      AMZNLINUXHVM: ami-0e4a253fb5f082688
       RIBBONASTERISKAMI: ami-0a02619ab95c9d40b
       RIBBONSBCAMI: ami-047c00c834b46bdb9
     ap-south-1:
-      AMZNLINUXHVM: ami-02913db388613c3e1
+      AMZNLINUXHVM: ami-01e074f40dfb9999d
       RIBBONASTERISKAMI: ami-03cbcea0fc77d9c6c
       RIBBONSBCAMI: ami-00d7df60f86722524
     ap-southeast-1:
-      AMZNLINUXHVM: ami-05c859630889c79c8
+      AMZNLINUXHVM: ami-0d9233e8ce73df7b2
       RIBBONASTERISKAMI: ami-07b92c54e4ad37beb
       RIBBONSBCAMI: ami-00c8f3e9b68d75b59
     ap-southeast-2:
-      AMZNLINUXHVM: ami-07cc15c3ba6f8e287
+      AMZNLINUXHVM: ami-0c91f97cadcc8499e
       RIBBONASTERISKAMI: ami-063ccb9dd8542bf3f
       RIBBONSBCAMI: ami-004cd1d7ae297e670
     ca-central-1:
-      AMZNLINUXHVM: ami-04070f04f450607dc
+      AMZNLINUXHVM: ami-003a0ba7ea76b2785
       RIBBONASTERISKAMI: ami-0656a851d839217bd
       RIBBONSBCAMI: ami-0ef943c3daba37c78
     eu-central-1:
-      AMZNLINUXHVM: ami-010fae13a16763bb4
+      AMZNLINUXHVM: ami-0ab838eeee7f316eb
       RIBBONASTERISKAMI: ami-03bd1b73b5c8527d6
       RIBBONSBCAMI: ami-0a0ee6030e3991da9
     eu-west-1:
-      AMZNLINUXHVM: ami-028188d9b49b32a80
+      AMZNLINUXHVM: ami-071f4ce599deff521
       RIBBONASTERISKAMI: ami-0422f1982eb404b0d
       RIBBONSBCAMI: ami-09bb2f4b9adb91497
     eu-west-2:
-      AMZNLINUXHVM: ami-04de2b60dd25fbb2e
+      AMZNLINUXHVM: ami-0e49551fc78560451
       RIBBONASTERISKAMI: ami-00c699d52524fe58e
       RIBBONSBCAMI: ami-0929a04a05ed4660b
     eu-west-3:
-      AMZNLINUXHVM: ami-0652eb0db9b20aeaf
+      AMZNLINUXHVM: ami-0ec1d48c59dda554a
       RIBBONASTERISKAMI: ami-0fe5966306e14a1d7
       RIBBONSBCAMI: ami-0bb4578f3ef1d00f5
     sa-east-1:
-      AMZNLINUXHVM: ami-0e2c2c29d8017dd99
+      AMZNLINUXHVM: ami-04b202bf877b5027b
       RIBBONASTERISKAMI: ami-0ded104c1534ff1e7
       RIBBONSBCAMI: ami-07e90b1824ba80de0
     us-east-1:
-      AMZNLINUXHVM: ami-00eb20669e0990cb4
+      AMZNLINUXHVM: ami-09d069a04349dc3cb
       RIBBONASTERISKAMI: ami-0ece7775245867632
       RIBBONSBCAMI: ami-05b8856db70198486
     us-east-2:
-      AMZNLINUXHVM: ami-0c64dd618a49aeee8
+      AMZNLINUXHVM: ami-0d542ef84ec55d71c
       RIBBONASTERISKAMI: ami-0ead1c7d26f9ae16e
       RIBBONSBCAMI: ami-0d1f5143e28d74c9e
     us-west-1:
-      AMZNLINUXHVM: ami-0bce08e823ed38bdd
+      AMZNLINUXHVM: ami-04bc3da8f14823e88
       RIBBONASTERISKAMI: ami-0ad5e1f3a4bc4f6a3
       RIBBONSBCAMI: ami-0811a0b37cdcd3865
     us-west-2:
-      AMZNLINUXHVM: ami-08d489468314a58df
+      AMZNLINUXHVM: ami-01460aa81365561fe
       RIBBONASTERISKAMI: ami-0069b14731c27d739
       RIBBONSBCAMI: ami-04f0af8362c548c9a
 Resources:
