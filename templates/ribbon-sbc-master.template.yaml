@@ -1,7 +1,7 @@
 ---
 AWSTemplateFormatVersion: '2010-09-09'
 Description: AWS CloudFormation Template to setup and deploy vSBC HA instances and
-  2 PKTART instances to test vSBC. This template creates required vpc, subnet and
+  HFE instance to test vSBC. This template creates required vpc, subnet and
   other routing elements required IAM role to performce IP movement betweenn two vSBC
   instances. (qs-1pkktcfnj)
 Metadata:
