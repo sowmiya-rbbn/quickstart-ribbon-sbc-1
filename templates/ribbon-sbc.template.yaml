@@ -10,7 +10,7 @@ Metadata:
       RIBBONSBCAMI:
         product-code: 260q24tnotacikdg842b8tds9
       RIBBONASTERISKAMI:
-        name: Asterisk- AWS Marketplace*(14.6.0)*
+        name: AWS FreePBX 64bit 12.7.6-1910-1
         owner-alias: aws-marketplace
         product-code.type: marketplace
   AWS::CloudFormation::Interface:
@@ -293,7 +293,7 @@ Mappings:
     AMI:
       RIBBONSBCAMI: sbc-V07.00.00S401-connexip-os_06.00.00-S401_1_amd64_07_06_18_17_58
       AMZNLINUXHVM: amzn-ami-hvm-2018.03.0.20181129-x86_64-gp2
-      RIBBONASTERISKAMI: Asterisk- AWS Marketplace 27 Nov 2018 (14.6.0)-9fa53578-e190-40d0-823c-7998f5542773-ami-09a5e4cd15cff5ae1.4
+      RIBBONASTERISKAMI: AWS FreePBX 64bit 12.7.6-1910-1
     ap-northeast-1:
       AMZNLINUXHVM: ami-0ab3e16f9c414dee7
       RIBBONASTERISKAMI: ami-0b25f99dc11a472f5
@@ -340,11 +340,11 @@ Mappings:
       RIBBONSBCAMI: ami-07e90b1824ba80de0
     us-east-1:
       AMZNLINUXHVM: ami-00eb20669e0990cb4
-      RIBBONASTERISKAMI: ami-0ece7775245867632
+      RIBBONASTERISKAMI: ami-0ff5701693f37d13f
       RIBBONSBCAMI: ami-05b8856db70198486
     us-east-2:
       AMZNLINUXHVM: ami-0c64dd618a49aeee8
-      RIBBONASTERISKAMI: ami-0ead1c7d26f9ae16e
+      RIBBONASTERISKAMI: ami-0559f008fec72cf42
       RIBBONSBCAMI: ami-0d1f5143e28d74c9e
     us-west-1:
       AMZNLINUXHVM: ami-0bce08e823ed38bdd
@@ -1150,7 +1150,7 @@ Resources:
                   - SBCCLIPassword: !Ref SBCCLIPassword
                     SBCManagementIP: !GetAtt SBCActiveMgtIface.PrimaryPrivateIpAddress
                     SBCManagementIPSTANDBY: !GetAtt SBCPassiveMgtIface.PrimaryPrivateIpAddress
-                    ASTVoipIP: !GetAtt ASTVoipInterface.PrimaryPrivateIpAddress
+                    ASTVoipIP: !GetAtt ASTInterface.PrimaryPrivateIpAddress
         GenerateAnsibleVars:
           commands:
             010_run_python_to_generate_ansible_vars:
@@ -1252,10 +1252,8 @@ Resources:
       EbsOptimized: true
       KeyName: !Ref KeyPairName
       NetworkInterfaces:
-        - NetworkInterfaceId: !Ref ASTManagementInterface
+        - NetworkInterfaceId: !Ref ASTInterface
           DeviceIndex: '0'
-        - NetworkInterfaceId: !Ref ASTVoipInterface
-          DeviceIndex: '1'
       Tags:
         - Key: Name
           Value: Ribbon SBC Asterisk Instance
@@ -1267,6 +1265,7 @@ Resources:
               AST_DIR="/etc/asterisk"
               SIP_FILE="$AST_DIR/sip.conf"
               EXT_FILE="$AST_DIR/extensions.conf"
+              sudo yum install awscli -y
               aws s3 cp s3://${QSS3BucketName}/${QSS3KeyPrefix}scripts/sip.conf ${!SIP_FILE}
               if [ $? -ne 0 ]; then
                 /bin/echo "Error:Could not copy SIP script from S3 bucket."  >> log.txt
@@ -1282,21 +1281,16 @@ Resources:
               sudo sed -i '0, /localnet/s/localnet.*/localnet=${AST_VOIP_IP}\/255.255.255.0/' /etc/asterisk/sip.conf
               sudo chmod 644 ${!SIP_FILE}
               sudo chmod 644 ${!EXT_FILE}
-              sudo asterisk -rx "reload"
-            - AST_VOIP_IP: !GetAtt ASTVoipInterface.PrimaryPrivateIpAddress
-  ASTManagementInterface:
-    Type: 'AWS::EC2::NetworkInterface'
-    Properties:
-      SubnetId: !Ref SBCManagementSubnetID
-      GroupSet:
-        - !Ref SBCManagementSG
-      SourceDestCheck: true
-  ASTVoipInterface:
+              sudo fwconsole restart
+            - AST_VOIP_IP: !GetAtt ASTInterface.PrimaryPrivateIpAddress
+  ASTInterface:
     Type: 'AWS::EC2::NetworkInterface'
     Properties:
       SubnetId: !Ref SBCCoreVoipSubnetID
       GroupSet:
+        - !Ref SBCManagementSG
         - !Ref SBCCoreVoipSG
+      SourceDestCheck: true
   LambdaZipsBucket:
     Type: AWS::S3::Bucket
     Properties:
