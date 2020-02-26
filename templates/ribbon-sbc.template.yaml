@@ -170,11 +170,11 @@ Parameters:
   AsteriskInstanceType:
     Description: Instance type for the Asterisk Instance.
     Type: String
-    Default: m5.xlarge
+    Default: t3.medium
     AllowedValues:
-      - m4.xlarge
-      - m5.xlarge
-      - c3.2xlarge
+      - t3.medium
+      - t3.large
+      - t3.xlarge
       - c3.4xlarge
       - c3.8xlarge
       - c4.2xlarge
