@@ -308,14 +308,6 @@ Parameters:
       - t3.medium
       - t3.large
       - t3.xlarge
-      - c3.4xlarge
-      - c3.8xlarge
-      - c4.2xlarge
-      - c4.4xlarge
-      - c4.8xlarge
-      - c5.2xlarge
-      - c5.4xlarge
-      - c5.9xlarge
     ConstraintDescription: Must be a valid EC2 instance type.
 Rules:
   NameMismatch:
